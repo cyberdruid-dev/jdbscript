@@ -1,0 +1,53 @@
+databaseChangeLog:
+  - changeSet:
+      id: 001-multiple_column_types
+      author: Yury Altukhou
+      changes:
+        - createTable:
+            tableName: int_table
+            columns:
+              - column:
+                  name: int_column
+                  type: int
+        - createTable:
+            tableName: varchar_table
+            columns:
+              - column:
+                  name: varchar_column
+                  type: varchar(150)
+        - createTable:
+            tableName: boolean_table
+            columns:
+              - column:
+                  name: boolean_column
+                  type: boolean
+        - createTable:
+            tableName: date_table
+            columns:
+              - column:
+                  name: date_column
+                  type: date
+        - createTable:
+            tableName: timestamp_table
+            columns:
+              - column:
+                  name: timestamp_column
+                  type: timestamp
+        - createTable:
+            tableName: uuid_table
+            columns:
+              - column:
+                  name: uuid_column
+                  type: uuid
+        - createTable:
+            tableName: blob_table
+            columns:
+              - column:
+                  name: blob_column
+                  type: blob
+
+##NUMBERS:  DECIMAL, DOUBLE, FLOAT, INT, SMALLINT, TINYINT, MEDIUMINT, NUMBER
+##STR: CHAR, NCHAR,  VARCHAR
+##DATA: BLOB, CLOB
+##DATE: DATE, DATETIME, TIME, TIMESTAMP
+##OTHER: UUID, XML

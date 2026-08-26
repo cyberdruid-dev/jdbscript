@@ -1,0 +1,7 @@
+databaseChangeLog:
+- include:
+    file: db/000-test-schema.yaml
+- include:
+    file: db/001-multiple_column_types.yaml
+- include:
+    file: db/002-generated_ids.yaml

@@ -1,0 +1,38 @@
+databaseChangeLog:
+- changeSet:
+    id: 000-test-schema
+    author: Yury Altukhou
+    changes:
+    - createTable:
+        tableName: table_1
+        columns:
+        - column:
+            name: str_column_1
+            type: varchar(50)
+        - column:
+            name: str_column_2
+            type: varchar(60)
+        - column:
+            name: int_column_1
+            type: int
+        - column:
+            name: long_column_1
+            type: int
+    - createTable:
+        tableName: table_2
+        columns:
+            - column:
+                  name: int_column_1
+                  type: int
+            - column:
+                  name: long_column_1
+                  type: int
+    - createTable:
+          tableName: table_with_defaults
+          columns:
+              - column:
+                    name: int_column_1
+                    type: int
+              - column:
+                    name: str_column_1
+                    type: varchar(100)

@@ -1,0 +1,147 @@
+package org.jdbscript;
+
+import org.jdbscript.IDbSchema.IDBRecord;
+import org.jdbscript.errors.JdbsErrors;
+import org.jdbscript.impl.JDbScript;
+import org.jdbscript.impl.ScriptHandler;
+import org.jdbscript.impl.sql.SqlScriptExecutor;
+import org.jdbscript.impl.conversion.IJDBTypeConverter;
+import org.jdbscript.impl.conversion.JDBTypeConverter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.sql.DataSource;
+import java.lang.reflect.Method;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
+
+import static org.jdbscript.errors.Checks.checkIsNull;
+import static org.jdbscript.errors.Checks.checkNotNull;
+import static org.jdbscript.errors.JdbsErrors.*;
+
+/**
+ * TODO: document it!
+ */
+public class JDBEngine<T extends IDbSchema> implements IJDBEngine<T>{
+    private static final Logger log = LoggerFactory.getLogger(JDBEngine.class);
+
+    private final JDBTypeConverter converter = new JDBTypeConverter();
+    private final Class<T> dbSchemaClass;
+    private final Supplier<DataSource> dataSourceSupplier;
+    private DataSource dataSource;
+    private DbmsType dbmsType;
+    private IScriptExecutor executor;
+
+    public JDBEngine(Supplier<DataSource> dataSourceSupplier, Class<T> dbSchemaClass) {
+        this.dbSchemaClass = checkNotNull(dbSchemaClass, JdbsErrors.DB_SCHEMA_IS_NULL);
+        this.dataSourceSupplier = checkNotNull(dataSourceSupplier, JdbsErrors.DATASOURCE_SUPPLIER_IS_NULL);
+    }
+
+    public JDBEngine(DataSource dataSource, Class<T> dbSchemaClass) {
+        this(toSupplier(dataSource), dbSchemaClass);
+    }
+
+    private static Supplier<DataSource> toSupplier(DataSource dataSource) {
+        checkNotNull(dataSource, JdbsErrors.DATASOURCE_IS_NULL);
+        return ()->dataSource;
+    }
+
+    public void setConverters(Collection<IJDBTypeConverter> converters) {
+        converter.setConverters(converters);
+    }
+
+    @Override
+    public void resetDB(Class<? extends T> scriptClass) {
+        cleanupDB();
+        insertDB(scriptClass);
+    }
+
+    @Override
+    public void insertDB(Class<? extends T> scriptClass) {
+        log.debug("insertDB({})", scriptClass.getName());
+        insertDB(db->{
+            db.include(scriptClass);
+        });
+    }
+
+    @Override
+    public void resetDB(Consumer<T> db) {
+        log.debug("resetDb(consumer={})", db);
+        cleanupDB();
+        insertDB(db);
+    }
+
+    @Override
+    public void insertDB(Consumer<T> db) {
+        log.debug("insertDB(consumer={})", db);
+        ScriptHandler<T> handler = new ScriptHandler(dbSchemaClass);
+        db.accept(handler.getProxy());
+        handler.applyDefaults();
+        JDbScript script = handler.getDbScript();
+        converter.convertTypes(script);
+        getExecutor().insert(script);
+    }
+
+    public void setExecutor(IScriptExecutor value) {
+        checkNotNull(value, EXECUTOR_IS_NULL);
+        checkIsNull(this.executor, EXECUTOR_ALREADY_SET);
+        this.executor = value;
+        this.executor.setDataSource(getDataSource());
+        this.executor.setDbmsType(getDbmsType());
+    }
+
+    private synchronized DataSource getDataSource() {
+        if(dataSource == null){
+            dataSource = checkNotNull(dataSourceSupplier.get(), DATASOURCE_IS_NULL) ;
+        }
+        return dataSource;
+    }
+
+    private synchronized DbmsType getDbmsType() {
+        if(dbmsType == null){
+            try (var cnn = getDataSource().getConnection()) {
+                this.dbmsType = DbmsType.getTypeFromUrl(cnn.getMetaData().getURL());
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        return dbmsType;
+    }
+
+    @Override
+    public void cleanupDB() {
+        getTableNames();
+        getExecutor().cleanupTables(getTableNames());
+    }
+
+    private IScriptExecutor getExecutor() {
+        if(executor == null) {
+            setExecutor(new SqlScriptExecutor());
+        }
+        return executor;
+    }
+
+    private List<String> getTableNames() {
+        return findRecordMethods(dbSchemaClass).stream()
+                .map(m->m.getName())
+                .toList();
+    }
+
+    private List<Method> findRecordMethods(Class<?> clazz) {
+        List<Method> methods = new ArrayList<>();
+        for(var m: clazz.getMethods()){
+            Class<?> returnType = m.getReturnType();
+            if(IDBRecord.class.isAssignableFrom(returnType)) {
+                methods.add(m);
+            }
+        }
+        for(var iface: clazz.getInterfaces()){
+            methods.addAll(findRecordMethods(iface));
+        }
+        return methods;
+    }
+}

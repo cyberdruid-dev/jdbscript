@@ -1,0 +1,23 @@
+databaseChangeLog:
+  - changeSet:
+      id: 002-generated_ids
+      author: Yury Altukhou
+      changes:
+        - createTable:
+            tableName: generated_int_id_table
+            columns:
+              - column:
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                  name: generated_id_column
+                  type: int
+              - column:
+                  name: varchar_column
+                  type: varchar(50)
+
+##NUMBERS:  DECIMAL, DOUBLE, FLOAT, INT, SMALLINT, TINYINT, MEDIUMINT, NUMBER
+##STR: CHAR, NCHAR,  VARCHAR
+##DATA: BLOB, CLOB
+##DATE: DATE, DATETIME, TIME, TIMESTAMP
+##OTHER: UUID, XML
