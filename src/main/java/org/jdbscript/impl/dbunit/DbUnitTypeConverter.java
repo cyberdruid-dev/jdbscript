@@ -27,7 +27,7 @@ public class DbUnitTypeConverter {
                 throw new RuntimeException(e);
             }
         }
-        if(result instanceof UUID && dbmsType == ORACLE) {
+        if(result instanceof UUID && (dbmsType == ORACLE || dbmsType == HSQLDB)) {
             result = toBytes((UUID) result);
         }
         if(result instanceof UUID && dbmsType == MARIADB) {

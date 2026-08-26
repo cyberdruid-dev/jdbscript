@@ -5,6 +5,7 @@ import org.dbunit.database.DatabaseConfig;
 import org.dbunit.database.DatabaseDataSourceConnection;
 import org.dbunit.database.IDatabaseConnection;
 import org.dbunit.ext.h2.H2DataTypeFactory;
+import org.dbunit.ext.hsqldb.HsqldbDataTypeFactory;
 import org.dbunit.ext.mssql.MsSqlDataTypeFactory;
 import org.dbunit.ext.mysql.MySqlDataTypeFactory;
 import org.dbunit.ext.oracle.Oracle10DataTypeFactory;
@@ -38,7 +39,13 @@ public class DBUnitConnectionConfigurator implements DbunitScriptExecutor.IDBUni
             configureForPostgres(config);
         } else if (driverName.contains("h2")) {
             configureForH2(config);
+        } else if (driverName.contains("hsql")) {
+            configureForHsqldb(config);
         }
+    }
+
+    private void configureForHsqldb(DatabaseConfig config) {
+        config.setProperty(DatabaseConfig.PROPERTY_DATATYPE_FACTORY, new HsqldbDataTypeFactory());
     }
 
     private void configureForMSSql(DatabaseConfig config) {
