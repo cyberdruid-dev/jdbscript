@@ -12,6 +12,7 @@ import org.dbunit.dataset.IDataSet;
 import org.dbunit.dataset.ReplacementDataSet;
 import org.dbunit.dataset.xml.FlatXmlDataSet;
 import org.dbunit.dataset.xml.FlatXmlDataSetBuilder;
+import org.dbunit.ext.mssql.InsertIdentityOperation;
 import org.dbunit.operation.DatabaseOperation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -96,7 +97,8 @@ public class DbunitScriptExecutor implements IScriptExecutor {
             String xml = writer.getScript();
             Map<String,Object> replacements = writer.getReplacements();
             log.debug("execute() script dbUnit XML:\n{}", xml);
-            execute(INSERT, xml, replacements);
+            DatabaseOperation operation = dbmsType == DbmsType.MSSQL ? InsertIdentityOperation.INSERT : INSERT;
+            execute(operation, xml, replacements);
         } catch(Exception e) {
             throw new RuntimeException("Fail to execute script "+dbScript, e);
         }
