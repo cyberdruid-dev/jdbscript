@@ -116,7 +116,7 @@
                 <extensions>true</extensions>
                 <configuration>
                     <publishingServerId>central-upload</publishingServerId>
-                    <autoPublish>true</autoPublish>
+                    <autoPublish>false</autoPublish>
                 </configuration>
             </plugin>
         </plugins>
