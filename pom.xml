@@ -14,11 +14,10 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <slf4jVersion>2.0.18</slf4jVersion>
         <logbackVersion>1.6.3</logbackVersion>
-        <dbunitVersion>2.8.0</dbunitVersion>
         <test.jdbc.url/>
         <test.jdbc.user/>
         <test.jdbc.password/>
-        <test.script.executor/>
+        <test.script.executor>sql</test.script.executor>
     </properties>
 
 
@@ -120,28 +119,8 @@
                 </plugins>
             </build>
         </profile>
-        <!-- Script Engine profiles -->
-        <profile>
-            <id>dbunit-executor</id>
-            <activation><activeByDefault>true</activeByDefault></activation>
-            <properties>
-                <test.script.executor>dbunit</test.script.executor>
-            </properties>
-        </profile>
-        <profile>
-            <id>sql-executor</id>
-            <properties>
-                <test.script.executor>sql</test.script.executor>
-            </properties>
-        </profile>
     </profiles>
     <dependencies>
-        <dependency>
-            <groupId>org.dbunit</groupId>
-            <artifactId>dbunit</artifactId>
-            <version>${dbunitVersion}</version>
-            <scope>provided</scope>
-        </dependency>
         <dependency>
             <groupId>org.javassist</groupId>
             <artifactId>javassist</artifactId>

@@ -22,7 +22,6 @@
   * [ ] RecordTools/IDbRecordTools
   * [ ] DbmsType
   * [ ] IScriptExecutor
-* [ ] Test: DbUnitTypeConverter
 * [x] Test: Not leaking connections.
 * [ ] throw error if ClassScript's constructor has parameters.
 * [x] add JDBEngine()  constructor with ()->DataSource supplier
@@ -72,12 +71,9 @@
   * [ ] Throw exception if some values were not specified neither in script nor in defaults.
 * [ ] ensure test passes with autocommit=true|false
 * [ ] Explore table name case sensitivity
-* [ ] Cleanup&Clarify DBUnit configuration for Oracle
 * [x] Make tests pass on Oracle db
 * [x] make logging work
 * [x] make script class with private constructor work
-* [x] use dbunit to update db.
-* [x] make tests to run for both executors: SQL and DBUnit
 * [x] run tests with different DBMS
   * [x] MySQL
   * [x] MariaDB
@@ -92,11 +88,9 @@
 ### Requirements:
 * Minimal JDK version?
   * Using InvocationHandler.invokeDefaults() -> Java16
-* DBUnit versions?
 * [Deploy to Maven Central](https://maven.apache.org/repository/guide-central-repository-upload.html)
 
 ### Possible Features:
-* [ ] easy dbunit configuration
 * [ ] defaults + templating
 * [ ] id autogeneration(@GeneratedId)
 * [ ] sequence autocorrection/manual updates

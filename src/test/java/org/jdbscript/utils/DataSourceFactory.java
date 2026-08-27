@@ -1,8 +1,6 @@
 package org.jdbscript.utils;
 
 import org.jdbscript.DbmsType;
-import com.microsoft.sqlserver.jdbc.SQLServerDataSource;
-import com.mysql.cj.jdbc.MysqlDataSource;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import liquibase.Liquibase;
@@ -11,11 +9,7 @@ import liquibase.database.DatabaseFactory;
 import liquibase.database.jvm.JdbcConnection;
 import liquibase.exception.DatabaseException;
 import liquibase.resource.ClassLoaderResourceAccessor;
-import oracle.jdbc.pool.OracleDataSource;
 import org.apache.commons.lang3.NotImplementedException;
-import org.h2.jdbcx.JdbcDataSource;
-import org.mariadb.jdbc.MariaDbDataSource;
-import org.postgresql.ds.PGSimpleDataSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,21 +37,8 @@ class DataSourceFactory {
         this.jdbcPassword = jdbcPassword;
     }
 
-    public DataSource createDataSource(boolean dbmsSpecificDS) {
-        DataSource newDataSource;
-        if(dbmsSpecificDS) {
-            newDataSource = switch (getDbmsType()){
-                case MYSQL ->  newMysqlDS();
-                case POSTGRESQL ->   newPostgresDS();
-                case MARIADB ->   newMariadbDS();
-                case MSSQL ->   newMSSqlDS();
-                case ORACLE ->   newOracleDS();
-                case H2 ->   newH2DS();
-                default -> newHikariPool();
-            };
-        } else {
-            newDataSource = newHikariPool();
-        }
+    public DataSource createDataSource() {
+        HikariDataSource newDataSource = newHikariPool();
         logSchema(newDataSource);
         runLiquibase(newDataSource);
         return newDataSource;
@@ -83,26 +64,6 @@ class DataSourceFactory {
         return new HikariDataSource(config);
     }
 
-    private DataSource newMSSqlDS() {
-        SQLServerDataSource jdbcDS = new SQLServerDataSource();
-        jdbcDS.setURL(jdbcUrl);
-        jdbcDS.setUser(jdbcUser);
-        jdbcDS.setPassword(jdbcPassword);
-        return jdbcDS;
-    }
-
-    private DataSource newMariadbDS() {
-        try {
-            MariaDbDataSource jdbcDS = new MariaDbDataSource();
-            jdbcDS.setUrl(jdbcUrl);
-            jdbcDS.setUser(jdbcUser);
-            jdbcDS.setPassword(jdbcPassword);
-            return jdbcDS;
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
     private void logSchema(DataSource newDataSource) {
         try(var cnn = newDataSource.getConnection()) {
             String schema = cnn.getSchema();
@@ -110,26 +71,6 @@ class DataSourceFactory {
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
-    }
-
-    private DataSource newOracleDS() {
-        try {
-            OracleDataSource dataSource = new OracleDataSource();
-            dataSource.setURL(jdbcUrl);
-            dataSource.setUser(jdbcUser);
-            dataSource.setPassword(jdbcPassword);
-            return dataSource;
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private DataSource newPostgresDS() {
-        PGSimpleDataSource jdbcDS = new PGSimpleDataSource();
-        jdbcDS.setURL(jdbcUrl);
-        jdbcDS.setUser(jdbcUser);
-        jdbcDS.setPassword(jdbcPassword);
-        return jdbcDS;
     }
 
     private void runLiquibase(DataSource newDataSource) {
@@ -148,22 +89,5 @@ class DataSourceFactory {
 
     private Database findDatabase(Connection connection) throws DatabaseException {
         return DatabaseFactory.getInstance().findCorrectDatabaseImplementation(new JdbcConnection(connection));
-    }
-
-    private DataSource newH2DS() {
-        JdbcDataSource jdbcDS = new JdbcDataSource();
-        jdbcDS.setURL(jdbcUrl);
-        jdbcDS.setUser(jdbcUser);
-        jdbcDS.setPassword(jdbcPassword);
-        return jdbcDS;
-    }
-
-    private DataSource newMysqlDS() {
-        MysqlDataSource jdbcDS = new MysqlDataSource();
-        jdbcDS.setURL(jdbcUrl);
-        jdbcDS.setUser(jdbcUser);
-        jdbcDS.setPassword(jdbcPassword);
-        return jdbcDS;
-
     }
 }

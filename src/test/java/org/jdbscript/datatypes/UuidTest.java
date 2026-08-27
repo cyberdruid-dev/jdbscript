@@ -4,13 +4,10 @@ import org.jdbscript.IDbSchema;
 import org.jdbscript.IDbSchema.IDBRecord;
 import org.jdbscript.IJDBEngine;
 import org.jdbscript.JdbAbstractTest;
-import org.jdbscript.impl.dbunit.DbunitScriptExecutor;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import java.util.UUID;
-
-import static org.jdbscript.DbmsType.MARIADB;
 
 @Test
 public class UuidTest extends JdbAbstractTest {
@@ -37,7 +34,6 @@ public class UuidTest extends JdbAbstractTest {
 
     @BeforeMethod
     public void beforeMethod(){
-        skipFor("UUID", MARIADB, DbunitScriptExecutor.class, "DBUnit has no proper DataTypeFactory for MariaDB");
         cleanupTables(UUID_TABLE);
     }
 
