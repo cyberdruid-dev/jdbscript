@@ -38,11 +38,11 @@ class PostgreSQLStrategy extends  DefaultSqlExecutorStrategy{
         try(ResultSet rs = stmt.executeQuery("SELECT version();")){
             rs.next();
             String version = rs.getString(1);
-            Matcher m = Pattern.compile("PostgreSQL\\s(\\d+)\\.").matcher(version);
+            Matcher m = Pattern.compile("(PostgreSQL|CockroachDB CCL)\\sv?(\\d+)\\.").matcher(version);
             if(!m.find()) {
                 throw new RuntimeException("Can not detect PostgreSQL version from versin string '"+version+"'");
             }
-            return Integer.parseInt(m.group(1));
+            return Integer.parseInt(m.group(2));
         }
     }
 
