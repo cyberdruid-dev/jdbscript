@@ -195,6 +195,12 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <groupId>com.ibm.db2</groupId>
+            <artifactId>jcc</artifactId>
+            <version>11.1.4.4</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>com.mysql</groupId>
             <artifactId>mysql-connector-j</artifactId>
             <version>26.7.0</version>
