@@ -42,6 +42,7 @@ public class SqlScriptExecutor implements IScriptExecutor {
             case HSQLDB -> new HsqldbStrategy();
             case ORACLE -> new OracleStrategy();
             case POSTGRESQL -> new PostgreSQLStrategy();
+            case DB2 -> new Db2Strategy();
             default -> new DefaultSqlExecutorStrategy();
         };
     }
@@ -83,12 +84,14 @@ public class SqlScriptExecutor implements IScriptExecutor {
         } else if (UUID.class.isAssignableFrom(argumentType)) {
             strategy.setUUID(stmt, columnIndex, (UUID)value);
         } else {
-            stmt.setObject(columnIndex, value);
+            strategy.setObject(stmt, columnIndex, value);
         }
     }
 //
     private Class<?> detectValueType(Object value) {
-        if(value instanceof TypedNull){
+        if(value == null) {
+            return Object.class;
+        } else if(value instanceof TypedNull){
             return ((TypedNull)value).getType();
         }else {
             return value.getClass();

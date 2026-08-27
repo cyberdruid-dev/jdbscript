@@ -18,4 +18,6 @@ public interface ISqlExecutorStrategy {
     void setUUID(PreparedStatement stmt, int i, UUID uuid) throws SQLException;
 
     void setByteArray(PreparedStatement stmt, int i, byte[] value) throws SQLException;
+
+    void setObject(PreparedStatement stmt, int i, Object value) throws SQLException;
 }

@@ -36,4 +36,9 @@ class DefaultSqlExecutorStrategy implements ISqlExecutorStrategy {
         String value = uuid == null? null : uuid.toString();
         stmt.setString(columnIndex, value);
     }
+
+    @Override
+    public void setObject(PreparedStatement stmt, int columnIndex, Object value) throws SQLException {
+        stmt.setObject(columnIndex, value);
+    }
 }
