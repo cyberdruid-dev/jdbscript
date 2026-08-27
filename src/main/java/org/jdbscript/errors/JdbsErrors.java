@@ -3,14 +3,25 @@ package org.jdbscript.errors;
 import java.lang.reflect.InvocationTargetException;
 import java.util.function.Supplier;
 
+/**
+ * Predefined error types and standard messages for JDBScript validation and runtime failures.
+ */
 public enum JdbsErrors implements Supplier<JDBScriptException> {
+    /** The provided executor class/instance is null. */
     EXECUTOR_IS_NULL(JDBScriptException.class, "executor class can not be null."),
+    /** The provided data source is null. */
     DATASOURCE_IS_NULL(JDBScriptException.class, "datasource can not be null."),
+    /** The data source is not configured. */
     DATASOURCE_IS_NOT_CONFIGURED(JDBScriptException.class, "datasource is not configured."),
+    /** The data source has already been configured on the engine. */
     DATASOURCE_ALREADY_SET(JDBScriptException.class, "datasource already set."),
+    /** The executor has already been configured on the engine. */
     EXECUTOR_ALREADY_SET(JDBScriptException.class, "executor already set."),
+    /** Inner script classes must be declared static. */
     INNER_CLASS_SHOULD_BE_STATIC(JDBScriptException.class,"Inner script class should be static." ),
+    /** The database schema class cannot be null. */
     DB_SCHEMA_IS_NULL(JDBScriptException.class,"database schema can not be null."  ),
+    /** The data source supplier cannot be null. */
     DATASOURCE_SUPPLIER_IS_NULL(JDBScriptException.class,"datasource supplier can not be null."  );
 
     private final Class<? extends JDBScriptException> exception;
@@ -21,6 +32,11 @@ public enum JdbsErrors implements Supplier<JDBScriptException> {
         this.message = message;
     }
 
+    /**
+     * Creates and returns a new {@link JDBScriptException} instance configured with this error's message.
+     *
+     * @return the newly created {@link JDBScriptException}
+     */
     @Override
     public JDBScriptException get() {
         try {

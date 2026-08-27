@@ -24,7 +24,10 @@ import static org.jdbscript.errors.Checks.checkNotNull;
 import static org.jdbscript.errors.JdbsErrors.*;
 
 /**
- * TODO: document it!
+ * Standard implementation of {@link IJDBEngine} providing fluent database seeding,
+ * script execution, and table cleanup for a specified schema interface.
+ *
+ * @param <T> the schema interface type extending {@link IDbSchema}
  */
 public class JDBEngine<T extends IDbSchema> implements IJDBEngine<T>{
     private static final Logger log = LoggerFactory.getLogger(JDBEngine.class);
@@ -36,11 +39,23 @@ public class JDBEngine<T extends IDbSchema> implements IJDBEngine<T>{
     private DbmsType dbmsType;
     private IScriptExecutor executor;
 
+    /**
+     * Constructs a {@code JDBEngine} with a lazy {@link DataSource} supplier and schema interface.
+     *
+     * @param dataSourceSupplier supplier returning the target JDBC {@link DataSource}
+     * @param dbSchemaClass      the schema interface class modeling the database tables
+     */
     public JDBEngine(Supplier<DataSource> dataSourceSupplier, Class<T> dbSchemaClass) {
         this.dbSchemaClass = checkNotNull(dbSchemaClass, JdbsErrors.DB_SCHEMA_IS_NULL);
         this.dataSourceSupplier = checkNotNull(dataSourceSupplier, JdbsErrors.DATASOURCE_SUPPLIER_IS_NULL);
     }
 
+    /**
+     * Constructs a {@code JDBEngine} with a direct {@link DataSource} and schema interface.
+     *
+     * @param dataSource    the target JDBC {@link DataSource}
+     * @param dbSchemaClass the schema interface class modeling the database tables
+     */
     public JDBEngine(DataSource dataSource, Class<T> dbSchemaClass) {
         this(toSupplier(dataSource), dbSchemaClass);
     }
@@ -50,6 +65,11 @@ public class JDBEngine<T extends IDbSchema> implements IJDBEngine<T>{
         return ()->dataSource;
     }
 
+    /**
+     * Configures custom type converters used to transform record values before database insertion.
+     *
+     * @param converters collection of {@link IJDBTypeConverter} instances
+     */
     public void setConverters(Collection<IJDBTypeConverter> converters) {
         converter.setConverters(converters);
     }
@@ -86,6 +106,11 @@ public class JDBEngine<T extends IDbSchema> implements IJDBEngine<T>{
         getExecutor().insert(script);
     }
 
+    /**
+     * Configures a custom script executor for performing database operations.
+     *
+     * @param value the custom {@link IScriptExecutor} instance
+     */
     public void setExecutor(IScriptExecutor value) {
         checkNotNull(value, EXECUTOR_IS_NULL);
         checkIsNull(this.executor, EXECUTOR_ALREADY_SET);

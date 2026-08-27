@@ -2,7 +2,8 @@
 
 > **Type-safe, fluent database seeding and test data management for Java.**
 
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![Maven Central](https://img.shields.io/maven-central/v/org.jdbscript/jdbscript.svg)](https://central.sonatype.com/artifact/org.jdbscript/jdbscript)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![JDK](https://img.shields.io/badge/JDK-17%2B-green.svg)]()
 
 ---
@@ -38,9 +39,21 @@ Add the dependency to your `pom.xml`:
 <dependency>
     <groupId>org.jdbscript</groupId>
     <artifactId>jdbscript</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <version>1.0.0</version>
     <scope>test</scope>
 </dependency>
+```
+
+### Gradle
+
+**Groovy DSL** (`build.gradle`):
+```groovy
+testImplementation 'org.jdbscript:jdbscript:1.0.0'
+```
+
+**Kotlin DSL** (`build.gradle.kts`):
+```kotlin
+testImplementation("org.jdbscript:jdbscript:1.0.0")
 ```
 
 ### Requirements

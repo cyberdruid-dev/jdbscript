@@ -8,16 +8,25 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/**
+ * Default implementation of {@link IDbRecordTools} providing in-memory sequence generation
+ * and regex-based string template replacement for record defaults.
+ */
 public class RecordTools implements IDbRecordTools{
     private final static Pattern TEMPLATE_PATTERN = Pattern.compile("\\$\\{(\\w+)\\}");
 
     private final Map<String, AtomicLong> counters = new HashMap<>();
     private JDbRecord record;
 
+    /**
+     * Creates a new instance of {@code RecordTools}.
+     */
+    public RecordTools() {
+    }
+
     @Override
     public void setRecord(JDbRecord record) {
         this.record = record;
-
     }
 
     @Override

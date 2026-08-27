@@ -11,7 +11,7 @@
 
     <name>jdbscript</name>
     <description>Lightweight, manageable database scripting and test dataset framework for Java.</description>
-    <url>https://jdbscript.org</url>
+    <url>https://github.com/cyberdruid-dev/jdbscript</url>
 
     <licenses>
         <license>
@@ -39,6 +39,7 @@
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.build.outputTimestamp>2026-08-27T00:00:00Z</project.build.outputTimestamp>
         <slf4jVersion>2.0.18</slf4jVersion>
         <logbackVersion>1.6.3</logbackVersion>
         <test.jdbc.url/>
@@ -62,6 +63,19 @@
                         <test.script.executor>${test.script.executor}</test.script.executor>
                         <test.jdbc.schema.name>${test.jdbc.schema.name}</test.jdbc.schema.name>
                     </systemPropertyVariables>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>3.4.2</version>
+                <configuration>
+                    <archive>
+                        <manifestEntries>
+                            <Automatic-Module-Name>org.jdbscript</Automatic-Module-Name>
+                        </manifestEntries>
+                    </archive>
                 </configuration>
             </plugin>
 

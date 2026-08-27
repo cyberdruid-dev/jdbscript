@@ -5,12 +5,36 @@ import org.jdbscript.impl.JDbScript;
 import javax.sql.DataSource;
 import java.util.List;
 
+/**
+ * Strategy interface responsible for executing database insert operations and table cleanups.
+ */
 public interface IScriptExecutor {
+
+    /**
+     * Sets the data source to be used for database connections.
+     *
+     * @param dataSource the JDBC data source
+     */
     void setDataSource(DataSource dataSource);
 
+    /**
+     * Sets the target DBMS type.
+     *
+     * @param dbmsType the detected or configured DBMS type
+     */
     void setDbmsType(DbmsType dbmsType);
 
+    /**
+     * Inserts all records contained within the compiled script into the target database.
+     *
+     * @param dbScript the compiled script containing records to insert
+     */
     void insert(JDbScript dbScript);
 
+    /**
+     * Cleans up (deletes all records from) the specified tables.
+     *
+     * @param tableNames the names of the tables to truncate or delete
+     */
     void cleanupTables(List<String> tableNames);
 }
