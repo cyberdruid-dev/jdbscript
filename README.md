@@ -1,117 +1,228 @@
-### Goals:
-* Simple to use
-* Robust (across different dbms & jdk)
-* Explainability
-  * proper logging
-* Extensible(?)
+# JDBScript
 
-### TODO:
-* [ ] implement updating db scripts(update some columns with known row id)
-* [ ] sequence autocorrection/manual updates
-  * [x] a) Set all sequences to 10000+
-    * [x] a.1) reset sequences while cleanup
-    * [ ] a.2) reset with dbscript command();
-  * [ ] b) give access to sequences from script.
-* [x] !!Create Strategies for different DBMSs (PostgreSQL/OracleSequenceResetter....)
-* [ ] Tests for sequence resets
-* [ ] What exceptions to throw?
-* [ ] Fix naming: Db/DB/Jdb/JDBS/....
-* [ ] Document public interfaces and classes.
-  * [ ] JDBEngine/IJDBEngine
-  * [ ] IDbSchema
-  * [ ] RecordTools/IDbRecordTools
-  * [ ] DbmsType
-  * [ ] IScriptExecutor
-* [x] Test: Not leaking connections.
-* [ ] throw error if ClassScript's constructor has parameters.
-* [x] add JDBEngine()  constructor with ()->DataSource supplier
-* Bugs:
-  * [ ] Postgres <=12 can have IDENTITY column with hidden sequence (liquibase sometime generates it)
-  * [ ] Cockroachdb connects though postgres driver that confuses PostgreSQLStrategy
-* Features:
-  * [x] Class as script
-  * [x] Include Scripts
-    * [x] should work from Class scripts
-    * [x] should work from Consumer scripts
-  * [ ] defaults
-    * [ ] Should work with class scripts too.
-  * [ ] defaults: templates
-  * [ ] defaults: generated ID
-  * [ ] Types conversions
-    * [ ] Warnings if DB datatype has less precision and we set data that won't match? (java Date VS db DATE)
-      * [ ] Alternative: leave it to dmbs (MySQL thorws exception)
-    * [x] enums: name(default),ordinal
-    * [ ] custom types? - need test
-    * [ ] custom converters on field(e.g. UUID can be stored in different ways)
-  * [ ] JdbsUtils:
-    * today(+-nDays) - use time units?
-    * midnight(+-nDays)
-* [ ] SQLite support:
-  * [ ] SQLExecutor: how to handle date/time? (maybe don't? set it as it will be in db)
-* [ ] hsqldb support
-* [ ] db2 support(?)
-* [ ] Improvement: Reuse prepared statements for same tables.
-### OLD TODO:
-* [ ] @Default, @GeneratedId - are applied before send script to executor
-  * !Problem: @Default can not accept arbitrary object as value, only exact type of primitive or a Class<?>
-  * [ ] !ALTERNATIVE: defaults(Tools tools){}
-    * [ ] Tools - any class that have:
-      * default public constructor
-      * setJDBScriptAccessor(JDBScriptAccessor) - to access script state; 
-    * [ ] DefaultTools
-      * [ ] getNextId(name) - implementation? (name - is table scoped (default to null? empty param?))
-      * [ ] intValue(String expr) - evaluated upon values of current records
-    * [ ] defaults() method is called on proxy that prevents overriding existing value.
-    * [ ] tools should have some access to JDBScript in question (JDBScriptAccessor??)
-* [ ] @GeneratedId - applied to db field, generates Id(=max(table.ids))
-* [ ] @Default - applied to db field, if field value was not specified set the value to annotation value
-* [ ] Tests:
-  * [ ] check not @GeneratedId,@Default applied to same db field.
-  * [ ] check @GeneratedId,@Default are not from some other package(by mistake).
-  * [ ] Throw exception if some values were not specified neither in script nor in defaults.
-* [ ] ensure test passes with autocommit=true|false
-* [ ] Explore table name case sensitivity
-* [x] Make tests pass on Oracle db
-* [x] make logging work
-* [x] make script class with private constructor work
-* [x] run tests with different DBMS
-  * [x] MySQL
-  * [x] MariaDB
-  * [x] Postgres
-  * [x] Oracle
-  * [x] MSSQl
-  *  [x] configure test in TeamCity to run against multiple dbms
-* [x] test for null in executor class
-* [x] Setup TeamCity Builds
-* [x] Handle inner nonstatic classes(throw explaining exception?)
+> **Type-safe, fluent database seeding and test data management for Java.**
 
-### Requirements:
-* Minimal JDK version?
-  * Using InvocationHandler.invokeDefaults() -> Java16
-* [Deploy to Maven Central](https://maven.apache.org/repository/guide-central-repository-upload.html)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![JDK](https://img.shields.io/badge/JDK-17%2B-green.svg)]()
 
-### Possible Features:
-* [ ] defaults + templating
-* [ ] id autogeneration(@GeneratedId)
-* [ ] sequence autocorrection/manual updates
-* [ ] support different DBMS:
-  * [ ] MySQL/MariaDB
-  * [ ] Postgres
-  * [ ] Oracle
-  * [ ] H2
-  * [ ] CockroachDB?
-  * [ ] Snowflake?
-  * [ ] IBM DB2?
-  * [ ] SQLite?
-  * [ ] Google BigQuery?
-* [ ] autodetect table dependency -> cleanup order
-* [ ] Parametrized scripts?
-* [ ] Java->DB types conversions 
-* [ ] possibility to split the schema into multiple interfaces
-* [ ] Easy Spring integration
-* [ ] Single table inserts (maybe helpful in inline updates of only one table)
-* [ ] Generate Schema interfaces from DB
-* [ ] engine.verifySchema() - to check that java and db schema are compatible.
-* [ ] Caching scripts inside engine(with option to disable)
-* [ ] Kotlin support?(should work, but maybe can be done better)
-* [x] abstract classes as scripts
+---
+
+## Overview
+
+**JDBScript** is a lightweight, type-safe Java library designed to make database seeding, fixture management, and test data preparation simple, robust, and maintainable.
+
+Instead of writing verbose raw SQL scripts or maintaining fragile XML/JSON datasets, JDBScript lets you model your database tables and columns using standard Java interfaces. You can define test fixtures fluently with full IDE auto-completion, compile-time safety, dynamic defaults, and cross-DBMS compatibility.
+
+---
+
+## Key Features
+
+- **Type-Safe Schema Definitions**: Declare database tables and columns as Java interfaces with zero boilerplate.
+- **Fluent & Expressive API**: Create single or multiple rows with chained method calls.
+- **Flexible Script Formats**: Write scripts inline via lambdas (`db -> { ... }`) or encapsulate reusable datasets as static/abstract classes.
+- **Script Composition**: Compose and reuse scripts using `db.include(...)`.
+- **Smart Defaults & Generators**: Define default column values, auto-incrementing IDs (`RecordTools.nextIntId`), and templated strings (`RecordTools.strValue`).
+- **Cleanups & Resets**: Easily wipe tables (`cleanupDB`) and reset state before or between tests.
+- **Multi-DBMS Compatibility**: Built-in support for PostgreSQL, MySQL, MariaDB, Oracle, Microsoft SQL Server, H2, HSQLDB, IBM DB2, and SQLite.
+- **Automatic Type Conversion**: Seamless handling of Java Enums, UUIDs, Dates, Timestamps, and binary data.
+
+---
+
+## Installation
+
+### Maven
+
+Add the dependency to your `pom.xml`:
+
+```xml
+<dependency>
+    <groupId>org.jdbscript</groupId>
+    <artifactId>jdbscript</artifactId>
+    <version>1.0-SNAPSHOT</version>
+    <scope>test</scope>
+</dependency>
+```
+
+### Requirements
+
+- **Java 17** or higher
+- Standard JDBC `DataSource`
+
+---
+
+## Quick Start
+
+### 1. Define Your Schema Interfaces
+
+Define an interface extending `IDbSchema` representing your database schema, and record interfaces extending `IDBRecord` representing your tables:
+
+```java
+import org.jdbscript.IDbSchema;
+import org.jdbscript.IDbSchema.IDBRecord;
+
+public interface IAppSchema extends IDbSchema {
+    IUserRecord users();
+    IOrderRecord orders();
+
+    interface IUserRecord extends IDBRecord {
+        IUserRecord id(Long id);
+        IUserRecord username(String username);
+        IUserRecord email(String email);
+        IUserRecord active(Boolean active);
+    }
+
+    interface IOrderRecord extends IDBRecord {
+        IOrderRecord id(Long id);
+        IOrderRecord user_id(Long userId);
+        IOrderRecord total_amount(Double amount);
+    }
+}
+```
+
+### 2. Initialize `JDBEngine`
+
+Create an instance of `JDBEngine` by supplying your `DataSource` and schema class:
+
+```java
+import org.jdbscript.JDBEngine;
+import org.jdbscript.IJDBEngine;
+import javax.sql.DataSource;
+
+DataSource dataSource = ...; // e.g., HikariDataSource, Spring DataSource, etc.
+
+IJDBEngine<IAppSchema> engine = new JDBEngine<>(dataSource, IAppSchema.class);
+```
+
+You can also pass a `Supplier<DataSource>` for lazy connection resolution:
+
+```java
+IJDBEngine<IAppSchema> engine = new JDBEngine<>(() -> getDataSource(), IAppSchema.class);
+```
+
+---
+
+## Usage Examples
+
+### Inline Scripts (Lambdas)
+
+Populate test records fluently:
+
+```java
+// Cleans up tables defined in the schema and inserts the records
+engine.resetDB(db -> {
+    db.users().id(1L).username("alice").email("alice@example.com").active(true); 
+    db.users().id(2L).username("bob").email("bob@example.com").active(false); 
+    db.orders().id(101L).user_id(1L).total_amount(49.99);
+});
+```
+
+To insert records without wiping existing data, use `insertDB`:
+
+```java
+engine.insertDB(db -> {
+    db.users().id(3L).username("charlie").email("charlie@example.com");
+});
+```
+
+### Class-Based Reusable Scripts
+
+For common test scenarios (e.g. standard reference data, base user sets), define static or abstract classes:
+
+```java
+public abstract class BaseUsersFixture implements IAppSchema {{
+    users().id(1L).username("admin").email("admin@example.com").active(true);
+    users().id(2L).username("guest").email("guest@example.com").active(true);
+}};
+```
+
+Execute them directly:
+
+```java
+engine.resetDB(BaseUsersFixture.class);
+```
+
+### Including / Composing Scripts
+
+Combine modular scripts into larger fixtures:
+
+```java
+engine.resetDB(db -> {
+    // Include base dataset
+    db.include(BaseUsersFixture.class);
+
+    // Or include a lambda / Consumer script
+    db.include(anotherCustomScript);
+
+    // Add specific test records
+    db.orders().id(200L).user_id(1L).total_amount(99.00);
+});
+```
+
+### Defaults and Generators (`RecordTools`)
+
+Provide default values directly within your record interfaces using Java default methods. You can also inject `RecordTools` to generate auto-incrementing IDs or template-based strings:
+
+```java
+import org.jdbscript.IDbSchema.IDBRecord;
+import org.jdbscript.RecordTools;
+
+public interface IUserRecord extends IDBRecord {
+    IUserRecord id(Integer id);
+    IUserRecord username(String username);
+    IUserRecord email(String email);
+
+    default void defaults(RecordTools tools) {
+        int nextId = tools.nextIntId("user_id_seq", 1);
+        id(nextId);
+        username("user_" + nextId);
+        email(tools.strValue("${username}@example.com"));
+    }
+}
+```
+
+When invoking `db.users()`, any omitted columns automatically receive their configured defaults:
+
+```java
+engine.resetDB(db -> {
+    db.users(); // id=1, username="user_1", email="user_1@example.com"
+    db.users().username("custom_user"); // id=2, username="custom_user", email="custom_user@example.com"
+});
+```
+
+### Database Cleanup
+
+Purge all tables associated with the schema:
+
+```java
+engine.cleanupDB();
+```
+
+---
+
+## Supported Databases
+
+JDBScript automatically detects the target database type from the JDBC connection URL:
+
+| DBMS | Driver / JDBC URL Prefix |
+| :--- | :--- |
+| **PostgreSQL** | `jdbc:postgresql:` |
+| **MySQL** | `jdbc:mysql:` |
+| **MariaDB** | `jdbc:mariadb:` |
+| **Oracle** | `jdbc:oracle:` |
+| **Microsoft SQL Server** | `jdbc:sqlserver:` |
+| **H2 Database** | `jdbc:h2:` |
+| **HSQLDB** | `jdbc:hsqldb:` |
+| **IBM DB2** | `jdbc:db2:` |
+| **SQLite** | `jdbc:sqlite:` |
+
+---
+
+## Roadmap & Contributing
+
+See [TODO.md](TODO.md) for planned features, upcoming enhancements, and known items.
+
+---
+
+## License
+
+This project is licensed under the Apache License 2.0. See the [LICENSE](LICENSE) file for details.
