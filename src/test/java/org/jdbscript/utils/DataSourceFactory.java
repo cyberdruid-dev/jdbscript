@@ -9,7 +9,6 @@ import liquibase.database.DatabaseFactory;
 import liquibase.database.jvm.JdbcConnection;
 import liquibase.exception.DatabaseException;
 import liquibase.resource.ClassLoaderResourceAccessor;
-import org.apache.commons.lang3.NotImplementedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,7 +47,7 @@ class DataSourceFactory {
         if(this.dbmsType == null) {
             DbmsType type = DbmsType.getTypeFromUrl(jdbcUrl);
             if(type == DbmsType.UNKNOWN) {
-                throw new NotImplementedException("Unknown dbms type for JDBC URL: " + jdbcUrl);
+                throw new UnsupportedOperationException("Unknown dbms type for JDBC URL: " + jdbcUrl);
             }
             this.dbmsType = type;
         }
