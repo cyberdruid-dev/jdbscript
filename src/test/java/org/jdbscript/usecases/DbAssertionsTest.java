@@ -38,6 +38,7 @@ public class DbAssertionsTest extends JdbAbstractTest {
     static {
         Calendar calendar = Calendar.getInstance();
         calendar.set(2010, 5, 6, 17, 18, 29);
+        calendar.set(Calendar.MILLISECOND, 0);
         date1 =  calendar.getTime();
         calendar.set(2011, 6, 16, 17, 18, 29);
         date2 =  calendar.getTime();
