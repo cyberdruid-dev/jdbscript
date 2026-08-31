@@ -5,3 +5,5 @@ databaseChangeLog:
     file: db/001-multiple_column_types.yaml
 - include:
     file: db/002-generated_ids.yaml
+- include:
+    file: db/003-assertions.yaml

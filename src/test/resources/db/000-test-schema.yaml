@@ -1,7 +1,7 @@
 databaseChangeLog:
 - changeSet:
     id: 000-test-schema
-    author: Yury Altukhou
+    author: Cyber Druid
     changes:
     - createTable:
         tableName: table_1

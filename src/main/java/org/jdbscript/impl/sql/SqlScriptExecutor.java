@@ -5,15 +5,13 @@ import org.jdbscript.IScriptExecutor;
 import org.jdbscript.impl.JDbRecord;
 import org.jdbscript.impl.JDbScript;
 import org.jdbscript.impl.TypedNull;
+import org.opentest4j.AssertionFailedError;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.sql.DataSource;
 import java.io.InputStream;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -108,6 +106,66 @@ public class SqlScriptExecutor implements IScriptExecutor {
                 }
             }
         });
+    }
+
+    @Override
+    public void assertRowsExist(JDbScript script) {
+        withConnection((cnn)->{
+            for(JDbRecord record: script.getRecords()){
+                List<String> columns = new ArrayList<>(record.getColumns().keySet());
+                String sql = createSelectAssertSql(record, columns);
+                try (PreparedStatement stmt = cnn.prepareStatement(sql)) {
+                    for (int i = 0; i < columns.size(); i++) {
+                        Object value = record.getColumns().get(columns.get(i));
+                        setColumnValue(stmt, i+1, value);
+                    }
+                    try(ResultSet rs = stmt.executeQuery()){
+                        if(!rs.next()) {
+                            throw new RuntimeException("Fail to count rows in DB. Unexpectedly empty resultset.");
+                        }
+                        long count = rs.getLong(1);
+                        if(count == 0 ) {
+                            throw new AssertionFailedError("Expected row to exist.");
+                        }
+                    }
+                }
+            }
+        });
+
+    }
+
+    @Override
+    public void assertRowsNotExist(JDbScript script) {
+        withConnection((cnn)->{
+            for(JDbRecord record: script.getRecords()){
+                List<String> columns = new ArrayList<>(record.getColumns().keySet());
+                String sql = createSelectAssertSql(record, columns);
+                try (PreparedStatement stmt = cnn.prepareStatement(sql)) {
+                    for (int i = 0; i < columns.size(); i++) {
+                        Object value = record.getColumns().get(columns.get(i));
+                        setColumnValue(stmt, i+1, value);
+                    }
+                    try(ResultSet rs = stmt.executeQuery()){
+                        if(!rs.next()) {
+                            throw new RuntimeException("Fail to count rows in DB. Unexpectedly empty resultset.");
+                        }
+                        long count = rs.getLong(1);
+                        if(count > 0 ) {
+                            throw new AssertionFailedError("Expected row to NOT exist.");
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    private String createSelectAssertSql(JDbRecord record, List<String> columns) {
+        String sql = "SELECT count(*) FROM " + record.getTableName();
+        sql += " WHERE "+columns.get(0)+" = ?";
+        for(int i= 1; i< columns.size(); i++){
+            sql +=" AND "+columns.get(i)+" = ?";
+        }
+        return sql;
     }
 
     private String createInsertSql(JDbRecord record, List<String> columns) {

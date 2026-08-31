@@ -1,7 +1,7 @@
 databaseChangeLog:
   - changeSet:
       id: 002-generated_ids
-      author: Yury Altukhou
+      author: Cyber Druid
       changes:
         - createTable:
             tableName: generated_int_id_table

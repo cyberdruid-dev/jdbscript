@@ -7,6 +7,7 @@ import org.jdbscript.impl.ScriptHandler;
 import org.jdbscript.impl.sql.SqlScriptExecutor;
 import org.jdbscript.impl.conversion.IJDBTypeConverter;
 import org.jdbscript.impl.conversion.JDBTypeConverter;
+import org.opentest4j.AssertionFailedError;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -141,6 +142,26 @@ public class JDBEngine<T extends IDbSchema> implements IJDBEngine<T>{
     public void cleanupDB() {
         getTableNames();
         getExecutor().cleanupTables(getTableNames());
+    }
+
+    @Override
+    public void assertDBHasNot(Consumer<T> dbAsserts) {
+        log.debug("assertDBHas(consumer={})", dbAsserts);
+        ScriptHandler<T> handler = new ScriptHandler(dbSchemaClass);
+        dbAsserts.accept(handler.getProxy());
+        JDbScript script = handler.getDbScript();
+        converter.convertTypes(script);
+        getExecutor().assertRowsNotExist(script);
+    }
+
+    @Override
+    public void assertDBHas(Consumer<T> dbAsserts) {
+        log.debug("assertDBHas(consumer={})", dbAsserts);
+        ScriptHandler<T> handler = new ScriptHandler(dbSchemaClass);
+        dbAsserts.accept(handler.getProxy());
+        JDbScript script = handler.getDbScript();
+        converter.convertTypes(script);
+        getExecutor().assertRowsExist(script);
     }
 
     private IScriptExecutor getExecutor() {

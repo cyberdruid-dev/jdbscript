@@ -37,4 +37,8 @@ public interface IScriptExecutor {
      * @param tableNames the names of the tables to truncate or delete
      */
     void cleanupTables(List<String> tableNames);
+
+    void assertRowsExist(JDbScript script);
+
+    void assertRowsNotExist(JDbScript script);
 }

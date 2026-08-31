@@ -1,7 +1,7 @@
 databaseChangeLog:
   - changeSet:
       id: 001-multiple_column_types
-      author: Yury Altukhou
+      author: Cyber Druid
       changes:
         - createTable:
             tableName: int_table

@@ -41,4 +41,8 @@ public interface IJDBEngine <T extends IDbSchema>{
      * Deletes all records from the tables defined in the schema in the reverse order of declaration.
      */
     void cleanupDB();
+
+    void assertDBHas(Consumer<T> dbAsserts);
+
+    void assertDBHasNot(Consumer<T> dbAsserts);
 }

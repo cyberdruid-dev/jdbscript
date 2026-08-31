@@ -13,6 +13,14 @@ target/
 *.iml
 *.ipr
 
+### vim ###
+.*.swp
+.*.swn
+.*.swo
+.swp
+.swn
+.swo
+
 ### Eclipse ###
 .apt_generated
 .classpath
