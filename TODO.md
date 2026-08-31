@@ -12,7 +12,8 @@
   * [ ] option: allow default methods with same name to do conversion
   * [ ] option: add an annotation
 * [ ] implement updating db scripts(update some columns with known row id)
-* [ ] implement assertions
+* [x] implement assertions
+* [ ] handle date/timestamp precision mismatch. (e.g. mariadb with assertDBhas() for dates)
 * [ ] sequence autocorrection/manual updates
   * [x] a) Set all sequences to 10000+
     * [x] a.1) reset sequences while cleanup
@@ -22,12 +23,12 @@
 * [ ] Tests for sequence resets
 * [ ] What exceptions to throw?
 * [ ] Fix naming: Db/DB/Jdb/JDBS/....
-* [ ] Document public interfaces and classes.
-  * [ ] JDBEngine/IJDBEngine
-  * [ ] IDbSchema
-  * [ ] RecordTools/IDbRecordTools
-  * [ ] DbmsType
-  * [ ] IScriptExecutor
+* [x] Document public interfaces and classes.
+  * [x] JDBEngine/IJDBEngine
+  * [x] IDbSchema
+  * [x] RecordTools/IDbRecordTools
+  * [x] DbmsType
+  * [x] IScriptExecutor
 * [x] Test: Not leaking connections.
 * [ ] throw error if ClassScript's constructor has parameters.
 * [x] add JDBEngine()  constructor with ()->DataSource supplier
