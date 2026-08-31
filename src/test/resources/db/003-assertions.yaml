@@ -1,0 +1,23 @@
+databaseChangeLog:
+  - changeSet:
+      id: 003-assertions
+      author: Cyber Druid
+      changes:
+        - createTable:
+            tableName: table_for_assertions
+            columns:
+              - column:
+                  name: str_column_1
+                  type: varchar(50)
+              - column:
+                  name: str_column_2
+                  type: varchar(50)
+              - column:
+                  name: int_column_1
+                  type: int
+              - column:
+                  name: boolean_column_1
+                  type: boolean
+              - column:
+                  name: date_column_1
+                  type: timestamp
