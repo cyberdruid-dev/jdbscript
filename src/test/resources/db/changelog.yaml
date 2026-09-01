@@ -7,3 +7,5 @@ databaseChangeLog:
     file: db/002-generated_ids.yaml
 - include:
     file: db/003-assertions.yaml
+- include:
+    file: db/004-cleanup_order_tables.yaml

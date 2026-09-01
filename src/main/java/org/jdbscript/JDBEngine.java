@@ -204,9 +204,10 @@ public class JDBEngine<T extends IDbSchema> implements IJDBEngine<T>{
         if (cleanupOrder != null) {
             return cleanupOrder;
         }
-        return findRecordMethods(dbSchemaClass).stream()
+        List<String> tables = findRecordMethods(dbSchemaClass).stream()
                 .map(m->m.getName())
                 .toList();
+        return getExecutor().sortTablesByDependencies(tables);
     }
 
     private List<Method> findRecordMethods(Class<?> clazz) {

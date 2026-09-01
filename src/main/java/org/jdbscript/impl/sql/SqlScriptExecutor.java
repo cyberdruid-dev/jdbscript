@@ -5,13 +5,17 @@ import org.jdbscript.IScriptExecutor;
 import org.jdbscript.impl.JDbRecord;
 import org.jdbscript.impl.JDbScript;
 import org.jdbscript.impl.TypedNull;
+import org.jdbscript.impl.sql.SqlConnectionProvider.JdbcConnectionConsumer;
 import org.opentest4j.AssertionFailedError;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.sql.DataSource;
 import java.io.InputStream;
-import java.sql.*;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -19,13 +23,15 @@ import java.util.UUID;
 import static org.jdbscript.DbmsType.UNKNOWN;
 import static org.jdbscript.errors.Checks.checkIsNull;
 import static org.jdbscript.errors.Checks.checkNotNull;
-import static org.jdbscript.errors.JdbsErrors.*;
+import static org.jdbscript.errors.JdbsErrors.DATASOURCE_ALREADY_SET;
+import static org.jdbscript.errors.JdbsErrors.DATASOURCE_IS_NOT_CONFIGURED;
 
 public class SqlScriptExecutor implements IScriptExecutor {
     private static final Logger log = LoggerFactory.getLogger(SqlScriptExecutor.class);
 
-    private DataSource dataSource;
+    private SqlConnectionProvider connectionProvider;
     private ISqlExecutorStrategy strategy;
+    private MetadataTableSorter tableSorter;
 
     public SqlScriptExecutor() {
         setDbmsType(UNKNOWN);
@@ -45,9 +51,9 @@ public class SqlScriptExecutor implements IScriptExecutor {
 
     @Override
     public void setDataSource(DataSource value) {
-        checkNotNull(value, DATASOURCE_IS_NULL);
-        checkIsNull(this.dataSource, DATASOURCE_ALREADY_SET);
-        this.dataSource = value;
+        checkIsNull(this.connectionProvider, DATASOURCE_ALREADY_SET);
+        this.connectionProvider = new SqlConnectionProvider(value);
+        this.tableSorter = new MetadataTableSorter(connectionProvider);
     }
 
     @Override
@@ -68,6 +74,11 @@ public class SqlScriptExecutor implements IScriptExecutor {
             cnn.commit();
             strategy.afterInsert(cnn);
         });
+    }
+
+    private void withConnection(JdbcConnectionConsumer consumer) {
+        checkNotNull(connectionProvider, DATASOURCE_IS_NOT_CONFIGURED);
+        connectionProvider.withConnection(consumer);
     }
 
     private void setColumnValue(PreparedStatement stmt, int columnIndex, Object value) throws SQLException {
@@ -104,6 +115,11 @@ public class SqlScriptExecutor implements IScriptExecutor {
                 }
             }
         });
+    }
+
+    @Override
+    public List<String> sortTablesByDependencies(List<String> tableNames) {
+        return tableSorter.sortTablesByDependencies(tableNames);
     }
 
     @Override
@@ -180,24 +196,5 @@ public class SqlScriptExecutor implements IScriptExecutor {
         return sql;
     }
 
-
-    @FunctionalInterface
-    private interface JdbcConnectionConsumer<T> {
-
-        void accept(Connection cnn) throws Exception;
-
-    }
-
-    private void withConnection(JdbcConnectionConsumer<Connection> consumer) {
-        checkNotNull(this.dataSource, DATASOURCE_IS_NOT_CONFIGURED);
-        try(Connection cnn = dataSource.getConnection()) {
-            cnn.getMetaData().getDriverName();
-            cnn.setAutoCommit(false);
-            consumer.accept(cnn);
-            cnn.commit();
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
 
 }

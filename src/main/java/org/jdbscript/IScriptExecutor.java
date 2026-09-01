@@ -38,6 +38,15 @@ public interface IScriptExecutor {
      */
     void cleanupTables(List<String> tableNames);
 
+    /**
+     * Sorts the specified tables based on their Foreign Key dependencies to ensure
+     * that child tables appear before their parent tables in the list (suitable for cleanup).
+     *
+     * @param tableNames the names of the tables to sort
+     * @return a new list containing the tables in a valid cleanup order
+     */
+    List<String> sortTablesByDependencies(List<String> tableNames);
+
     void assertRowsExist(JDbScript script);
 
     void assertRowsNotExist(JDbScript script);
