@@ -43,7 +43,9 @@ public class ChangeScriptExecutorTest extends JdbAbstractTest {
     public void beforeMethod(){
         cleanupTables(TABLE_NAME_1);
         myScriptExecutorUsed = false;
-        engine = new JDBEngine(dataSource, ITestSchema.class);
+        engine = JDBEngine.builder(ITestSchema.class)
+                .dataSource(dataSource)
+                .build();
     }
 
     @Test

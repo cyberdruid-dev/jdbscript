@@ -1,6 +1,5 @@
 package org.jdbscript.usecases;
 
-import org.assertj.core.api.Assertions;
 import org.jdbscript.IDbSchema;
 import org.jdbscript.IDbSchema.IDBRecord;
 import org.jdbscript.IJDBEngine;

@@ -16,7 +16,9 @@ public class TheTest extends JdbAbstractTest {
         table_1().str_column_1("Good Bye");
     }};
 
-    private final JDBEngine<ITestDbSchema> engine = new JDBEngine(dataSource, ITestDbSchema.class);
+    private final JDBEngine<ITestDbSchema> engine = JDBEngine.builder(ITestDbSchema.class)
+            .dataSource(dataSource)
+            .build();
 
     @BeforeMethod
     public void beforeMethod() {

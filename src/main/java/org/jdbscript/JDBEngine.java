@@ -36,19 +36,46 @@ public class JDBEngine<T extends IDbSchema> implements IJDBEngine<T>{
     private final JDBTypeConverter converter = new JDBTypeConverter();
     private final Class<T> dbSchemaClass;
     private final Supplier<DataSource> dataSourceSupplier;
+    private final List<String> cleanupOrder;
     private DataSource dataSource;
     private DbmsType dbmsType;
     private IScriptExecutor executor;
+
+    private JDBEngine(Builder<T> builder) {
+        this.dbSchemaClass = checkNotNull(builder.dbSchemaClass, DB_SCHEMA_IS_NULL);
+        this.dataSourceSupplier = checkNotNull(builder.dataSourceSupplier, DATASOURCE_SUPPLIER_IS_NULL);
+        this.cleanupOrder = builder.cleanupOrder != null ? List.copyOf(builder.cleanupOrder) : null;
+        if (builder.executor != null) {
+            setExecutor(builder.executor);
+        }
+        if (builder.converters != null) {
+            this.converter.setConverters(builder.converters);
+        }
+    }
+
+    /**
+     * Creates a new builder for {@code JDBEngine}.
+     *
+     * @param dbSchemaClass the schema interface class modeling the database tables
+     * @param <T>           the schema interface type
+     * @return a new builder instance
+     */
+    public static <T extends IDbSchema> Builder<T> builder(Class<T> dbSchemaClass) {
+        return new Builder<>(dbSchemaClass);
+    }
 
     /**
      * Constructs a {@code JDBEngine} with a lazy {@link DataSource} supplier and schema interface.
      *
      * @param dataSourceSupplier supplier returning the target JDBC {@link DataSource}
      * @param dbSchemaClass      the schema interface class modeling the database tables
+     * @deprecated use {@link #builder(Class)} instead
      */
+    @Deprecated
     public JDBEngine(Supplier<DataSource> dataSourceSupplier, Class<T> dbSchemaClass) {
         this.dbSchemaClass = checkNotNull(dbSchemaClass, JdbsErrors.DB_SCHEMA_IS_NULL);
         this.dataSourceSupplier = checkNotNull(dataSourceSupplier, JdbsErrors.DATASOURCE_SUPPLIER_IS_NULL);
+        this.cleanupOrder = null;
     }
 
     /**
@@ -56,7 +83,9 @@ public class JDBEngine<T extends IDbSchema> implements IJDBEngine<T>{
      *
      * @param dataSource    the target JDBC {@link DataSource}
      * @param dbSchemaClass the schema interface class modeling the database tables
+     * @deprecated use {@link #builder(Class)} instead
      */
+    @Deprecated
     public JDBEngine(DataSource dataSource, Class<T> dbSchemaClass) {
         this(toSupplier(dataSource), dbSchemaClass);
     }
@@ -146,7 +175,7 @@ public class JDBEngine<T extends IDbSchema> implements IJDBEngine<T>{
 
     @Override
     public void assertDBHasNot(Consumer<T> dbAsserts) {
-        log.debug("assertDBHas(consumer={})", dbAsserts);
+        log.debug("assertDBHasNot(consumer={})", dbAsserts);
         ScriptHandler<T> handler = new ScriptHandler(dbSchemaClass);
         dbAsserts.accept(handler.getProxy());
         JDbScript script = handler.getDbScript();
@@ -172,6 +201,9 @@ public class JDBEngine<T extends IDbSchema> implements IJDBEngine<T>{
     }
 
     private List<String> getTableNames() {
+        if (cleanupOrder != null) {
+            return cleanupOrder;
+        }
         return findRecordMethods(dbSchemaClass).stream()
                 .map(m->m.getName())
                 .toList();
@@ -189,5 +221,57 @@ public class JDBEngine<T extends IDbSchema> implements IJDBEngine<T>{
             methods.addAll(findRecordMethods(iface));
         }
         return methods;
+    }
+
+    /**
+     * Builder for {@link JDBEngine}.
+     *
+     * @param <T> the schema interface type
+     */
+    public static class Builder<T extends IDbSchema> {
+        private final Class<T> dbSchemaClass;
+        private Supplier<DataSource> dataSourceSupplier;
+        private IScriptExecutor executor;
+        private Collection<IJDBTypeConverter> converters;
+        private List<String> cleanupOrder;
+
+        private Builder(Class<T> dbSchemaClass) {
+            this.dbSchemaClass = dbSchemaClass;
+        }
+
+        public Builder<T> dataSource(DataSource dataSource) {
+            this.dataSourceSupplier = toSupplier(dataSource);
+            return this;
+        }
+
+        public Builder<T> dataSource(Supplier<DataSource> dataSourceSupplier) {
+            this.dataSourceSupplier = dataSourceSupplier;
+            return this;
+        }
+
+        public Builder<T> executor(IScriptExecutor executor) {
+            this.executor = executor;
+            return this;
+        }
+
+        public Builder<T> converters(Collection<IJDBTypeConverter> converters) {
+            this.converters = converters;
+            return this;
+        }
+
+        /**
+         * Configures the order in which tables should be cleaned up.
+         *
+         * @param tableNames list of table names in cleanup order
+         * @return this builder
+         */
+        public Builder<T> cleanupOrder(List<String> tableNames) {
+            this.cleanupOrder = tableNames;
+            return this;
+        }
+
+        public JDBEngine<T> build() {
+            return new JDBEngine<>(this);
+        }
     }
 }

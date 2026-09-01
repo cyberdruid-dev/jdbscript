@@ -25,7 +25,6 @@ public class SqlScriptExecutor implements IScriptExecutor {
     private static final Logger log = LoggerFactory.getLogger(SqlScriptExecutor.class);
 
     private DataSource dataSource;
-    private DbmsType dbmsType;
     private ISqlExecutorStrategy strategy;
 
     public SqlScriptExecutor() {
@@ -34,7 +33,6 @@ public class SqlScriptExecutor implements IScriptExecutor {
 
     @Override
     public void setDbmsType(DbmsType dbmsType) {
-        this.dbmsType = dbmsType;
         strategy = switch (dbmsType) {
             case MSSQL -> new MssqlStrategy();
             case HSQLDB -> new HsqldbStrategy();

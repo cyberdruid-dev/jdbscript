@@ -8,11 +8,15 @@
 * Extensible(?)
 
 ### TODO:
+* [ ] fix table cleanup order:
+  * [ ] add user option to set the order
+  * [ ] autodetect FK dependencies(+caching), with error message on cyclic dependencies
+  * [ ] option: add disableConstraintsDuringCleanup() (not for Oracle)
 * [ ] data type conversion(e.g. Date -> seconds, Instant -> epoch ms):
   * [ ] option: allow default methods with same name to do conversion
   * [ ] option: add an annotation
 * [ ] implement updating db scripts(update some columns with known row id)
-* [x] implement assertions
+* [x] implement simple assertions
 * [ ] handle date/timestamp precision mismatch. (e.g. mariadb with assertDBhas() for dates)
 * [ ] sequence autocorrection/manual updates
   * [x] a) Set all sequences to 10000+

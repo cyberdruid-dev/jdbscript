@@ -55,13 +55,11 @@ public class JdbAbstractTest {
     }
 
     protected <T extends IDbSchema> JDBEngine<T> createEngine(Class<T> schemaClass, List<IJDBTypeConverter> converters) {
-        JDBEngine<T> engine = new JDBEngine(()->dataSource, schemaClass);
-        if(converters != null) {
-            engine.setConverters(converters);
-        }
-        IScriptExecutor executor = testConfiguration.getScriptExecutor();
-        engine.setExecutor(executor);
-        return engine;
+        return JDBEngine.builder(schemaClass)
+                .dataSource(()->dataSource)
+                .converters(converters)
+                .executor(testConfiguration.getScriptExecutor())
+                .build();
     }
 
 
