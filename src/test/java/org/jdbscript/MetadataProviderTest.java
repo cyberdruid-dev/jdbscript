@@ -57,7 +57,7 @@ public class MetadataProviderTest extends JdbAbstractTest {
         SqlConnectionProvider connectionProvider = new SqlConnectionProvider(dataSource);
         IMetadataProvider provider = new SqlMetadataProvider(connectionProvider);
         
-        Assert.assertEquals(provider.getDbmsType(), DbmsType.H2, "Should detect H2 database type");
+        Assert.assertEquals(provider.getDbmsType(), testConfiguration.getExpectedDbmsType(), "Should detect expected database type");
     }
 
     @Test

@@ -62,13 +62,22 @@ public class SqlMetadataProvider implements IMetadataProvider {
         ensureInitialized();
         List<String> sorted = getSortedTables();
         return (t1, t2) -> {
-            int i1 = sorted.indexOf(t1.toUpperCase());
-            int i2 = sorted.indexOf(t2.toUpperCase());
+            int i1 = findIndex(sorted, t1);
+            int i2 = findIndex(sorted, t2);
             if (i1 == -1 || i2 == -1) {
                 return t1.compareToIgnoreCase(t2);
             }
             return Integer.compare(i1, i2);
         };
+    }
+
+    private int findIndex(List<String> list, String name) {
+        for (int i = 0; i < list.size(); i++) {
+            if (list.get(i).equalsIgnoreCase(name)) {
+                return i;
+            }
+        }
+        return -1;
     }
 
     private void ensureInitialized() {
@@ -148,22 +157,43 @@ public class SqlMetadataProvider implements IMetadataProvider {
 
     private Set<String> getRawTableDependencies(DatabaseMetaData metaData, String catalog, String schema, String tableName) throws SQLException {
         Set<String> allDeps = new HashSet<>();
-        // Try exact name
-        try (ResultSet rs = metaData.getImportedKeys(catalog, schema, tableName)) {
-            while (rs.next()) {
-                allDeps.add(rs.getString("PKTABLE_NAME").toUpperCase());
+        collectImportedKeys(allDeps, metaData, catalog, schema, tableName);
+
+        // If nothing found, try upper case
+        if (allDeps.isEmpty()) {
+            String upperTableName = tableName.toUpperCase();
+            if (!upperTableName.equals(tableName)) {
+                collectImportedKeys(allDeps, metaData, catalog, schema, upperTableName);
             }
         }
-        // If nothing found, try upper case
-        String upperTableName = tableName.toUpperCase();
-        if (allDeps.isEmpty() && !upperTableName.equals(tableName)) {
-            try (ResultSet rs = metaData.getImportedKeys(catalog, schema, upperTableName)) {
-                while (rs.next()) {
-                    allDeps.add(rs.getString("PKTABLE_NAME").toUpperCase());
+
+        // For some DBs (like Postgres or Oracle) catalog/schema handling in getImportedKeys can be tricky.
+        // If still nothing found, try with null catalog and schema to be more permissive.
+        if (allDeps.isEmpty() && (catalog != null || schema != null)) {
+            collectImportedKeys(allDeps, metaData, null, null, tableName);
+            if (allDeps.isEmpty()) {
+                String upperTableName = tableName.toUpperCase();
+                if (!upperTableName.equals(tableName)) {
+                    collectImportedKeys(allDeps, metaData, null, null, upperTableName);
                 }
             }
         }
+
         return allDeps;
+    }
+
+    private void collectImportedKeys(Set<String> allDeps, DatabaseMetaData metaData, String catalog, String schema, String tableName) throws SQLException {
+        try (ResultSet rs = metaData.getImportedKeys(catalog, schema, tableName)) {
+            while (rs.next()) {
+                String pkTableName = rs.getString("PKTABLE_NAME");
+                if (pkTableName != null) {
+                    allDeps.add(pkTableName.toUpperCase());
+                }
+            }
+        } catch (SQLException e) {
+            // Some drivers might throw exception instead of returning empty result set if table not found or parameters are wrong
+            log.debug("Failed to get imported keys for table {}: {}", tableName, e.getMessage());
+        }
     }
 
     private void sortRecursive(String table, Map<String, Set<String>> dependencies,

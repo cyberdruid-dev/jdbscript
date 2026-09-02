@@ -46,6 +46,7 @@
         <test.jdbc.user/>
         <test.jdbc.password/>
         <test.script.executor>sql</test.script.executor>
+        <test.dbms.type>H2</test.dbms.type>
     </properties>
 
 
@@ -62,6 +63,7 @@
                         <test.jdbc.password>${test.jdbc.password}</test.jdbc.password>
                         <test.script.executor>${test.script.executor}</test.script.executor>
                         <test.jdbc.schema.name>${test.jdbc.schema.name}</test.jdbc.schema.name>
+                        <test.dbms.type>${test.dbms.type}</test.dbms.type>
                     </systemPropertyVariables>
                 </configuration>
             </plugin>
@@ -143,54 +145,104 @@
                 <test.jdbc.url>jdbc:h2:mem:default;MODE=LEGACY;DB_CLOSE_DELAY=-1;</test.jdbc.url>
                 <test.jdbc.user>sa</test.jdbc.user>
                 <test.jdbc.password>sa</test.jdbc.password>
+                <test.dbms.type>H2</test.dbms.type>
             </properties>
         </profile>
         <profile>
             <id>hsqldb</id>
+            <properties>
+                <test.dbms.type>HSQLDB</test.dbms.type>
+            </properties>
         </profile>
         <profile>
             <id>db2</id>
+            <properties>
+                <test.dbms.type>DB2</test.dbms.type>
+            </properties>
         </profile>
         <profile>
             <id>mssql2022</id>
+            <properties>
+                <test.dbms.type>MSSQL</test.dbms.type>
+            </properties>
         </profile>
         <profile>
             <id>mariadb12</id>
+            <properties>
+                <test.dbms.type>MARIADB</test.dbms.type>
+            </properties>
         </profile>
         <profile>
             <id>mariadb11</id>
+            <properties>
+                <test.dbms.type>MARIADB</test.dbms.type>
+            </properties>
         </profile>
         <profile>
             <id>mariadb10</id>
+            <properties>
+                <test.dbms.type>MARIADB</test.dbms.type>
+            </properties>
         </profile>
         <profile>
             <id>mysql8</id>
+            <properties>
+                <test.dbms.type>MYSQL</test.dbms.type>
+            </properties>
         </profile>
         <profile>
             <id>mysql9</id>
+            <properties>
+                <test.dbms.type>MYSQL</test.dbms.type>
+            </properties>
         </profile>
         <profile>
             <id>mysql5</id>
+            <properties>
+                <test.dbms.type>MYSQL</test.dbms.type>
+            </properties>
         </profile>
         <profile>
             <id>postgres9</id>
+            <properties>
+                <test.dbms.type>POSTGRESQL</test.dbms.type>
+            </properties>
         </profile>
         <profile>
             <id>postgres12</id>
+            <properties>
+                <test.dbms.type>POSTGRESQL</test.dbms.type>
+            </properties>
         </profile>
         <profile>
             <id>postgres16</id>
+            <properties>
+                <test.dbms.type>POSTGRESQL</test.dbms.type>
+            </properties>
         </profile>
         <profile>
             <id>postgres17</id>
+            <properties>
+                <test.dbms.type>POSTGRESQL</test.dbms.type>
+            </properties>
+        </profile>
+        <profile>
+            <id>postgres18</id>
+            <properties>
+                <test.dbms.type>POSTGRESQL</test.dbms.type>
+            </properties>
         </profile>
         <profile>
             <id>cockroachdb</id>
+            <properties>
+                <test.dbms.type>POSTGRESQL</test.dbms.type>
+            </properties>
         </profile>
         <profile>
             <id>oracle-free</id>
             <properties>
-            <test.jdbc.schema.name>test</test.jdbc.schema.name>
+                <test.jdbc.schema.name>test</test.jdbc.schema.name>
+                <test.dbms.type>ORACLE</test.dbms.type>
             </properties>
         </profile>
         <profile>
@@ -199,6 +251,7 @@
                 <test.jdbc.url>jdbc:sqlite:target/test.db</test.jdbc.url>
                 <test.jdbc.user>test</test.jdbc.user>
                 <test.jdbc.password>test</test.jdbc.password>
+                <test.dbms.type>SQLITE</test.dbms.type>
             </properties>
             <build>
                 <plugins>

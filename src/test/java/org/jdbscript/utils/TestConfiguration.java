@@ -20,6 +20,7 @@ public class TestConfiguration {
     private final static String PROPERTY_JDBC_PASSWORD = "test.jdbc.password";
     private final static String PROPERTY_JDBC_SCHEMA_NAME = "test.jdbc.schema.name";
     private final static String PROPERTY_SCRIPT_EXECUTOR = "test.script.executor";
+    private final static String PROPERTY_DBMS_TYPE = "test.dbms.type";
     private final static Map<String,Class<? extends IScriptExecutor>> executors = Map.of(
             "sql", SqlScriptExecutor.class
     );
@@ -27,6 +28,7 @@ public class TestConfiguration {
     private DataSource dataSource;
     private String executorType;
     private String jdbcSchemaName;
+    private DbmsType expectedDbmsType;
 
     public TestConfiguration() {
         TimeZone.setDefault(UTC);// to not play with timezones .....
@@ -47,6 +49,10 @@ public class TestConfiguration {
 
     public DbmsType getDbmsType() {
         return dsFactory.getDbmsType();
+    }
+
+    public DbmsType getExpectedDbmsType() {
+        return expectedDbmsType;
     }
 
     public IScriptExecutor getScriptExecutor() {
@@ -75,6 +81,10 @@ public class TestConfiguration {
         String jdbcPassword = System.getProperty(PROPERTY_JDBC_PASSWORD);
         this.jdbcSchemaName = System.getProperty(PROPERTY_JDBC_SCHEMA_NAME);
         this.executorType = System.getProperty(PROPERTY_SCRIPT_EXECUTOR);
+        String dbmsTypeStr = System.getProperty(PROPERTY_DBMS_TYPE);
+        if (dbmsTypeStr != null && !dbmsTypeStr.isBlank()) {
+            this.expectedDbmsType = DbmsType.valueOf(dbmsTypeStr.toUpperCase());
+        }
         log.debug("jdbcUrl={}", jdbcUrl);
         log.debug("jdbcUser={}", jdbcUser);
         log.debug("jdbcPassword={}", jdbcPassword);
