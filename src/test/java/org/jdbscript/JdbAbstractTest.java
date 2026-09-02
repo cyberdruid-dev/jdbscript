@@ -53,7 +53,7 @@ public class JdbAbstractTest {
     protected <T extends IDbSchema> JDBEngine<T> createEngine(Class<T> schemaClass, List<IJDBTypeConverter> converters) {
         return JDBEngine.builder(schemaClass)
                 .dataSource(()->dataSource)
-                .converters(converters)
+                .converters(converters == null ? null : converters.toArray(new IJDBTypeConverter[0]))
                 .executor(testConfiguration.getScriptExecutor())
                 .build();
     }

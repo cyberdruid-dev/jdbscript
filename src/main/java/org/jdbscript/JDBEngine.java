@@ -246,8 +246,8 @@ public class JDBEngine<T extends IDbSchema> implements IJDBEngine<T>{
             return this;
         }
 
-        public Builder<T> converters(Collection<IJDBTypeConverter> converters) {
-            this.converters = converters;
+        public Builder<T> converters(IJDBTypeConverter... converters) {
+            this.converters = converters == null ? null : Arrays.asList(converters);
             return this;
         }
 

@@ -28,7 +28,7 @@ Instead of writing verbose raw SQL scripts or maintaining fragile XML/JSON datas
 - **Metadata Caching**: Built-in caching for database metadata (FKs, columns) to speed up test execution.
 - **Multi-DBMS Compatibility**: Built-in support for PostgreSQL, MySQL, MariaDB, Oracle, Microsoft SQL Server, H2, HSQLDB, IBM DB2, and SQLite.
 - **Automatic Type Conversion**: Seamless handling of Java Enums, UUIDs, Dates, Timestamps, and binary data.
-- **Sequence Management**: Automatically resets database sequences to a high value (e.g., 10000+) after insertion to prevent primary key conflicts with manually assigned IDs (supported for PostgreSQL and Oracle).
+- **Sequence Management**: Automatically resets database sequences to a high value (e.g., 10000+) after insertion to prevent primary key conflicts with manually assigned IDs (supported for PostgreSQL, Oracle, DB2, and HSQLDB).
 
 ---
 
@@ -118,7 +118,7 @@ The builder provides several other methods for fine-tuning the engine:
 *   **Lazy DataSource**: Use `.dataSource(() -> getDataSource())` for lazy connection resolution.
 *   **Metadata Caching**: Use `.cacheStrategy(...)` to speed up tests (see [Metadata Caching](#metadata-caching)).
 *   **Schema Validation**: Use `.unmappedTableStrategy(...)` to control validation behavior (see [Schema Validation](#schema-validation)). Standard migration tables are ignored by default.
-*   **Custom Converters**: Use `.converters(...)` to register custom type mappings.
+*   **Custom Converters**: Use `.converters(...)` to register custom type mappings (see [Custom Type Converters](#custom-type-converters)).
 
 ---
 
@@ -259,6 +259,21 @@ When `JDBEngine` is initialized, it validates that all tables defined in your Ja
 - `unmappedTableStrategy(ValidationStrategy.FAIL)`: Throw an exception.
 
 Use `suppressUnmappedTable(String...)` to ignore specific custom tables. By default, standard migration tables like `flyway_schema_history` or `databasechangelog` are automatically ignored (`suppressDefaultUnmappedTables(true)`).
+
+---
+
+## Custom Type Converters
+
+JDBScript comes with default converters for common types like Enums, UUIDs, and Dates. You can provide your own converters using the `.converters(...)` builder method:
+
+```java
+IJDBEngine<IAppSchema> engine = JDBEngine.builder(IAppSchema.class)
+    .dataSource(dataSource)
+    .converters(new MyCustomConverter(), new AnotherConverter())
+    .build();
+```
+
+**Note:** When you provide custom converters via the builder, they **replace** the default set of converters. If you want to keep the default behavior for some types, you must include the default converters (like `EnumToStringConverter`) in your list or ensure your custom converters handle those types.
 
 ---
 
