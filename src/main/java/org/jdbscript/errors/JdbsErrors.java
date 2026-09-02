@@ -22,7 +22,8 @@ public enum JdbsErrors implements Supplier<JDBScriptException> {
     /** The database schema class cannot be null. */
     DB_SCHEMA_IS_NULL(JDBScriptException.class,"database schema can not be null."  ),
     /** The data source supplier cannot be null. */
-    DATASOURCE_SUPPLIER_IS_NULL(JDBScriptException.class,"datasource supplier can not be null."  );
+    DATASOURCE_SUPPLIER_IS_NULL(JDBScriptException.class,"datasource supplier can not be null."  ),
+    CACHE_STRATEGY_IS_NULL(JDBScriptException.class,"cache strategy can not be null."  );
 
     private final Class<? extends JDBScriptException> exception;
     private final String message;
