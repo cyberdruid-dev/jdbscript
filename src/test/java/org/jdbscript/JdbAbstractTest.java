@@ -9,7 +9,6 @@ import org.testng.Assert;
 import org.testng.SkipException;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.AfterMethod;
-import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
 
 import java.sql.*;
@@ -32,11 +31,6 @@ public class JdbAbstractTest {
 
     protected static final TestConfiguration testConfiguration = new TestConfiguration();
     protected final TestDataSource dataSource = new TestDataSource(testConfiguration.getDataSource());
-
-    @BeforeClass
-    public void initDataSource() {
-        //dataSource = new DataSourceFactory().newDataSource();
-    }
 
     @BeforeMethod
     public void resetOpenConnectionTracking() {

@@ -170,8 +170,7 @@ public class SqlMetadataProvider implements IMetadataProvider {
                                Set<String> visited, Set<String> visiting, List<String> sorted) {
         if (visited.contains(table)) return;
         if (visiting.contains(table)) {
-            log.warn("Circular dependency detected involving table: {}", table);
-            return;
+            throw new IllegalStateException("Circular dependency detected involving table: " + table);
         }
 
         visiting.add(table);
