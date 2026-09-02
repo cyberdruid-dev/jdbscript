@@ -9,7 +9,7 @@ public class NoCacheTest extends AbstractCacheTest {
 
     @Test
     public void CacheStrategy_NONE_computes_value_every_time() {
-        IJDBCache cache = cacheManager.getCache(CacheStrategy.NONE);
+        IJDBCache cache = cacheManager.getCache(CacheStrategy.NONE, defaultDataSource);
         TestStringKey key = key("key1");
         ComputationMock<String> firstLoader = new ComputationMock<>("value1");
         ComputationMock<String> secondLoader = new ComputationMock<>("value2");
@@ -23,14 +23,14 @@ public class NoCacheTest extends AbstractCacheTest {
 
     @Test
     public void CacheStrategy_NONE_invalidate_is_noop() {
-        IJDBCache cache = cacheManager.getCache(CacheStrategy.NONE);
+        IJDBCache cache = cacheManager.getCache(CacheStrategy.NONE, defaultDataSource);
         cache.invalidate(key("key1"));
         // No observable state to verify, but ensures no exceptions
     }
 
     @Test
     public void CacheStrategy_NONE_clear_is_noop() {
-        IJDBCache cache = cacheManager.getCache(CacheStrategy.NONE);
+        IJDBCache cache = cacheManager.getCache(CacheStrategy.NONE, defaultDataSource);
         cache.clear();
         // No observable state to verify, but ensures no exceptions
     }

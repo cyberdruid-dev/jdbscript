@@ -7,9 +7,9 @@ import java.sql.SQLException;
 import static org.jdbscript.impl.Utils.isBlank;
 import static org.jdbscript.impl.Utils.nullToEmpty;
 
-public record DataBaseCacheKey(String jdbcUrl, String username, String schema) {
+record DatabaseCacheKey(String jdbcUrl, String username, String schema) {
 
-    public static DataBaseCacheKey from(Connection connection) throws SQLException {
+    public static DatabaseCacheKey from(Connection connection) throws SQLException {
         DatabaseMetaData metaData = connection.getMetaData();
 
         String url = nullToEmpty(metaData.getURL());
@@ -20,7 +20,7 @@ public record DataBaseCacheKey(String jdbcUrl, String username, String schema) {
             schema = nullToEmpty(safeGetSchema(connection));
         }
 
-        return new DataBaseCacheKey(url, userName, schema);
+        return new DatabaseCacheKey(url, userName, schema);
     }
 
     private static String safeGetCatalog(Connection connection) {
