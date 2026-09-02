@@ -25,6 +25,7 @@ Instead of writing verbose raw SQL scripts or maintaining fragile XML/JSON datas
 - **Smart Defaults & Generators**: Define default column values, auto-incrementing IDs (`RecordTools.nextIntId`), and templated strings (`RecordTools.strValue`).
 - **Cleanups & Resets**: Easily wipe tables (`cleanupDB`) and reset state before or between tests. Tables are automatically deleted in the correct order based on foreign key dependencies.
 - **Database Assertions**: Verify that specific records exist or do not exist in the database using the same fluent API.
+- **Metadata Caching**: Built-in caching for database metadata (FKs, columns) to speed up test execution.
 - **Multi-DBMS Compatibility**: Built-in support for PostgreSQL, MySQL, MariaDB, Oracle, Microsoft SQL Server, H2, HSQLDB, IBM DB2, and SQLite.
 - **Automatic Type Conversion**: Seamless handling of Java Enums, UUIDs, Dates, Timestamps, and binary data.
 - **Sequence Management**: Automatically resets database sequences to a high value (e.g., 10000+) after insertion to prevent primary key conflicts with manually assigned IDs (supported for PostgreSQL and Oracle).
@@ -96,31 +97,28 @@ public interface IAppSchema extends IDbSchema {
 
 ### 2. Initialize `JDBEngine`
 
-Create an instance of `JDBEngine` using the builder. You can configure schema validation and custom converters:
+Create an instance of `JDBEngine` using the builder:
 
 ```java
 import org.jdbscript.JDBEngine;
 import org.jdbscript.IJDBEngine;
-import org.jdbscript.ValidationStrategy;
 import javax.sql.DataSource;
 
 DataSource dataSource = ...;
 
 IJDBEngine<IAppSchema> engine = JDBEngine.builder(IAppSchema.class)
     .dataSource(dataSource)
-    .unmappedTableStrategy(ValidationStrategy.LOG_WARN) // How to handle tables missing from interface
-    .suppressUnmappedTable("FLYWAY_SCHEMA_HISTORY") // Suppress validation for specific tables
-    .suppressDefaultUnmappedTables(true) // Suppress Flyway/Liquibase tables by default
     .build();
 ```
 
-You can also pass a `Supplier<DataSource>` for lazy connection resolution:
+#### Other Useful Options
 
-```java
-IJDBEngine<IAppSchema> engine = JDBEngine.builder(IAppSchema.class)
-    .dataSource(() -> getDataSource())
-    .build();
-```
+The builder provides several other methods for fine-tuning the engine:
+
+*   **Lazy DataSource**: Use `.dataSource(() -> getDataSource())` for lazy connection resolution.
+*   **Metadata Caching**: Use `.cacheStrategy(...)` to speed up tests (see [Metadata Caching](#metadata-caching)).
+*   **Schema Validation**: Use `.unmappedTableStrategy(...)` to control validation behavior (see [Schema Validation](#schema-validation)). Standard migration tables are ignored by default.
+*   **Custom Converters**: Use `.converters(...)` to register custom type mappings.
 
 ---
 
@@ -242,6 +240,16 @@ engine.assertDBHasNot(db -> {
 
 ---
 
+## Metadata Caching
+
+To improve performance across multiple tests, JDBScript supports different metadata caching strategies:
+
+- `CacheStrategy.INSTANCE`: Cache metadata for the lifetime of the `JDBEngine` instance. **This is the default.**
+- `CacheStrategy.GLOBAL`: Cache metadata globally across all `JDBEngine` instances. Recommended if the database schema is static throughout the test suite.
+- `CacheStrategy.NONE`: Disable caching. Recommended if the database schema changes between tests (e.g., dynamic migrations).
+
+---
+
 ## Schema Validation
 
 When `JDBEngine` is initialized, it validates that all tables defined in your Java interface exist in the database. You can also configure how it handles tables that exist in the database but are *not* defined in your interface:
@@ -250,7 +258,7 @@ When `JDBEngine` is initialized, it validates that all tables defined in your Ja
 - `unmappedTableStrategy(ValidationStrategy.LOG_ERROR)`: Log an error.
 - `unmappedTableStrategy(ValidationStrategy.FAIL)`: Throw an exception.
 
-Use `suppressUnmappedTable(String...)` or `suppressDefaultUnmappedTables(true)` to ignore internal migration tables like `flyway_schema_history` or `databasechangelog`.
+Use `suppressUnmappedTable(String...)` to ignore specific custom tables. By default, standard migration tables like `flyway_schema_history` or `databasechangelog` are automatically ignored (`suppressDefaultUnmappedTables(true)`).
 
 ---
 

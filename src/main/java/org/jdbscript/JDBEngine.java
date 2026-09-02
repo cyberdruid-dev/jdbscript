@@ -221,7 +221,7 @@ public class JDBEngine<T extends IDbSchema> implements IJDBEngine<T>{
         private CacheStrategy cacheStrategy = CacheStrategy.INSTANCE;
         private ValidationStrategy unmappedTableStrategy = ValidationStrategy.LOG_WARN;
         private final Set<String> suppressedTables = new HashSet<>();
-        private boolean suppressDefaultUnmappedTables = false;
+        private boolean suppressDefaultUnmappedTables = true;
 
         private Builder(Class<T> dbSchemaClass) {
             this.dbSchemaClass = dbSchemaClass;
