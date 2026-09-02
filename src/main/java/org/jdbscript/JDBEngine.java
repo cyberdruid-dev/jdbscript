@@ -1,6 +1,5 @@
 package org.jdbscript;
 
-import org.jdbscript.IDbSchema.IDBRecord;
 import org.jdbscript.errors.JdbsErrors;
 import org.jdbscript.impl.*;
 import org.jdbscript.impl.cache.IJDBCache;
@@ -13,8 +12,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.sql.DataSource;
-import java.lang.reflect.Method;
-import java.sql.SQLException;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -40,7 +37,7 @@ public class JDBEngine<T extends IDbSchema> implements IJDBEngine<T>{
     private final CacheStrategy cacheStrategy;
     private DataSource dataSource;
     private final IScriptExecutor executor;
-    private final SchemaValidator schemaValidator;
+    private SchemaValidator schemaValidator;
     private IJDBCache cache = new NoCache();
 
     private JDBEngine(Builder<T> builder) {
@@ -49,9 +46,6 @@ public class JDBEngine<T extends IDbSchema> implements IJDBEngine<T>{
         this.cleanupOrder = builder.cleanupOrder != null ? List.copyOf(builder.cleanupOrder) : null;
         this.cacheStrategy = builder.cacheStrategy;
         this.executor = builder.executor != null? builder.executor : new SqlScriptExecutor();
-        this.executor.setDataSource(getDataSource());
-        this.executor.setCache(getCache());
-        this.schemaValidator = new SchemaValidator(dbSchemaClass, executor.getMetadataProvider());
         if (builder.converters != null) {
             this.converter.setConverters(builder.converters);
         }
@@ -122,7 +116,16 @@ public class JDBEngine<T extends IDbSchema> implements IJDBEngine<T>{
     }
 
     private void validateSchema() {
+        ensureInitialized();
         schemaValidator.validate();
+    }
+
+    private synchronized void ensureInitialized() {
+        if (schemaValidator == null) {
+            this.executor.setDataSource(getDataSource());
+            this.executor.setCache(getCache());
+            this.schemaValidator = new SchemaValidator(dbSchemaClass, executor.getMetadataProvider());
+        }
     }
 
     private synchronized DataSource getDataSource() {
@@ -193,6 +196,7 @@ public class JDBEngine<T extends IDbSchema> implements IJDBEngine<T>{
     }
 
     private IScriptExecutor getExecutor() {
+        ensureInitialized();
         return executor;
     }
 

@@ -16,7 +16,7 @@
   * [ ] add user option to set the order
   * [x] autodetect FK dependencies(+caching), with error message on cyclic dependencies
   * [ ] option: add disableConstraintsDuringCleanup() (not for Oracle)
-* [ ] test: is order of tables in script relevant?
+* [x] test: is order of tables in script relevant?
 * [ ] data type conversion(e.g. Date -> seconds, Instant -> epoch ms):
   * [ ] option: allow default methods with same name to do conversion
   * [ ] option: add an annotation
