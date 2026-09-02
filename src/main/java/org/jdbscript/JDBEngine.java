@@ -1,6 +1,9 @@
 package org.jdbscript;
 
 import org.jdbscript.IDbSchema.IDBRecord;
+import org.jdbscript.impl.cache.IJDBCache;
+import org.jdbscript.impl.cache.JDBCacheManager;
+import org.jdbscript.impl.cache.NoCache;
 import org.jdbscript.errors.JdbsErrors;
 import org.jdbscript.impl.JDbScript;
 import org.jdbscript.impl.ScriptHandler;
@@ -37,14 +40,17 @@ public class JDBEngine<T extends IDbSchema> implements IJDBEngine<T>{
     private final Class<T> dbSchemaClass;
     private final Supplier<DataSource> dataSourceSupplier;
     private final List<String> cleanupOrder;
+    private final CacheStrategy cacheStrategy;
     private DataSource dataSource;
     private DbmsType dbmsType;
     private IScriptExecutor executor;
+    private IJDBCache cache = new NoCache();
 
     private JDBEngine(Builder<T> builder) {
         this.dbSchemaClass = checkNotNull(builder.dbSchemaClass, DB_SCHEMA_IS_NULL);
         this.dataSourceSupplier = checkNotNull(builder.dataSourceSupplier, DATASOURCE_SUPPLIER_IS_NULL);
         this.cleanupOrder = builder.cleanupOrder != null ? List.copyOf(builder.cleanupOrder) : null;
+        this.cacheStrategy = builder.cacheStrategy;
         if (builder.executor != null) {
             setExecutor(builder.executor);
         }
@@ -76,6 +82,7 @@ public class JDBEngine<T extends IDbSchema> implements IJDBEngine<T>{
         this.dbSchemaClass = checkNotNull(dbSchemaClass, JdbsErrors.DB_SCHEMA_IS_NULL);
         this.dataSourceSupplier = checkNotNull(dataSourceSupplier, JdbsErrors.DATASOURCE_SUPPLIER_IS_NULL);
         this.cleanupOrder = null;
+        this.cacheStrategy = CacheStrategy.INSTANCE;
     }
 
     /**
@@ -147,6 +154,21 @@ public class JDBEngine<T extends IDbSchema> implements IJDBEngine<T>{
         this.executor = value;
         this.executor.setDataSource(getDataSource());
         this.executor.setDbmsType(getDbmsType());
+        this.executor.setCache(getCache());
+    }
+
+    private synchronized IJDBCache getCache() {
+        if (cache instanceof NoCache && cacheStrategy != CacheStrategy.NONE) {
+            cache = JDBCacheManager.getInstance().getCache(cacheStrategy, getDataSource());
+        }
+        return cache;
+    }
+
+    /**
+     * Clears the metadata cache.
+     */
+    public void clearCache() {
+        getCache().clear();
     }
 
     private synchronized DataSource getDataSource() {
@@ -235,6 +257,7 @@ public class JDBEngine<T extends IDbSchema> implements IJDBEngine<T>{
         private IScriptExecutor executor;
         private Collection<IJDBTypeConverter> converters;
         private List<String> cleanupOrder;
+        private CacheStrategy cacheStrategy = CacheStrategy.INSTANCE;
 
         private Builder(Class<T> dbSchemaClass) {
             this.dbSchemaClass = dbSchemaClass;
@@ -268,6 +291,18 @@ public class JDBEngine<T extends IDbSchema> implements IJDBEngine<T>{
          */
         public Builder<T> cleanupOrder(List<String> tableNames) {
             this.cleanupOrder = tableNames;
+            return this;
+        }
+
+        /**
+         * Configures the caching strategy for database metadata.
+         * Default is {@link CacheStrategy#INSTANCE}.
+         *
+         * @param cacheStrategy the caching strategy to use
+         * @return this builder
+         */
+        public Builder<T> cacheStrategy(CacheStrategy cacheStrategy) {
+            this.cacheStrategy = cacheStrategy;
             return this;
         }
 

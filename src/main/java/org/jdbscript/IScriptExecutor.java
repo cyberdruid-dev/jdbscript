@@ -1,6 +1,7 @@
 package org.jdbscript;
 
 import org.jdbscript.impl.JDbScript;
+import org.jdbscript.impl.cache.IJDBCache;
 
 import javax.sql.DataSource;
 import java.util.List;
@@ -50,4 +51,11 @@ public interface IScriptExecutor {
     void assertRowsExist(JDbScript script);
 
     void assertRowsNotExist(JDbScript script);
+
+    /**
+     * Sets the cache to be used for metadata calculations.
+     *
+     * @param cache the metadata cache
+     */
+    void setCache(IJDBCache cache);
 }

@@ -5,6 +5,8 @@ import org.jdbscript.IScriptExecutor;
 import org.jdbscript.impl.JDbRecord;
 import org.jdbscript.impl.JDbScript;
 import org.jdbscript.impl.TypedNull;
+import org.jdbscript.impl.cache.IJDBCache;
+import org.jdbscript.impl.cache.NoCache;
 import org.jdbscript.impl.sql.SqlConnectionProvider.JdbcConnectionConsumer;
 import org.opentest4j.AssertionFailedError;
 import org.slf4j.Logger;
@@ -32,6 +34,7 @@ public class SqlScriptExecutor implements IScriptExecutor {
     private SqlConnectionProvider connectionProvider;
     private ISqlExecutorStrategy strategy;
     private MetadataTableSorter tableSorter;
+    private IJDBCache cache = new NoCache();
 
     public SqlScriptExecutor() {
         setDbmsType(UNKNOWN);
@@ -54,6 +57,7 @@ public class SqlScriptExecutor implements IScriptExecutor {
         checkIsNull(this.connectionProvider, DATASOURCE_ALREADY_SET);
         this.connectionProvider = new SqlConnectionProvider(value);
         this.tableSorter = new MetadataTableSorter(connectionProvider);
+        this.tableSorter.setCache(this.cache);
     }
 
     @Override
@@ -171,6 +175,14 @@ public class SqlScriptExecutor implements IScriptExecutor {
                 }
             }
         });
+    }
+
+    @Override
+    public void setCache(IJDBCache cache) {
+        this.cache = cache != null ? cache : new NoCache();
+        if (this.tableSorter != null) {
+            this.tableSorter.setCache(this.cache);
+        }
     }
 
     private String createSelectAssertSql(JDbRecord record, List<String> columns) {

@@ -4,7 +4,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
-final class InstanceCache implements IJDBCache {
+public final class InstanceCache implements IJDBCache {
     private final Map storage = new ConcurrentHashMap<>();
 
     @Override

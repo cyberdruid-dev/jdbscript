@@ -1,5 +1,8 @@
 package org.jdbscript.impl.sql;
 
+import org.jdbscript.impl.cache.IJDBCache;
+import org.jdbscript.impl.cache.NoCache;
+import org.jdbscript.impl.cache.TableDependenciesKey;
 import org.jdbscript.impl.sql.SqlConnectionProvider.JdbcConnectionConsumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,9 +19,14 @@ public class MetadataTableSorter implements ITableSorter{
     private static final Logger log = LoggerFactory.getLogger(MetadataTableSorter.class);
 
     private final SqlConnectionProvider connectionProvider;
+    private IJDBCache cache = new NoCache();
 
     public MetadataTableSorter(SqlConnectionProvider connectionProvider) {
         this.connectionProvider = connectionProvider;
+    }
+
+    public void setCache(IJDBCache cache) {
+        this.cache = cache != null ? cache : new NoCache();
     }
 
     @Override
@@ -38,8 +46,29 @@ public class MetadataTableSorter implements ITableSorter{
             String catalog = cnn.getCatalog();
             String schema = cnn.getSchema();
             for (String tableName : tableNames) {
+                Set<String> rawDeps;
+                try {
+                    rawDeps = cache.getOrCompute(new TableDependenciesKey(tableName), k -> {
+                        try {
+                            return getRawTableDependencies(metaData, catalog, schema, k.tableName());
+                        } catch (SQLException e) {
+                            throw new RuntimeException(e);
+                        }
+                    });
+                } catch (RuntimeException e) {
+                    if (e.getCause() instanceof SQLException) {
+                        throw (SQLException) e.getCause();
+                    }
+                    throw e;
+                }
+
                 Set<String> tableDeps = new HashSet<>();
-                findImportedKeys(metaData, catalog, schema, tableName, tableDeps, normalizedNames);
+                for (String rawDep : rawDeps) {
+                    String normalizedParent = normalizedNames.get(rawDep);
+                    if (normalizedParent != null && !normalizedParent.equalsIgnoreCase(tableName)) {
+                        tableDeps.add(normalizedParent);
+                    }
+                }
                 dependencies.put(tableName, tableDeps);
             }
         });
@@ -55,28 +84,24 @@ public class MetadataTableSorter implements ITableSorter{
         return sorted;
     }
 
-    private void findImportedKeys(DatabaseMetaData metaData, String catalog, String schema, String tableName,
-                                   Set<String> tableDeps, Map<String, String> normalizedNames) throws SQLException {
+    private Set<String> getRawTableDependencies(DatabaseMetaData metaData, String catalog, String schema, String tableName) throws SQLException {
+        Set<String> allDeps = new HashSet<>();
         // Try exact name
         try (ResultSet rs = metaData.getImportedKeys(catalog, schema, tableName)) {
-            fillDeps(rs, tableDeps, normalizedNames, tableName);
+            while (rs.next()) {
+                allDeps.add(rs.getString("PKTABLE_NAME").toUpperCase());
+            }
         }
         // If nothing found, try upper case
-        if (tableDeps.isEmpty()) {
-            try (ResultSet rs = metaData.getImportedKeys(catalog, schema, tableName.toUpperCase())) {
-                fillDeps(rs, tableDeps, normalizedNames, tableName);
+        String upperTableName = tableName.toUpperCase();
+        if (allDeps.isEmpty() && !upperTableName.equals(tableName)) {
+            try (ResultSet rs = metaData.getImportedKeys(catalog, schema, upperTableName)) {
+                while (rs.next()) {
+                    allDeps.add(rs.getString("PKTABLE_NAME").toUpperCase());
+                }
             }
         }
-    }
-
-    private void fillDeps(ResultSet rs, Set<String> tableDeps, Map<String, String> normalizedNames, String tableName) throws SQLException {
-        while (rs.next()) {
-            String parentTable = rs.getString("PKTABLE_NAME");
-            String normalizedParent = normalizedNames.get(parentTable.toUpperCase());
-            if (normalizedParent != null && !normalizedParent.equalsIgnoreCase(tableName)) {
-                tableDeps.add(normalizedParent);
-            }
-        }
+        return allDeps;
     }
 
     private void sortRecursive(String table, Map<String, Set<String>> dependencies,
