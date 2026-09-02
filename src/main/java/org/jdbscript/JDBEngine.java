@@ -70,44 +70,12 @@ public class JDBEngine<T extends IDbSchema> implements IJDBEngine<T>{
         return new Builder<>(dbSchemaClass);
     }
 
-    /**
-     * Constructs a {@code JDBEngine} with a lazy {@link DataSource} supplier and schema interface.
-     *
-     * @param dataSourceSupplier supplier returning the target JDBC {@link DataSource}
-     * @param dbSchemaClass      the schema interface class modeling the database tables
-     * @deprecated use {@link #builder(Class)} instead
-     */
-    @Deprecated
-    public JDBEngine(Supplier<DataSource> dataSourceSupplier, Class<T> dbSchemaClass) {
-        this.dbSchemaClass = checkNotNull(dbSchemaClass, JdbsErrors.DB_SCHEMA_IS_NULL);
-        this.dataSourceSupplier = checkNotNull(dataSourceSupplier, JdbsErrors.DATASOURCE_SUPPLIER_IS_NULL);
-        this.cleanupOrder = null;
-        this.cacheStrategy = CacheStrategy.INSTANCE;
-    }
-
-    /**
-     * Constructs a {@code JDBEngine} with a direct {@link DataSource} and schema interface.
-     *
-     * @param dataSource    the target JDBC {@link DataSource}
-     * @param dbSchemaClass the schema interface class modeling the database tables
-     * @deprecated use {@link #builder(Class)} instead
-     */
-    @Deprecated
-    public JDBEngine(DataSource dataSource, Class<T> dbSchemaClass) {
-        this(toSupplier(dataSource), dbSchemaClass);
-    }
-
     private static Supplier<DataSource> toSupplier(DataSource dataSource) {
         checkNotNull(dataSource, JdbsErrors.DATASOURCE_IS_NULL);
         return ()->dataSource;
     }
 
-    /**
-     * Configures custom type converters used to transform record values before database insertion.
-     *
-     * @param converters collection of {@link IJDBTypeConverter} instances
-     */
-    public void setConverters(Collection<IJDBTypeConverter> converters) {
+    private void setConverters(Collection<IJDBTypeConverter> converters) {
         converter.setConverters(converters);
     }
 
@@ -143,12 +111,7 @@ public class JDBEngine<T extends IDbSchema> implements IJDBEngine<T>{
         getExecutor().insert(script);
     }
 
-    /**
-     * Configures a custom script executor for performing database operations.
-     *
-     * @param value the custom {@link IScriptExecutor} instance
-     */
-    public void setExecutor(IScriptExecutor value) {
+    private void setExecutor(IScriptExecutor value) {
         checkNotNull(value, EXECUTOR_IS_NULL);
         checkIsNull(this.executor, EXECUTOR_ALREADY_SET);
         this.executor = value;
@@ -264,16 +227,20 @@ public class JDBEngine<T extends IDbSchema> implements IJDBEngine<T>{
         }
 
         public Builder<T> dataSource(DataSource dataSource) {
+            checkIsNull(this.dataSourceSupplier, DATASOURCE_ALREADY_SET);
             this.dataSourceSupplier = toSupplier(dataSource);
             return this;
         }
 
         public Builder<T> dataSource(Supplier<DataSource> dataSourceSupplier) {
+            checkIsNull(this.dataSourceSupplier, DATASOURCE_ALREADY_SET);
             this.dataSourceSupplier = dataSourceSupplier;
             return this;
         }
 
         public Builder<T> executor(IScriptExecutor executor) {
+            checkNotNull(executor, EXECUTOR_IS_NULL);
+            checkIsNull(this.executor, EXECUTOR_ALREADY_SET);
             this.executor = executor;
             return this;
         }

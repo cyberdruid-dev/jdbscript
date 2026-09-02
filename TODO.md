@@ -8,10 +8,15 @@
 * Extensible(?)
 
 ### TODO:
+* [x] Add metadata cache
+  * [x] tests: DataSourceCacheKey - url mutations to same db should result in equal DataSourceCacheKey
+  * [x] tests: various cache strategies;
+* [ ] Add option: NONE|WARNING|ERROR on tables are missing for an schema interface.
 * [ ] fix table cleanup order:
   * [ ] add user option to set the order
-  * [ ] autodetect FK dependencies(+caching), with error message on cyclic dependencies
+  * [x] autodetect FK dependencies(+caching), with error message on cyclic dependencies
   * [ ] option: add disableConstraintsDuringCleanup() (not for Oracle)
+* [ ] test: is order of tables in script relevant?
 * [ ] data type conversion(e.g. Date -> seconds, Instant -> epoch ms):
   * [ ] option: allow default methods with same name to do conversion
   * [ ] option: add an annotation

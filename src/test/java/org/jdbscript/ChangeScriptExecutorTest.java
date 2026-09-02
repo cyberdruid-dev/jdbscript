@@ -49,22 +49,17 @@ public class ChangeScriptExecutorTest extends JdbAbstractTest {
     }
 
     @Test
-    public void engine_executor_method_should_not_accept_null() {
-        assertThatThrownBy(()->engine.setExecutor(null))
+    public void builder_executor_method_should_not_accept_null() {
+        assertThatThrownBy(()->JDBEngine.builder(ITestSchema.class).executor(null))
                 .isInstanceOf(JDBScriptException.class);
     }
 
     @Test
-    public void engine_executor_can_only_be_called_once() {
-        engine.setExecutor(new SqlScriptExecutor());
-
-        assertThatThrownBy(()->engine.setExecutor(new MyScriptExecutor()))
-                .isInstanceOf(JDBScriptException.class);
-    }
-
-    @Test
-    public void engine_executor_method_sets_new_executor() {
-        engine.setExecutor(new MyScriptExecutor());
+    public void engine_uses_executor_from_builder() {
+        JDBEngine<ITestSchema> engine = JDBEngine.builder(ITestSchema.class)
+                .dataSource(dataSource)
+                .executor(new MyScriptExecutor())
+                .build();
 
         engine.resetDB((db)->{
             db.table_1().str_column_1("Hello");

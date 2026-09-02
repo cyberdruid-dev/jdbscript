@@ -94,7 +94,7 @@ public interface IAppSchema extends IDbSchema {
 
 ### 2. Initialize `JDBEngine`
 
-Create an instance of `JDBEngine` by supplying your `DataSource` and schema class:
+Create an instance of `JDBEngine` using the builder:
 
 ```java
 import org.jdbscript.JDBEngine;
@@ -103,13 +103,17 @@ import javax.sql.DataSource;
 
 DataSource dataSource = ...; // e.g., HikariDataSource, Spring DataSource, etc.
 
-IJDBEngine<IAppSchema> engine = new JDBEngine<>(dataSource, IAppSchema.class);
+IJDBEngine<IAppSchema> engine = JDBEngine.builder(IAppSchema.class)
+    .dataSource(dataSource)
+    .build();
 ```
 
 You can also pass a `Supplier<DataSource>` for lazy connection resolution:
 
 ```java
-IJDBEngine<IAppSchema> engine = new JDBEngine<>(() -> getDataSource(), IAppSchema.class);
+IJDBEngine<IAppSchema> engine = JDBEngine.builder(IAppSchema.class)
+    .dataSource(() -> getDataSource())
+    .build();
 ```
 
 ---
