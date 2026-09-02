@@ -1,18 +1,25 @@
 package org.jdbscript.impl.sql;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import javax.sql.DataSource;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.util.HashMap;
+import java.util.Map;
 
 import static org.jdbscript.errors.Checks.checkNotNull;
-import static org.jdbscript.errors.JdbsErrors.DATASOURCE_IS_NOT_CONFIGURED;
 import static org.jdbscript.errors.JdbsErrors.DATASOURCE_IS_NULL;
 
 public class SqlConnectionProvider {
+    private static final Logger log = LoggerFactory.getLogger(SqlConnectionProvider.class);
 
     private final DataSource dataSource;
 
     @FunctionalInterface
-    public interface JdbcConnectionConsumer<T> {
+    public interface JdbcConnectionConsumer {
 
         void accept(Connection cnn) throws Exception;
 
@@ -23,7 +30,7 @@ public class SqlConnectionProvider {
 
     }
 
-    public void withConnection(JdbcConnectionConsumer<Connection> consumer) {
+    public void withConnection(JdbcConnectionConsumer consumer) {
         try(Connection cnn = dataSource.getConnection()) {
             cnn.getMetaData().getDriverName();
             cnn.setAutoCommit(false);
@@ -34,6 +41,43 @@ public class SqlConnectionProvider {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public void withPreparedStatements(JdbcSessionConsumer consumer) {
+        withConnection(cnn -> {
+            Map<String, PreparedStatement> stmts = new HashMap<>();
+            try {
+                consumer.accept(cnn, sql -> {
+                    PreparedStatement stmt = stmts.get(sql);
+                    if (stmt == null) {
+                        stmt = cnn.prepareStatement(sql);
+                        stmts.put(sql, stmt);
+                    }
+                    return stmt;
+                });
+            } finally {
+                closeAll(stmts);
+            }
+        });
+    }
+
+    private void closeAll(Map<String, PreparedStatement> stmts) {
+        for (PreparedStatement stmt : stmts.values()) {
+            try {
+                stmt.close();
+            } catch (SQLException e) {
+                log.warn("Failed to close statement", e);
+            }
+        }
+    }
+
+    public interface PreparedStatementProvider {
+        PreparedStatement get(String sql) throws SQLException;
+    }
+
+    @FunctionalInterface
+    public interface JdbcSessionConsumer {
+        void accept(Connection cnn, PreparedStatementProvider stmtProvider) throws Exception;
     }
 
 }

@@ -215,7 +215,7 @@ public class SqlMetadataProvider implements IMetadataProvider {
 
 
 
-    private void withConnection(JdbcConnectionConsumer<Connection> consumer) {
+    private void withConnection(JdbcConnectionConsumer consumer) {
         this.connectionProvider.withConnection(consumer);
     }
 }

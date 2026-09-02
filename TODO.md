@@ -67,7 +67,7 @@
   * [ ] SQLExecutor: how to handle date/time? (maybe don't? set it as it will be in db)
 * [ ] hsqldb support
 * [ ] db2 support(?)
-* [ ] Improvement: Reuse prepared statements for same tables.
+* [x] Improvement: Reuse prepared statements for same tables.
 
 ### OLD TODO:
 * [ ] @Default, @GeneratedId - are applied before send script to executor

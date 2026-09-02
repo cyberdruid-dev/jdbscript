@@ -9,6 +9,8 @@ import org.jdbscript.impl.TypedNull;
 import org.jdbscript.impl.cache.IJDBCache;
 import org.jdbscript.impl.cache.NoCache;
 import org.jdbscript.impl.sql.SqlConnectionProvider.JdbcConnectionConsumer;
+import org.jdbscript.impl.sql.SqlConnectionProvider.JdbcSessionConsumer;
+import org.jdbscript.impl.sql.SqlConnectionProvider.PreparedStatementProvider;
 import org.opentest4j.AssertionFailedError;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,8 +22,11 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static org.jdbscript.DbmsType.UNKNOWN;
 import static org.jdbscript.errors.Checks.checkIsNull;
@@ -36,6 +41,8 @@ public class SqlScriptExecutor implements IScriptExecutor {
     private ISqlExecutorStrategy strategy;
     private SqlMetadataProvider metadataProvider;
     private IJDBCache cache = new NoCache();
+    private final Map<String, String> insertSqlCache = new ConcurrentHashMap<>();
+    private final Map<String, String> selectSqlCache = new ConcurrentHashMap<>();
  
     public SqlScriptExecutor() {
     }
@@ -69,20 +76,19 @@ public class SqlScriptExecutor implements IScriptExecutor {
 
     @Override
     public void insert(JDbScript dbScript) {
-        withConnection((cnn)-> {
+        withPreparedStatements((cnn, stmtProvider) -> {
             getStrategy().beforeInsert(cnn, dbScript);
             for (var record : dbScript.getRecords()) {
-                List<String> columns = new ArrayList<>(record.getColumns().keySet());
-                String sql = createInsertSql(record, columns);
-                try (PreparedStatement stmt = cnn.prepareStatement(sql)) {
-                    for (int i = 0; i < columns.size(); i++) {
-                        Object value = record.getColumns().get(columns.get(i));
-                        setColumnValue(stmt, i+1, value);
-                    }
-                    stmt.execute();
+                List<String> columns = getSortedColumns(record);
+                String sqlKey = record.getTableName() + ":" + String.join(",", columns);
+                String sql = insertSqlCache.computeIfAbsent(sqlKey, k -> createInsertSql(record, columns));
+                PreparedStatement stmt = stmtProvider.get(sql);
+                for (int i = 0; i < columns.size(); i++) {
+                    Object value = record.getColumns().get(columns.get(i));
+                    setColumnValue(stmt, i + 1, value);
                 }
+                stmt.execute();
             }
-            cnn.commit();
             getStrategy().afterInsert(cnn);
         });
     }
@@ -90,6 +96,11 @@ public class SqlScriptExecutor implements IScriptExecutor {
     private void withConnection(JdbcConnectionConsumer consumer) {
         checkNotNull(connectionProvider, DATASOURCE_IS_NOT_CONFIGURED);
         connectionProvider.withConnection(consumer);
+    }
+
+    private void withPreparedStatements(JdbcSessionConsumer consumer) {
+        checkNotNull(connectionProvider, DATASOURCE_IS_NOT_CONFIGURED);
+        connectionProvider.withPreparedStatements(consumer);
     }
 
     private void setColumnValue(PreparedStatement stmt, int columnIndex, Object value) throws SQLException {
@@ -135,23 +146,23 @@ public class SqlScriptExecutor implements IScriptExecutor {
 
     @Override
     public void assertRowsExist(JDbScript script) {
-        withConnection((cnn)->{
-            for(JDbRecord record: script.getRecords()){
-                List<String> columns = new ArrayList<>(record.getColumns().keySet());
-                String sql = createSelectAssertSql(record, columns);
-                try (PreparedStatement stmt = cnn.prepareStatement(sql)) {
-                    for (int i = 0; i < columns.size(); i++) {
-                        Object value = record.getColumns().get(columns.get(i));
-                        setColumnValue(stmt, i+1, value);
+        withPreparedStatements((cnn, stmtProvider) -> {
+            for (JDbRecord record : script.getRecords()) {
+                List<String> columns = getSortedColumns(record);
+                String sqlKey = record.getTableName() + ":" + String.join(",", columns);
+                String sql = selectSqlCache.computeIfAbsent(sqlKey, k -> createSelectAssertSql(record, columns));
+                PreparedStatement stmt = stmtProvider.get(sql);
+                for (int i = 0; i < columns.size(); i++) {
+                    Object value = record.getColumns().get(columns.get(i));
+                    setColumnValue(stmt, i + 1, value);
+                }
+                try (ResultSet rs = stmt.executeQuery()) {
+                    if (!rs.next()) {
+                        throw new RuntimeException("Fail to count rows in DB. Unexpectedly empty resultset.");
                     }
-                    try(ResultSet rs = stmt.executeQuery()){
-                        if(!rs.next()) {
-                            throw new RuntimeException("Fail to count rows in DB. Unexpectedly empty resultset.");
-                        }
-                        long count = rs.getLong(1);
-                        if(count == 0 ) {
-                            throw new AssertionFailedError("Expected row to exist.");
-                        }
+                    long count = rs.getLong(1);
+                    if (count == 0) {
+                        throw new AssertionFailedError("Expected row to exist.");
                     }
                 }
             }
@@ -161,23 +172,23 @@ public class SqlScriptExecutor implements IScriptExecutor {
 
     @Override
     public void assertRowsNotExist(JDbScript script) {
-        withConnection((cnn)->{
-            for(JDbRecord record: script.getRecords()){
-                List<String> columns = new ArrayList<>(record.getColumns().keySet());
-                String sql = createSelectAssertSql(record, columns);
-                try (PreparedStatement stmt = cnn.prepareStatement(sql)) {
-                    for (int i = 0; i < columns.size(); i++) {
-                        Object value = record.getColumns().get(columns.get(i));
-                        setColumnValue(stmt, i+1, value);
+        withPreparedStatements((cnn, stmtProvider) -> {
+            for (JDbRecord record : script.getRecords()) {
+                List<String> columns = getSortedColumns(record);
+                String sqlKey = record.getTableName() + ":" + String.join(",", columns);
+                String sql = selectSqlCache.computeIfAbsent(sqlKey, k -> createSelectAssertSql(record, columns));
+                PreparedStatement stmt = stmtProvider.get(sql);
+                for (int i = 0; i < columns.size(); i++) {
+                    Object value = record.getColumns().get(columns.get(i));
+                    setColumnValue(stmt, i + 1, value);
+                }
+                try (ResultSet rs = stmt.executeQuery()) {
+                    if (!rs.next()) {
+                        throw new RuntimeException("Fail to count rows in DB. Unexpectedly empty resultset.");
                     }
-                    try(ResultSet rs = stmt.executeQuery()){
-                        if(!rs.next()) {
-                            throw new RuntimeException("Fail to count rows in DB. Unexpectedly empty resultset.");
-                        }
-                        long count = rs.getLong(1);
-                        if(count > 0 ) {
-                            throw new AssertionFailedError("Expected row to NOT exist.");
-                        }
+                    long count = rs.getLong(1);
+                    if (count > 0) {
+                        throw new AssertionFailedError("Expected row to NOT exist.");
                     }
                 }
             }
@@ -190,6 +201,12 @@ public class SqlScriptExecutor implements IScriptExecutor {
         if (this.metadataProvider != null) {
             this.metadataProvider.setCache(this.cache);
         }
+    }
+
+    private List<String> getSortedColumns(JDbRecord record) {
+        List<String> columns = new ArrayList<>(record.getColumns().keySet());
+        Collections.sort(columns);
+        return columns;
     }
 
     private String createSelectAssertSql(JDbRecord record, List<String> columns) {

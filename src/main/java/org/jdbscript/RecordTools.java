@@ -36,10 +36,7 @@ public class RecordTools implements IDbRecordTools{
 
     @Override
     public long nextLongId(String name, long firstValue) {
-        if(!counters.containsKey(name)) {
-            counters.put(name, new AtomicLong(firstValue));
-        }
-        return counters.get(name).getAndIncrement();
+        return counters.computeIfAbsent(name, k -> new AtomicLong(firstValue)).getAndIncrement();
     }
 
     @Override
