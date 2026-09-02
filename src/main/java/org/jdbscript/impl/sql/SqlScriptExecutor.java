@@ -1,6 +1,7 @@
 package org.jdbscript.impl.sql;
 
 import org.jdbscript.DbmsType;
+import org.jdbscript.impl.IMetadataProvider;
 import org.jdbscript.IScriptExecutor;
 import org.jdbscript.impl.JDbRecord;
 import org.jdbscript.impl.JDbScript;
@@ -30,19 +31,17 @@ import static org.jdbscript.errors.JdbsErrors.DATASOURCE_IS_NOT_CONFIGURED;
 
 public class SqlScriptExecutor implements IScriptExecutor {
     private static final Logger log = LoggerFactory.getLogger(SqlScriptExecutor.class);
-
+ 
     private SqlConnectionProvider connectionProvider;
     private ISqlExecutorStrategy strategy;
-    private MetadataTableSorter tableSorter;
+    private SqlMetadataProvider metadataProvider;
     private IJDBCache cache = new NoCache();
-
+ 
     public SqlScriptExecutor() {
-        setDbmsType(UNKNOWN);
     }
 
-    @Override
     public void setDbmsType(DbmsType dbmsType) {
-        strategy = switch (dbmsType) {
+        this.strategy = switch (dbmsType) {
             case MSSQL -> new MssqlStrategy();
             case HSQLDB -> new HsqldbStrategy();
             case ORACLE -> new OracleStrategy();
@@ -52,18 +51,26 @@ public class SqlScriptExecutor implements IScriptExecutor {
         };
     }
 
+    private ISqlExecutorStrategy getStrategy() {
+        if (strategy == null) {
+            DbmsType dbmsType = getMetadataProvider() != null ? getMetadataProvider().getDbmsType() : UNKNOWN;
+            setDbmsType(dbmsType);
+        }
+        return strategy;
+    }
+
     @Override
     public void setDataSource(DataSource value) {
         checkIsNull(this.connectionProvider, DATASOURCE_ALREADY_SET);
         this.connectionProvider = new SqlConnectionProvider(value);
-        this.tableSorter = new MetadataTableSorter(connectionProvider);
-        this.tableSorter.setCache(this.cache);
+        this.metadataProvider = new SqlMetadataProvider(connectionProvider);
+        this.metadataProvider.setCache(this.cache);
     }
 
     @Override
     public void insert(JDbScript dbScript) {
         withConnection((cnn)-> {
-            strategy.beforeInsert(cnn, dbScript);
+            getStrategy().beforeInsert(cnn, dbScript);
             for (var record : dbScript.getRecords()) {
                 List<String> columns = new ArrayList<>(record.getColumns().keySet());
                 String sql = createInsertSql(record, columns);
@@ -76,7 +83,7 @@ public class SqlScriptExecutor implements IScriptExecutor {
                 }
             }
             cnn.commit();
-            strategy.afterInsert(cnn);
+            getStrategy().afterInsert(cnn);
         });
     }
 
@@ -89,13 +96,13 @@ public class SqlScriptExecutor implements IScriptExecutor {
         Class<?> argumentType = detectValueType(value);
         value = (value instanceof TypedNull)? null : value;
         if (InputStream.class.isAssignableFrom(argumentType)) {
-            strategy.setInputStream(stmt, columnIndex, (InputStream) value);
+            getStrategy().setInputStream(stmt, columnIndex, (InputStream) value);
         } else if(byte[].class.isAssignableFrom(argumentType)) {
-            strategy.setByteArray(stmt, columnIndex, (byte[])value);
+            getStrategy().setByteArray(stmt, columnIndex, (byte[])value);
         } else if (UUID.class.isAssignableFrom(argumentType)) {
-            strategy.setUUID(stmt, columnIndex, (UUID)value);
+            getStrategy().setUUID(stmt, columnIndex, (UUID)value);
         } else {
-            strategy.setObject(stmt, columnIndex, value);
+            getStrategy().setObject(stmt, columnIndex, value);
         }
     }
 //
@@ -122,8 +129,8 @@ public class SqlScriptExecutor implements IScriptExecutor {
     }
 
     @Override
-    public List<String> sortTablesByDependencies(List<String> tableNames) {
-        return tableSorter.sortTablesByDependencies(tableNames);
+    public IMetadataProvider getMetadataProvider() {
+        return metadataProvider;
     }
 
     @Override
@@ -180,8 +187,8 @@ public class SqlScriptExecutor implements IScriptExecutor {
     @Override
     public void setCache(IJDBCache cache) {
         this.cache = cache != null ? cache : new NoCache();
-        if (this.tableSorter != null) {
-            this.tableSorter.setCache(this.cache);
+        if (this.metadataProvider != null) {
+            this.metadataProvider.setCache(this.cache);
         }
     }
 

@@ -8,9 +8,12 @@ import javax.sql.DataSource;
 import java.lang.reflect.Proxy;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
+import java.util.Collection;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.testng.Assert.assertTrue;
 
 public abstract class AbstractCacheTest extends JdbAbstractTest {
     protected JDBCacheManager cacheManager;
@@ -101,4 +104,5 @@ public abstract class AbstractCacheTest extends JdbAbstractTest {
                 }
         );
     }
+
 }

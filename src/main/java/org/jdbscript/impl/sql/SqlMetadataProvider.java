@@ -1,5 +1,7 @@
 package org.jdbscript.impl.sql;
 
+import org.jdbscript.DbmsType;
+import org.jdbscript.impl.IMetadataProvider;
 import org.jdbscript.impl.cache.IJDBCache;
 import org.jdbscript.impl.cache.NoCache;
 import org.jdbscript.impl.cache.TableDependenciesKey;
@@ -15,13 +17,17 @@ import java.util.*;
 
 import static java.util.Collections.emptyList;
 
-public class MetadataTableSorter implements ITableSorter{
-    private static final Logger log = LoggerFactory.getLogger(MetadataTableSorter.class);
+public class SqlMetadataProvider implements IMetadataProvider {
+    private static final Logger log = LoggerFactory.getLogger(SqlMetadataProvider.class);
 
     private final SqlConnectionProvider connectionProvider;
     private IJDBCache cache = new NoCache();
+    private DbmsType dbmsType;
 
-    public MetadataTableSorter(SqlConnectionProvider connectionProvider) {
+    private List<String> allTables;
+    private List<String> globalSortedTables;
+
+    public SqlMetadataProvider(SqlConnectionProvider connectionProvider) {
         this.connectionProvider = connectionProvider;
     }
 
@@ -30,13 +36,69 @@ public class MetadataTableSorter implements ITableSorter{
     }
 
     @Override
-    public List<String> sortTablesByDependencies(List<String> tableNames) {
+    public DbmsType getDbmsType() {
+        if (dbmsType == null) {
+            withConnection(cnn -> {
+                dbmsType = DbmsType.getTypeFromUrl(cnn.getMetaData().getURL());
+            });
+        }
+        return dbmsType;
+    }
+
+    @Override
+    public List<String> getAllTables() {
+        ensureInitialized();
+        return allTables;
+    }
+
+    @Override
+    public List<String> getSortedTables() {
+        ensureInitialized();
+        return globalSortedTables;
+    }
+
+    @Override
+    public Comparator<String> getParentChildTableComparator() {
+        ensureInitialized();
+        List<String> sorted = getSortedTables();
+        return (t1, t2) -> {
+            int i1 = sorted.indexOf(t1.toUpperCase());
+            int i2 = sorted.indexOf(t2.toUpperCase());
+            if (i1 == -1 || i2 == -1) {
+                return t1.compareToIgnoreCase(t2);
+            }
+            return Integer.compare(i1, i2);
+        };
+    }
+
+    private void ensureInitialized() {
+        if (allTables == null) {
+            withConnection(cnn -> {
+                DatabaseMetaData metaData = cnn.getMetaData();
+                String catalog = cnn.getCatalog();
+                String schema = cnn.getSchema();
+
+                List<String> tables = new ArrayList<>();
+                try (ResultSet rs = metaData.getTables(catalog, schema, "%", new String[]{"TABLE"})) {
+                    while (rs.next()) {
+                        tables.add(rs.getString("TABLE_NAME"));
+                    }
+                }
+                allTables = tables;
+                globalSortedTables = sortTablesByDependencies(allTables);
+            });
+        }
+    }
+
+    @Override
+    public List<String> sortTablesByDependencies(Collection<String> tableNames) {
         if (tableNames == null || tableNames.isEmpty()) {
             return emptyList();
         }
 
+        List<String> namesList = new ArrayList<>(tableNames);
         Map<String, String> normalizedNames = new HashMap<>();
-        for (String name : tableNames) {
+        for (String name : namesList) {
             normalizedNames.put(name.toUpperCase(), name);
         }
 
@@ -45,7 +107,7 @@ public class MetadataTableSorter implements ITableSorter{
             DatabaseMetaData metaData = cnn.getMetaData();
             String catalog = cnn.getCatalog();
             String schema = cnn.getSchema();
-            for (String tableName : tableNames) {
+            for (String tableName : namesList) {
                 Set<String> rawDeps;
                 try {
                     rawDeps = cache.getOrCompute(new TableDependenciesKey(tableName), k -> {
@@ -77,7 +139,7 @@ public class MetadataTableSorter implements ITableSorter{
         Set<String> visited = new HashSet<>();
         Set<String> visiting = new HashSet<>();
 
-        for (String table : tableNames) {
+        for (String table : namesList) {
             sortRecursive(table, dependencies, visited, visiting, sorted);
         }
 
@@ -119,7 +181,7 @@ public class MetadataTableSorter implements ITableSorter{
         }
         visiting.remove(table);
         visited.add(table);
-        sorted.add(0, table);
+        sorted.add(table);
     }
 
 

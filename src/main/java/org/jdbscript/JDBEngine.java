@@ -1,27 +1,24 @@
 package org.jdbscript;
 
 import org.jdbscript.IDbSchema.IDBRecord;
+import org.jdbscript.errors.JdbsErrors;
+import org.jdbscript.impl.*;
 import org.jdbscript.impl.cache.IJDBCache;
 import org.jdbscript.impl.cache.JDBCacheManager;
 import org.jdbscript.impl.cache.NoCache;
-import org.jdbscript.errors.JdbsErrors;
-import org.jdbscript.impl.JDbScript;
-import org.jdbscript.impl.ScriptHandler;
-import org.jdbscript.impl.sql.SqlScriptExecutor;
 import org.jdbscript.impl.conversion.IJDBTypeConverter;
 import org.jdbscript.impl.conversion.JDBTypeConverter;
-import org.opentest4j.AssertionFailedError;
+import org.jdbscript.impl.sql.SqlScriptExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.sql.DataSource;
 import java.lang.reflect.Method;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
+import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 import static org.jdbscript.errors.Checks.checkIsNull;
 import static org.jdbscript.errors.Checks.checkNotNull;
@@ -42,8 +39,8 @@ public class JDBEngine<T extends IDbSchema> implements IJDBEngine<T>{
     private final List<String> cleanupOrder;
     private final CacheStrategy cacheStrategy;
     private DataSource dataSource;
-    private DbmsType dbmsType;
-    private IScriptExecutor executor;
+    private final IScriptExecutor executor;
+    private final SchemaValidator schemaValidator;
     private IJDBCache cache = new NoCache();
 
     private JDBEngine(Builder<T> builder) {
@@ -51,9 +48,10 @@ public class JDBEngine<T extends IDbSchema> implements IJDBEngine<T>{
         this.dataSourceSupplier = checkNotNull(builder.dataSourceSupplier, DATASOURCE_SUPPLIER_IS_NULL);
         this.cleanupOrder = builder.cleanupOrder != null ? List.copyOf(builder.cleanupOrder) : null;
         this.cacheStrategy = builder.cacheStrategy;
-        if (builder.executor != null) {
-            setExecutor(builder.executor);
-        }
+        this.executor = builder.executor != null? builder.executor : new SqlScriptExecutor();
+        this.executor.setDataSource(getDataSource());
+        this.executor.setCache(getCache());
+        this.schemaValidator = new SchemaValidator(dbSchemaClass, executor.getMetadataProvider());
         if (builder.converters != null) {
             this.converter.setConverters(builder.converters);
         }
@@ -73,10 +71,6 @@ public class JDBEngine<T extends IDbSchema> implements IJDBEngine<T>{
     private static Supplier<DataSource> toSupplier(DataSource dataSource) {
         checkNotNull(dataSource, JdbsErrors.DATASOURCE_IS_NULL);
         return ()->dataSource;
-    }
-
-    private void setConverters(Collection<IJDBTypeConverter> converters) {
-        converter.setConverters(converters);
     }
 
     @Override
@@ -103,21 +97,14 @@ public class JDBEngine<T extends IDbSchema> implements IJDBEngine<T>{
     @Override
     public void insertDB(Consumer<T> db) {
         log.debug("insertDB(consumer={})", db);
+        validateSchema();
         ScriptHandler<T> handler = new ScriptHandler(dbSchemaClass);
         db.accept(handler.getProxy());
         handler.applyDefaults();
         JDbScript script = handler.getDbScript();
         converter.convertTypes(script);
+        sortScript(script);
         getExecutor().insert(script);
-    }
-
-    private void setExecutor(IScriptExecutor value) {
-        checkNotNull(value, EXECUTOR_IS_NULL);
-        checkIsNull(this.executor, EXECUTOR_ALREADY_SET);
-        this.executor = value;
-        this.executor.setDataSource(getDataSource());
-        this.executor.setDbmsType(getDbmsType());
-        this.executor.setCache(getCache());
     }
 
     private synchronized IJDBCache getCache() {
@@ -134,22 +121,15 @@ public class JDBEngine<T extends IDbSchema> implements IJDBEngine<T>{
         getCache().clear();
     }
 
+    private void validateSchema() {
+        schemaValidator.validate();
+    }
+
     private synchronized DataSource getDataSource() {
         if(dataSource == null){
             dataSource = checkNotNull(dataSourceSupplier.get(), DATASOURCE_IS_NULL) ;
         }
         return dataSource;
-    }
-
-    private synchronized DbmsType getDbmsType() {
-        if(dbmsType == null){
-            try (var cnn = getDataSource().getConnection()) {
-                this.dbmsType = DbmsType.getTypeFromUrl(cnn.getMetaData().getURL());
-            } catch (SQLException e) {
-                throw new RuntimeException(e);
-            }
-        }
-        return dbmsType;
     }
 
     @Override
@@ -168,6 +148,10 @@ public class JDBEngine<T extends IDbSchema> implements IJDBEngine<T>{
         getExecutor().assertRowsNotExist(script);
     }
 
+    private IMetadataProvider getMetadataProvider() {
+        return getExecutor().getMetadataProvider();
+    }
+
     @Override
     public void assertDBHas(Consumer<T> dbAsserts) {
         log.debug("assertDBHas(consumer={})", dbAsserts);
@@ -178,35 +162,38 @@ public class JDBEngine<T extends IDbSchema> implements IJDBEngine<T>{
         getExecutor().assertRowsExist(script);
     }
 
-    private IScriptExecutor getExecutor() {
-        if(executor == null) {
-            setExecutor(new SqlScriptExecutor());
+    private void sortScript(JDbScript script) {
+        List<JDbRecord> records = script.getRecords();
+        if (records.isEmpty()) {
+            return;
         }
-        return executor;
+
+        records.sort(Comparator.comparing(JDbRecord::getTableName, getMetadataProvider().getParentChildTableComparator()));
     }
 
     private List<String> getTableNames() {
         if (cleanupOrder != null) {
             return cleanupOrder;
         }
-        List<String> tables = findRecordMethods(dbSchemaClass).stream()
-                .map(m->m.getName())
+        Set<String> interfaceTables = SchemaValidator.findRecordMethods(dbSchemaClass).stream()
+                .map(m -> m.getName().toUpperCase())
+                .collect(Collectors.toSet());
+
+        List<String> sorted = new ArrayList<>(getExecutor().getMetadataProvider().getSortedTables());
+        Collections.reverse(sorted);
+
+        return sorted.stream()
+                .filter(t -> interfaceTables.contains(t.toUpperCase()))
+                .map(t -> {
+                    // Try to restore original casing from interface if possible, 
+                    // or just return the DB name. The DB name is fine.
+                    return t;
+                })
                 .toList();
-        return getExecutor().sortTablesByDependencies(tables);
     }
 
-    private List<Method> findRecordMethods(Class<?> clazz) {
-        List<Method> methods = new ArrayList<>();
-        for(var m: clazz.getMethods()){
-            Class<?> returnType = m.getReturnType();
-            if(IDBRecord.class.isAssignableFrom(returnType)) {
-                methods.add(m);
-            }
-        }
-        for(var iface: clazz.getInterfaces()){
-            methods.addAll(findRecordMethods(iface));
-        }
-        return methods;
+    private IScriptExecutor getExecutor() {
+        return executor;
     }
 
     /**

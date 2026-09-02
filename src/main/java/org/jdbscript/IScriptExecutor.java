@@ -1,5 +1,6 @@
 package org.jdbscript;
-
+ 
+import org.jdbscript.impl.IMetadataProvider;
 import org.jdbscript.impl.JDbScript;
 import org.jdbscript.impl.cache.IJDBCache;
 
@@ -19,13 +20,6 @@ public interface IScriptExecutor {
     void setDataSource(DataSource dataSource);
 
     /**
-     * Sets the target DBMS type.
-     *
-     * @param dbmsType the detected or configured DBMS type
-     */
-    void setDbmsType(DbmsType dbmsType);
-
-    /**
      * Inserts all records contained within the compiled script into the target database.
      *
      * @param dbScript the compiled script containing records to insert
@@ -39,14 +33,7 @@ public interface IScriptExecutor {
      */
     void cleanupTables(List<String> tableNames);
 
-    /**
-     * Sorts the specified tables based on their Foreign Key dependencies to ensure
-     * that child tables appear before their parent tables in the list (suitable for cleanup).
-     *
-     * @param tableNames the names of the tables to sort
-     * @return a new list containing the tables in a valid cleanup order
-     */
-    List<String> sortTablesByDependencies(List<String> tableNames);
+    IMetadataProvider getMetadataProvider();
 
     void assertRowsExist(JDbScript script);
 

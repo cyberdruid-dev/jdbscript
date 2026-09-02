@@ -18,10 +18,12 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.util.Date;
 import java.util.*;
+import java.util.Date;
+import java.util.function.Predicate;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.testng.Assert.assertTrue;
 
 public class JdbAbstractTest {
     protected final Logger log = LoggerFactory.getLogger(this.getClass());
@@ -100,7 +102,7 @@ public class JdbAbstractTest {
 
     }
 
-    private <R> R withResultSet(String sql, IResultSetTransformer consumer) {
+    protected <R> R withResultSet(String sql, IResultSetTransformer consumer) {
         try(Connection cnn = dataSource.getConnection()) {
             cnn.setAutoCommit(false);
             ResultSet rs = cnn.createStatement().executeQuery(sql);
@@ -365,6 +367,10 @@ public class JdbAbstractTest {
         for (int i=8; i<16; i++)
             lsb = (lsb << 8) | (bytes[i] & 0xff);
         return new UUID(msb, lsb);
+    }
+
+    protected static <T> void assertAnyMatch(Collection<T> actualCollection, Predicate<T> predicate, String message) {
+        assertTrue(actualCollection.stream().anyMatch(predicate), message);
     }
 
 }

@@ -48,7 +48,7 @@ public class CleanupOrderTest extends JdbAbstractTest {
     }
 
     @Test
-    public void testInsertData() {
+    public void test_insert_data() {
         engine.insertDB(db -> {
             db.customers().id(1).name("John Doe");
             db.orders().id(101).customer_id(1).order_date("2023-10-27");
@@ -70,7 +70,7 @@ public class CleanupOrderTest extends JdbAbstractTest {
     }
 
     @Test
-    public void testCleanup() {
+    public void test_cleanup() {
         IJDBEngine<ITestSchema> engineWithOrder = JDBEngine.builder(ITestSchema.class)
                 .dataSource(()->dataSource)
                 .executor(testConfiguration.getScriptExecutor())

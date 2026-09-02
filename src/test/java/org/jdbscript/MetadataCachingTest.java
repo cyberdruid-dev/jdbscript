@@ -1,10 +1,11 @@
 package org.jdbscript;
 
+import org.jdbscript.impl.IMetadataProvider;
 import org.jdbscript.impl.cache.IJDBCache;
 import org.jdbscript.impl.cache.InstanceCache;
 import org.jdbscript.impl.cache.NoCache;
-import org.jdbscript.impl.sql.MetadataTableSorter;
 import org.jdbscript.impl.sql.SqlConnectionProvider;
+import org.jdbscript.impl.sql.SqlMetadataProvider;
 import org.mockito.ArgumentCaptor;
 import org.testng.annotations.Test;
 
@@ -28,7 +29,7 @@ public class MetadataCachingTest {
     }
 
     @Test
-    public void testCacheStrategyPropagation() throws SQLException {
+    public void test_cache_strategy_propagation() throws SQLException {
         DataSource ds = mock(DataSource.class);
         Connection conn = mock(Connection.class);
         DatabaseMetaData meta = mock(DatabaseMetaData.class);
@@ -37,6 +38,10 @@ public class MetadataCachingTest {
         when(meta.getURL()).thenReturn("jdbc:h2:mem:test");
 
         IScriptExecutor executor = mock(IScriptExecutor.class);
+        IMetadataProvider provider = mock(IMetadataProvider.class);
+        when(executor.getMetadataProvider()).thenReturn(provider);
+        when(provider.getAllTables()).thenReturn(Collections.emptyList());
+        when(provider.getSortedTables()).thenReturn(Collections.emptyList());
 
         JDBEngine<ITestSchema> engine = JDBEngine.builder(ITestSchema.class)
                 .dataSource(ds)
@@ -54,7 +59,7 @@ public class MetadataCachingTest {
     }
 
     @Test
-    public void testNoCacheStrategyPropagation() throws SQLException {
+    public void test_no_cache_strategy_propagation() throws SQLException {
         DataSource ds = mock(DataSource.class);
         Connection conn = mock(Connection.class);
         DatabaseMetaData meta = mock(DatabaseMetaData.class);
@@ -63,6 +68,10 @@ public class MetadataCachingTest {
         when(meta.getURL()).thenReturn("jdbc:h2:mem:test");
 
         IScriptExecutor executor = mock(IScriptExecutor.class);
+        IMetadataProvider provider = mock(IMetadataProvider.class);
+        when(executor.getMetadataProvider()).thenReturn(provider);
+        when(provider.getAllTables()).thenReturn(Collections.emptyList());
+        when(provider.getSortedTables()).thenReturn(Collections.emptyList());
 
         JDBEngine<ITestSchema> engine = JDBEngine.builder(ITestSchema.class)
                 .dataSource(ds)
@@ -78,7 +87,7 @@ public class MetadataCachingTest {
     }
 
     @Test
-    public void testMetadataSorterUsesCache() throws Exception {
+    public void test_metadata_sorter_uses_cache() throws Exception {
         SqlConnectionProvider provider = mock(SqlConnectionProvider.class);
         Connection connection = mock(Connection.class);
         DatabaseMetaData metaData = mock(DatabaseMetaData.class);
@@ -95,7 +104,7 @@ public class MetadataCachingTest {
         }).when(provider).withConnection(any());
 
         IJDBCache cache = spy(new InstanceCache());
-        MetadataTableSorter sorter = new MetadataTableSorter(provider);
+        SqlMetadataProvider sorter = new SqlMetadataProvider(provider);
         sorter.setCache(cache);
 
         List<String> tables = List.of("T1");
@@ -111,7 +120,7 @@ public class MetadataCachingTest {
     }
 
     @Test
-    public void testClearCacheEffect() throws Exception {
+    public void test_clear_cache_effect() throws Exception {
         SqlConnectionProvider provider = mock(SqlConnectionProvider.class);
         Connection connection = mock(Connection.class);
         DatabaseMetaData metaData = mock(DatabaseMetaData.class);
@@ -128,7 +137,7 @@ public class MetadataCachingTest {
         }).when(provider).withConnection(any());
 
         IJDBCache cache = new InstanceCache();
-        MetadataTableSorter sorter = new MetadataTableSorter(provider);
+        SqlMetadataProvider sorter = new SqlMetadataProvider(provider);
         sorter.setCache(cache);
 
         List<String> tables = List.of("T1");
@@ -143,7 +152,7 @@ public class MetadataCachingTest {
     }
 
     @Test
-    public void testGlobalCacheStrategy() throws SQLException {
+    public void test_global_cache_strategy() throws SQLException {
         DataSource ds = mock(DataSource.class);
         Connection conn = mock(Connection.class);
         DatabaseMetaData meta = mock(DatabaseMetaData.class);
@@ -154,6 +163,11 @@ public class MetadataCachingTest {
 
         IScriptExecutor executor1 = mock(IScriptExecutor.class);
         IScriptExecutor executor2 = mock(IScriptExecutor.class);
+        IMetadataProvider provider = mock(IMetadataProvider.class);
+        when(executor1.getMetadataProvider()).thenReturn(provider);
+        when(executor2.getMetadataProvider()).thenReturn(provider);
+        when(provider.getAllTables()).thenReturn(Collections.emptyList());
+        when(provider.getSortedTables()).thenReturn(Collections.emptyList());
 
         JDBEngine<ITestSchema> engine1 = JDBEngine.builder(ITestSchema.class)
                 .dataSource(ds)

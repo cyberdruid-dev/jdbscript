@@ -18,7 +18,7 @@ public class SqlConnectionProvider {
 
     }
 
-    SqlConnectionProvider(DataSource dataSource) {
+    public SqlConnectionProvider(DataSource dataSource) {
         this.dataSource = checkNotNull(dataSource, DATASOURCE_IS_NULL);
 
     }
