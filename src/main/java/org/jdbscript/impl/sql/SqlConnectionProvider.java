@@ -48,12 +48,20 @@ public class SqlConnectionProvider {
             Map<String, PreparedStatement> stmts = new HashMap<>();
             try {
                 consumer.accept(cnn, sql -> {
-                    PreparedStatement stmt = stmts.get(sql);
-                    if (stmt == null) {
-                        stmt = cnn.prepareStatement(sql);
-                        stmts.put(sql, stmt);
+                    try {
+                        return stmts.computeIfAbsent(sql, k -> {
+                            try {
+                                return cnn.prepareStatement(k);
+                            } catch (SQLException e) {
+                                throw new RuntimeException(e);
+                            }
+                        });
+                    } catch (RuntimeException e) {
+                        if (e.getCause() instanceof SQLException sqle) {
+                            throw sqle;
+                        }
+                        throw e;
                     }
-                    return stmt;
                 });
             } finally {
                 closeAll(stmts);

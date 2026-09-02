@@ -82,6 +82,11 @@ class Db2Strategy extends DefaultSqlExecutorStrategy {
             return;
         }
 
+        if (value instanceof Instant || value instanceof Date) {
+            setTimestamp(stmt, columnIndex, value);
+            return;
+        }
+
         if (hasType) {
             stmt.setObject(columnIndex, value, targetType);
         } else {

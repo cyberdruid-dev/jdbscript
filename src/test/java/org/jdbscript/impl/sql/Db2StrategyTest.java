@@ -191,6 +191,38 @@ public class Db2StrategyTest {
         );
     }
 
+    @Test
+    public void setObject_should_set_timestamp_for_instant_when_no_metadata() throws SQLException {
+        Db2Strategy strategy = new Db2Strategy();
+        CallRecorder recorder = new CallRecorder();
+        recorder.failMetadata = true;
+        PreparedStatement stmt = recorder.createProxy();
+        Instant instant = Instant.now();
+
+        strategy.setObject(stmt, 1, instant);
+
+        assertThat(recorder.calls).containsExactly(
+                "getParameterMetaData()",
+                "setTimestamp(1, " + Timestamp.from(instant) + ")"
+        );
+    }
+
+    @Test
+    public void setObject_should_set_timestamp_for_util_date_when_no_metadata() throws SQLException {
+        Db2Strategy strategy = new Db2Strategy();
+        CallRecorder recorder = new CallRecorder();
+        recorder.failMetadata = true;
+        PreparedStatement stmt = recorder.createProxy();
+        Date date = new Date();
+
+        strategy.setObject(stmt, 1, date);
+
+        assertThat(recorder.calls).containsExactly(
+                "getParameterMetaData()",
+                "setTimestamp(1, " + new Timestamp(date.getTime()) + ")"
+        );
+    }
+
     private static class CallRecorder implements InvocationHandler {
         private final List<String> calls = new ArrayList<>();
         private int parameterType = Types.OTHER;

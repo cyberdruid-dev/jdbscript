@@ -65,8 +65,8 @@
     * midnight(+-nDays)
 * [ ] SQLite support:
   * [ ] SQLExecutor: how to handle date/time? (maybe don't? set it as it will be in db)
-* [ ] hsqldb support
-* [ ] db2 support(?)
+* [x] hsqldb support
+* [x] db2 support(?)
 * [x] Improvement: Reuse prepared statements for same tables.
 
 ### OLD TODO:
