@@ -76,13 +76,13 @@ public class SchemaValidator {
     public static List<Method> findRecordMethods(Class<?> clazz) {
         List<Method> methods = new ArrayList<>();
         for (Method m : clazz.getMethods()) {
+            if (m.isDefault() || m.getDeclaringClass() == Object.class) {
+                continue;
+            }
             Class<?> returnType = m.getReturnType();
             if (IDBRecord.class.isAssignableFrom(returnType)) {
                 methods.add(m);
             }
-        }
-        for (Class<?> iface : clazz.getInterfaces()) {
-            methods.addAll(findRecordMethods(iface));
         }
         return methods;
     }

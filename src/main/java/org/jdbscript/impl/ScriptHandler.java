@@ -33,22 +33,39 @@ public class ScriptHandler<T extends IDbSchema> {
 
     private final List<AddedRecord> records = new ArrayList<>();
 
-    private final InvocationHandler scriptHandler = (dbProxy, tableMethod, args) -> {
-        if(tableMethod.getName().equals("include")){
-            if(args[0] instanceof Class<?>){
+    private final InvocationHandler scriptHandler = (dbProxy, method, args) -> {
+        if (method.isDefault()) {
+            return InvocationHandler.invokeDefault(dbProxy, method, args);
+        }
+        if (method.getDeclaringClass() == Object.class) {
+            String name = method.getName();
+            if ("toString".equals(name)) {
+                return "JDbSchemaProxy [" + schemaClass.getName() + "]";
+            }
+            if ("equals".equals(name)) {
+                return dbProxy == args[0];
+            }
+            if ("hashCode".equals(name)) {
+                return System.identityHashCode(dbProxy);
+            }
+            return method.invoke(this, args);
+        }
+        if (method.getName().equals("include")) {
+            if (args[0] instanceof Class<?>) {
                 ClassScriptWrapper<T> wrapper = new ClassScriptWrapper<>((Class<? extends T>) args[0], this.schemaClass);
-                wrapper.getDbScript((T)dbProxy);
-            } else if(args[0] instanceof Consumer<?>) {
+                wrapper.getDbScript((T) dbProxy);
+            } else if (args[0] instanceof Consumer<?>) {
                 Consumer includedScript = (Consumer) args[0];
                 includedScript.accept(ScriptHandler.this.getProxy());
             } else {
                 throw new JDBScriptException("Don't know how to handle argument " + args[0]);
             }
+            return null;
         }
 
-        Class<?> type = tableMethod.getReturnType();
+        Class<?> type = method.getReturnType();
         if (IDBRecord.class.isAssignableFrom(type)) {
-            String tableName = tableMethod.getName();
+            String tableName = method.getName();
             JDbRecord record = new JDbRecord(tableName);
             dbScript.addRecord(record);
             Object recordProxy = newProxy(type, new TableRecordHandler(record));
@@ -132,7 +149,7 @@ public class ScriptHandler<T extends IDbSchema> {
         return (P) Proxy.newProxyInstance(this.getClass().getClassLoader(), new Class<?>[]{clazz}, handler);
     }
 
-    private static class NotOverridingInvocationDecorator implements InvocationHandler{
+    private static class NotOverridingInvocationDecorator implements InvocationHandler {
         private final JDbRecord record;
         private final Object nextProxy;
 
@@ -141,11 +158,32 @@ public class ScriptHandler<T extends IDbSchema> {
             this.nextProxy = nextProxy;
         }
 
-
         @Override
         public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-            if(!record.hasValueFor(method.getName())) {
-                method.invoke(nextProxy, args);
+            if (method.getDeclaringClass() == Object.class) {
+                String name = method.getName();
+                if ("toString".equals(name)) {
+                    return "NotOverridingDecorator [" + nextProxy.toString() + "]";
+                }
+                if ("equals".equals(name)) {
+                    return proxy == args[0];
+                }
+                if ("hashCode".equals(name)) {
+                    return System.identityHashCode(proxy);
+                }
+                return method.invoke(this, args);
+            }
+
+            if (method.isDefault()) {
+                return InvocationHandler.invokeDefault(proxy, method, args);
+            }
+
+            if (!record.hasValueFor(method.getName())) {
+                Object result = method.invoke(nextProxy, args);
+                if (result == nextProxy) {
+                    return proxy;
+                }
+                return result;
             }
             return proxy;
         }

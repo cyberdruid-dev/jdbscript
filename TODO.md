@@ -18,7 +18,7 @@
   * [ ] option: add disableConstraintsDuringCleanup() (not for Oracle)
 * [x] test: is order of tables in script relevant?
 * [ ] data type conversion(e.g. Date -> seconds, Instant -> epoch ms):
-  * [ ] option: allow default methods with same name to do conversion
+  * [x] option: allow default methods with same name to do conversion
   * [ ] option: add an annotation
 * [ ] implement updating db scripts(update some columns with known row id)
 * [x] implement simple assertions
