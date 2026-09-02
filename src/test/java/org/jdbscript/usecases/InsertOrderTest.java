@@ -108,8 +108,8 @@ public class InsertOrderTest extends JdbAbstractTest {
                     public org.jdbscript.DbmsType getDbmsType() {
                         return org.jdbscript.DbmsType.H2;
                     }
-                    @Override public List<String> getAllTables() { return List.of("customers", "orders"); }
-                    @Override public List<String> getSortedTables() { return List.of("customers", "orders"); }
+                    @Override public List<String> getAllTables() { return List.of("customers", "orders", "order_items"); }
+                    @Override public List<String> getSortedTables() { return List.of("customers", "orders", "order_items"); }
                     @Override public Comparator<String> getParentChildTableComparator() {
                         return Comparator.comparingInt(t -> {
                             int idx = getSortedTables().indexOf(t.toLowerCase());

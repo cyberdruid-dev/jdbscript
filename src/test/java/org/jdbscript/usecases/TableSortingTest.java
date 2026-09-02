@@ -22,11 +22,7 @@ public class TableSortingTest extends JdbAbstractTest {
 
     @BeforeClass
     public void checkH2Driver() {
-        try {
-            Class.forName("org.h2.Driver");
-        } catch (ClassNotFoundException e) {
-            throw new SkipException("H2 driver not found in classpath, skipping TableSortingTest");
-        }
+        skipIfNotH2(TableSortingTest.class);
     }
 
     private SqlMetadataProvider createProvider(String... sqls) throws SQLException {

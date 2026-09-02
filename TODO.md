@@ -11,7 +11,7 @@
 * [x] Add metadata cache
   * [x] tests: DataSourceCacheKey - url mutations to same db should result in equal DataSourceCacheKey
   * [x] tests: various cache strategies;
-* [ ] Add option: NONE|WARNING|ERROR on tables are missing for an schema interface.
+* [x] Add option: NONE|WARNING|ERROR on tables are missing for an schema interface.
 * [ ] fix table cleanup order:
   * [ ] add user option to set the order
   * [x] autodetect FK dependencies(+caching), with error message on cyclic dependencies

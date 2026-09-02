@@ -39,6 +39,9 @@ public class JDBEngine<T extends IDbSchema> implements IJDBEngine<T>{
     private final IScriptExecutor executor;
     private SchemaValidator schemaValidator;
     private IJDBCache cache = new NoCache();
+    private final ValidationStrategy unmappedTableStrategy;
+    private final Set<String> suppressedTables;
+    private final boolean suppressDefaultUnmappedTables;
 
     private JDBEngine(Builder<T> builder) {
         this.dbSchemaClass = checkNotNull(builder.dbSchemaClass, DB_SCHEMA_IS_NULL);
@@ -46,6 +49,9 @@ public class JDBEngine<T extends IDbSchema> implements IJDBEngine<T>{
         this.cleanupOrder = builder.cleanupOrder != null ? List.copyOf(builder.cleanupOrder) : null;
         this.cacheStrategy = builder.cacheStrategy;
         this.executor = builder.executor != null? builder.executor : new SqlScriptExecutor();
+        this.unmappedTableStrategy = builder.unmappedTableStrategy;
+        this.suppressedTables = Set.copyOf(builder.suppressedTables);
+        this.suppressDefaultUnmappedTables = builder.suppressDefaultUnmappedTables;
         if (builder.converters != null) {
             this.converter.setConverters(builder.converters);
         }
@@ -124,7 +130,8 @@ public class JDBEngine<T extends IDbSchema> implements IJDBEngine<T>{
         if (schemaValidator == null) {
             this.executor.setDataSource(getDataSource());
             this.executor.setCache(getCache());
-            this.schemaValidator = new SchemaValidator(dbSchemaClass, executor.getMetadataProvider());
+            this.schemaValidator = new SchemaValidator(dbSchemaClass, executor.getMetadataProvider(),
+                    unmappedTableStrategy, suppressedTables, suppressDefaultUnmappedTables);
         }
     }
 
@@ -212,6 +219,9 @@ public class JDBEngine<T extends IDbSchema> implements IJDBEngine<T>{
         private Collection<IJDBTypeConverter> converters;
         private List<String> cleanupOrder;
         private CacheStrategy cacheStrategy = CacheStrategy.INSTANCE;
+        private ValidationStrategy unmappedTableStrategy = ValidationStrategy.LOG_WARN;
+        private final Set<String> suppressedTables = new HashSet<>();
+        private boolean suppressDefaultUnmappedTables = false;
 
         private Builder(Class<T> dbSchemaClass) {
             this.dbSchemaClass = dbSchemaClass;
@@ -261,6 +271,46 @@ public class JDBEngine<T extends IDbSchema> implements IJDBEngine<T>{
          */
         public Builder<T> cacheStrategy(CacheStrategy cacheStrategy) {
             this.cacheStrategy = cacheStrategy;
+            return this;
+        }
+
+        /**
+         * Sets the strategy to use when a table is found in the database but is not mapped in the schema interface.
+         * Default is {@link ValidationStrategy#LOG_WARN}.
+         *
+         * @param strategy the validation strategy
+         * @return this builder
+         */
+        public Builder<T> unmappedTableStrategy(ValidationStrategy strategy) {
+            this.unmappedTableStrategy = strategy;
+            return this;
+        }
+
+        /**
+         * Adds one or more table names to be suppressed from unmapped table validation.
+         * This method is cumulative.
+         *
+         * @param tableNames the names of the tables to suppress
+         * @return this builder
+         */
+        public Builder<T> suppressUnmappedTable(String... tableNames) {
+            if (tableNames != null) {
+                for (String tableName : tableNames) {
+                    this.suppressedTables.add(tableName.toUpperCase());
+                }
+            }
+            return this;
+        }
+
+        /**
+         * Configures whether standard migration tables (Flyway and Liquibase) should be suppressed
+         * from unmapped table validation.
+         *
+         * @param suppress true to suppress default migration tables, false otherwise
+         * @return this builder
+         */
+        public Builder<T> suppressDefaultUnmappedTables(boolean suppress) {
+            this.suppressDefaultUnmappedTables = suppress;
             return this;
         }
 

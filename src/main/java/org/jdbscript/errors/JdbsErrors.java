@@ -25,7 +25,11 @@ public enum JdbsErrors implements Supplier<JDBScriptException> {
     DATASOURCE_SUPPLIER_IS_NULL(JDBScriptException.class,"datasource supplier can not be null."  ),
     /** The metadata provider cannot be null. */
     METADATA_PROVIDER_IS_NULL(JDBScriptException.class,"metadata provider can not be null."  ),
-    CACHE_STRATEGY_IS_NULL(JDBScriptException.class,"cache strategy can not be null."  );
+    CACHE_STRATEGY_IS_NULL(JDBScriptException.class,"cache strategy can not be null."  ),
+    /** Table defined in interface but missing from DB. */
+    MISSING_TABLE_IN_DB(JDBScriptException.class, "Table '%s' defined in interface %s but missing from DB"),
+    /** Table found in DB but missing from schema interface. */
+    UNMAPPED_TABLE_IN_DB(JDBScriptException.class, "Table '%s' found in DB but missing from schema interface %s");
 
     private final Class<? extends JDBScriptException> exception;
     private final String message;
@@ -42,9 +46,21 @@ public enum JdbsErrors implements Supplier<JDBScriptException> {
      */
     @Override
     public JDBScriptException get() {
+        return get((Object[]) null);
+    }
+
+    /**
+     * Creates and returns a new {@link JDBScriptException} instance configured with this error's message
+     * formatted with the provided arguments.
+     *
+     * @param args the arguments to format the message with
+     * @return the newly created {@link JDBScriptException}
+     */
+    public JDBScriptException get(Object... args) {
         try {
+            String formattedMessage = (args == null || args.length == 0) ? message : String.format(message, args);
             return exception.getConstructor(String.class)
-                    .newInstance(message);
+                    .newInstance(formattedMessage);
         } catch (NoSuchMethodException
                  | InstantiationException
                  | IllegalAccessException

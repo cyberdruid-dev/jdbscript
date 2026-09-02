@@ -367,4 +367,12 @@ public class JdbAbstractTest {
         assertTrue(actualCollection.stream().anyMatch(predicate), message);
     }
 
+    protected void skipIfNotH2(Class<?> testClass) {
+        try {
+            Class.forName("org.h2.Driver");
+        } catch (ClassNotFoundException e) {
+            throw new SkipException("H2 driver not found in classpath, skipping "+testClass.getSimpleName());
+        }
+    }
+
 }
