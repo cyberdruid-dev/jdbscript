@@ -23,9 +23,11 @@ Instead of writing verbose raw SQL scripts or maintaining fragile XML/JSON datas
 - **Flexible Script Formats**: Write scripts inline via lambdas (`db -> { ... }`) or encapsulate reusable datasets as static/abstract classes.
 - **Script Composition**: Compose and reuse scripts using `db.include(...)`.
 - **Smart Defaults & Generators**: Define default column values, auto-incrementing IDs (`RecordTools.nextIntId`), and templated strings (`RecordTools.strValue`).
-- **Cleanups & Resets**: Easily wipe tables (`cleanupDB`) and reset state before or between tests.
+- **Cleanups & Resets**: Easily wipe tables (`cleanupDB`) and reset state before or between tests. Tables are automatically deleted in the correct order based on foreign key dependencies.
+- **Database Assertions**: Verify that specific records exist or do not exist in the database using the same fluent API.
 - **Multi-DBMS Compatibility**: Built-in support for PostgreSQL, MySQL, MariaDB, Oracle, Microsoft SQL Server, H2, HSQLDB, IBM DB2, and SQLite.
 - **Automatic Type Conversion**: Seamless handling of Java Enums, UUIDs, Dates, Timestamps, and binary data.
+- **Sequence Management**: Automatically resets database sequences to a high value (e.g., 10000+) after insertion to prevent primary key conflicts with manually assigned IDs (supported for PostgreSQL and Oracle).
 
 ---
 
@@ -94,17 +96,21 @@ public interface IAppSchema extends IDbSchema {
 
 ### 2. Initialize `JDBEngine`
 
-Create an instance of `JDBEngine` using the builder:
+Create an instance of `JDBEngine` using the builder. You can configure schema validation and custom converters:
 
 ```java
 import org.jdbscript.JDBEngine;
 import org.jdbscript.IJDBEngine;
+import org.jdbscript.ValidationStrategy;
 import javax.sql.DataSource;
 
-DataSource dataSource = ...; // e.g., HikariDataSource, Spring DataSource, etc.
+DataSource dataSource = ...;
 
 IJDBEngine<IAppSchema> engine = JDBEngine.builder(IAppSchema.class)
     .dataSource(dataSource)
+    .unmappedTableStrategy(ValidationStrategy.LOG_WARN) // How to handle tables missing from interface
+    .suppressUnmappedTable("FLYWAY_SCHEMA_HISTORY") // Suppress validation for specific tables
+    .suppressDefaultUnmappedTables(true) // Suppress Flyway/Liquibase tables by default
     .build();
 ```
 
@@ -208,11 +214,43 @@ engine.resetDB(db -> {
 
 ### Database Cleanup
 
-Purge all tables associated with the schema:
+Purge all records from tables associated with the schema:
 
 ```java
 engine.cleanupDB();
 ```
+
+JDBScript automatically detects foreign key dependencies and deletes records in the correct order to avoid constraint violations. If a circular dependency is detected, an exception will be thrown.
+
+---
+
+## Database Assertions
+
+Verify the state of your database using the same fluent API used for seeding:
+
+```java
+// Assert that specific records exist
+engine.assertDBHas(db -> {
+    db.users().username("alice").active(true);
+});
+
+// Assert that specific records do not exist
+engine.assertDBHasNot(db -> {
+    db.users().username("malory");
+});
+```
+
+---
+
+## Schema Validation
+
+When `JDBEngine` is initialized, it validates that all tables defined in your Java interface exist in the database. You can also configure how it handles tables that exist in the database but are *not* defined in your interface:
+
+- `unmappedTableStrategy(ValidationStrategy.LOG_WARN)`: Log a warning (default).
+- `unmappedTableStrategy(ValidationStrategy.LOG_ERROR)`: Log an error.
+- `unmappedTableStrategy(ValidationStrategy.FAIL)`: Throw an exception.
+
+Use `suppressUnmappedTable(String...)` or `suppressDefaultUnmappedTables(true)` to ignore internal migration tables like `flyway_schema_history` or `databasechangelog`.
 
 ---
 
