@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>org.jdbscript.examples</groupId>
+    <artifactId>jdbscript-examples</artifactId>
+    <version>1.0.0</version>
+    <packaging>pom</packaging>
+
+    <name>jdbscript-examples</name>
+    <description>
+        Standalone, runnable examples showing how a consumer project uses jdbscript as a normal
+        dependency. Each module is self-contained (its own pom.xml, its own tests) and can be
+        copy-pasted as a starting point. This is NOT part of the jdbscript reactor build on
+        purpose: it depends on jdbscript the way a real consumer would, resolved from the local
+        Maven repository, not from internal source.
+    </description>
+
+    <modules>
+        <module>01-quickstart</module>
+        <module>02-class-scripts-and-include</module>
+        <module>03-recordtools-defaults</module>
+        <module>04-scripting-power</module>
+        <module>05-custom-converters</module>
+        <module>06-insert-power</module>
+    </modules>
+
+    <properties>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+        <!--
+          Matches the version currently under development in the parent jdbscript build
+          (see ../pom.xml). Run `mvn install` at the repo root first so this resolves locally.
+          Bump this once jdbscript is published and pin to a released version instead.
+        -->
+        <jdbscript.version>1.1.0-SNAPSHOT</jdbscript.version>
+
+        <junit.version>5.11.4</junit.version>
+        <h2.version>2.4.240</h2.version>
+        <hikaricp.version>7.1.0</hikaricp.version>
+        <slf4j.version>2.0.18</slf4j.version>
+        <logback.version>1.6.3</logback.version>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.jdbscript</groupId>
+                <artifactId>jdbscript</artifactId>
+                <version>${jdbscript.version}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.junit.jupiter</groupId>
+                <artifactId>junit-jupiter</artifactId>
+                <version>${junit.version}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>com.h2database</groupId>
+                <artifactId>h2</artifactId>
+                <version>${h2.version}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>com.zaxxer</groupId>
+                <artifactId>HikariCP</artifactId>
+                <version>${hikaricp.version}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.slf4j</groupId>
+                <artifactId>slf4j-api</artifactId>
+                <version>${slf4j.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>ch.qos.logback</groupId>
+                <artifactId>logback-classic</artifactId>
+                <version>${logback.version}</version>
+                <scope>test</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>3.5.2</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
+</project>

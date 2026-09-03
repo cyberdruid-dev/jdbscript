@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.jdbscript.examples</groupId>
+        <artifactId>jdbscript-examples</artifactId>
+        <version>1.0.0</version>
+    </parent>
+
+    <artifactId>06-insert-power</artifactId>
+    <packaging>jar</packaging>
+
+    <name>jdbscript-examples :: 06-insert-power</name>
+    <description>
+        insertDB doesn't just "add without wiping" — it lets a test interleave arrange and act,
+        simulating a timeline of events within a single test method. A static dataset format
+        gives you one snapshot per test; a script is code, so it can model a sequence.
+    </description>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.jdbscript</groupId>
+            <artifactId>jdbscript</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.zaxxer</groupId>
+            <artifactId>HikariCP</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+        </dependency>
+    </dependencies>
+</project>
