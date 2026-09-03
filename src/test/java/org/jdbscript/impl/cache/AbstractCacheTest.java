@@ -68,6 +68,10 @@ public abstract class AbstractCacheTest extends JdbAbstractTest {
     }
 
     protected static Connection mockConnection(String url, String user, String schema) {
+        return mockConnection(url, user, schema, schema);
+    }
+
+    protected static Connection mockConnection(String url, String user, String catalog, String schema) {
         return (Connection) Proxy.newProxyInstance(
                 Connection.class.getClassLoader(),
                 new Class<?>[]{Connection.class},
@@ -76,7 +80,7 @@ public abstract class AbstractCacheTest extends JdbAbstractTest {
                         case "getMetaData":
                             return mockMetaData(url, user);
                         case "getCatalog":
-                            return schema;
+                            return catalog;
                         case "getSchema":
                             return schema;
                         case "close":
