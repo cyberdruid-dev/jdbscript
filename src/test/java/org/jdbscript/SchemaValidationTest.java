@@ -244,4 +244,24 @@ public class SchemaValidationTest extends JdbAbstractTest {
         assertThatCode(() -> engine.insertDB(db -> {}))
                 .doesNotThrowAnyException();
     }
+
+    @Test
+    public void should_reject_null_unmappedTableStrategy_at_build_time() {
+        JDBEngine.Builder<ITestSchema> builder = JDBEngine.builder(ITestSchema.class)
+                .dataSource(() -> cleanDataSource)
+                .executor(testConfiguration.getScriptExecutor());
+
+        assertThatThrownBy(() -> builder.unmappedTableStrategy(null))
+                .isInstanceOf(JDBScriptException.class);
+    }
+
+    @Test
+    public void should_reject_null_cacheStrategy_at_build_time() {
+        JDBEngine.Builder<ITestSchema> builder = JDBEngine.builder(ITestSchema.class)
+                .dataSource(() -> cleanDataSource)
+                .executor(testConfiguration.getScriptExecutor());
+
+        assertThatThrownBy(() -> builder.cacheStrategy(null))
+                .isInstanceOf(JDBScriptException.class);
+    }
 }

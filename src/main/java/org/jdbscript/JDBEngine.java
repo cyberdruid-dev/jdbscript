@@ -299,7 +299,7 @@ public class JDBEngine<T extends IDBSchema> implements IJDBEngine<T>{
          * @return this builder
          */
         public Builder<T> cacheStrategy(CacheStrategy cacheStrategy) {
-            this.cacheStrategy = cacheStrategy;
+            this.cacheStrategy = checkNotNull(cacheStrategy, CACHE_STRATEGY_IS_NULL);
             return this;
         }
 
@@ -311,7 +311,7 @@ public class JDBEngine<T extends IDBSchema> implements IJDBEngine<T>{
          * @return this builder
          */
         public Builder<T> unmappedTableStrategy(ValidationStrategy strategy) {
-            this.unmappedTableStrategy = strategy;
+            this.unmappedTableStrategy = checkNotNull(strategy, UNMAPPED_TABLE_STRATEGY_IS_NULL);
             return this;
         }
 
