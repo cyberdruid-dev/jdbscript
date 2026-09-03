@@ -12,11 +12,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.sql.DataSource;
+import java.lang.reflect.Method;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 
+import static java.util.stream.Collectors.toSet;
 import static org.jdbscript.errors.Checks.checkIsNull;
 import static org.jdbscript.errors.Checks.checkNotNull;
 import static org.jdbscript.errors.JDBErrors.*;
@@ -33,7 +34,7 @@ public class JDBEngine<T extends IDBSchema> implements IJDBEngine<T>{
     private final JDBTypeConverter converter = new JDBTypeConverter();
     private final Class<T> dbSchemaClass;
     private final Supplier<DataSource> dataSourceSupplier;
-    private final List<String> cleanupOrder;
+    private final List<String> tableDependencyOrder;
     private final CacheStrategy cacheStrategy;
     private DataSource dataSource;
     private final IScriptExecutor executor;
@@ -46,7 +47,7 @@ public class JDBEngine<T extends IDBSchema> implements IJDBEngine<T>{
     private JDBEngine(Builder<T> builder) {
         this.dbSchemaClass = checkNotNull(builder.dbSchemaClass, DB_SCHEMA_IS_NULL);
         this.dataSourceSupplier = checkNotNull(builder.dataSourceSupplier, DATASOURCE_SUPPLIER_IS_NULL);
-        this.cleanupOrder = builder.cleanupOrder != null ? List.copyOf(builder.cleanupOrder) : null;
+        this.tableDependencyOrder = builder.tableDependencyOrder != null ? List.copyOf(builder.tableDependencyOrder) : null;
         this.cacheStrategy = builder.cacheStrategy;
         this.executor = builder.executor != null? builder.executor : new SqlScriptExecutor();
         this.unmappedTableStrategy = builder.unmappedTableStrategy;
@@ -57,6 +58,19 @@ public class JDBEngine<T extends IDBSchema> implements IJDBEngine<T>{
         }
         for (IJDBTypeConverter converter : builder.additionalConverters) {
             this.converter.addConverter(converter);
+        }
+    }
+
+    private void validateTableDependencyOrderCoversSchema() {
+        Set<String> ordered = tableDependencyOrder.stream()
+                .map(String::toUpperCase)
+                .collect(toSet());
+        List<String> missing = SchemaValidator.findRecordMethods(dbSchemaClass).stream()
+                .map(Method::getName)
+                .filter(name -> !ordered.contains(name.toUpperCase()))
+                .toList();
+        if (!missing.isEmpty()) {
+            throw TABLE_MISSING_FROM_DEPENDENCY_ORDER.get(String.join(", ", missing));
         }
     }
 
@@ -131,6 +145,9 @@ public class JDBEngine<T extends IDBSchema> implements IJDBEngine<T>{
 
     private synchronized void ensureInitialized() {
         if (schemaValidator == null) {
+            if (tableDependencyOrder != null) {
+                validateTableDependencyOrderCoversSchema();
+            }
             this.executor.setDataSource(getDataSource());
             this.executor.setCache(getCache());
             this.schemaValidator = new SchemaValidator(dbSchemaClass, executor.getMetadataProvider(),
@@ -147,8 +164,7 @@ public class JDBEngine<T extends IDBSchema> implements IJDBEngine<T>{
 
     @Override
     public void cleanupDB() {
-        getTableNames();
-        getExecutor().cleanupTables(getTableNames());
+        getExecutor().cleanupTables(getTableNamesCleanupOrder());
     }
 
     @Override
@@ -163,7 +179,11 @@ public class JDBEngine<T extends IDBSchema> implements IJDBEngine<T>{
     }
 
     private IMetadataProvider getMetadataProvider() {
-        return getExecutor().getMetadataProvider();
+        IMetadataProvider provider = getExecutor().getMetadataProvider();
+        if (tableDependencyOrder != null) {
+            return new TableDependencyOrderMetadataProvider(provider, tableDependencyOrder);
+        }
+        return provider;
     }
 
     @Override
@@ -186,24 +206,16 @@ public class JDBEngine<T extends IDBSchema> implements IJDBEngine<T>{
         records.sort(Comparator.comparing(JDBRecord::getTableName, getMetadataProvider().getParentChildTableComparator()));
     }
 
-    private List<String> getTableNames() {
-        if (cleanupOrder != null) {
-            return cleanupOrder;
-        }
+    private List<String> getTableNamesCleanupOrder() {
         Set<String> interfaceTables = SchemaValidator.findRecordMethods(dbSchemaClass).stream()
                 .map(m -> m.getName().toUpperCase())
-                .collect(Collectors.toSet());
+                .collect(toSet());
 
-        List<String> sorted = new ArrayList<>(getExecutor().getMetadataProvider().getSortedTables());
+        List<String> sorted = new ArrayList<>(getMetadataProvider().getSortedTables());
         Collections.reverse(sorted);
 
         return sorted.stream()
                 .filter(t -> interfaceTables.contains(t.toUpperCase()))
-                .map(t -> {
-                    // Try to restore original casing from interface if possible, 
-                    // or just return the DB name. The DB name is fine.
-                    return t;
-                })
                 .toList();
     }
 
@@ -223,7 +235,7 @@ public class JDBEngine<T extends IDBSchema> implements IJDBEngine<T>{
         private IScriptExecutor executor;
         private final List<IJDBTypeConverter> additionalConverters = new ArrayList<>();
         private boolean disableDefaultConverters = false;
-        private List<String> cleanupOrder;
+        private List<String> tableDependencyOrder;
         private CacheStrategy cacheStrategy = CacheStrategy.INSTANCE;
         private ValidationStrategy unmappedTableStrategy = ValidationStrategy.LOG_WARN;
         private final Set<String> suppressedTables = new HashSet<>();
@@ -281,13 +293,23 @@ public class JDBEngine<T extends IDBSchema> implements IJDBEngine<T>{
         }
 
         /**
-         * Configures the order in which tables should be cleaned up.
+         * Overrides automatic FK-based dependency detection with a fixed, explicit table order -
+         * an escape hatch for when auto-detection can't be relied on (missing FK metadata, views,
+         * cyclic dependencies). Tables are listed parent-to-child: records are inserted in exactly
+         * this order, and {@link JDBEngine#cleanupDB()} cleans them up in the exact reverse.
+         * <p>
+         * Every table exposed by the schema interface must be present in {@code tableNames}
+         * (case-insensitively); this is validated on first use of the engine (not eagerly at
+         * build time, to keep the engine lazy), and fails every operation - insert, cleanup, or
+         * assert - the same way. Extra entries not declared by the schema interface are ignored.
+         * This replaces auto-detection for ordering only - schema-vs-DB validation
+         * (missing/unmapped tables) is unaffected and still runs against the real database.
          *
-         * @param tableNames list of table names in cleanup order
+         * @param tableNames every schema-interface table, parent-to-child
          * @return this builder
          */
-        public Builder<T> cleanupOrder(List<String> tableNames) {
-            this.cleanupOrder = tableNames;
+        public Builder<T> tableDependencyOrder(List<String> tableNames) {
+            this.tableDependencyOrder = tableNames;
             return this;
         }
 
