@@ -1,7 +1,10 @@
 package org.jdbscript;
 
+import org.jdbscript.errors.JDBScriptException;
 import org.jdbscript.impl.conversion.IJDBTypeConverter;
 import org.testng.annotations.Test;
+
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @Test
 public class CustomConverterTest extends JdbAbstractTest {
@@ -26,11 +29,23 @@ public class CustomConverterTest extends JdbAbstractTest {
         }
     }
 
+    private static class CustomEnumConverter implements IJDBTypeConverter {
+        @Override
+        public boolean canConvert(Object value) {
+            return value instanceof Enum;
+        }
+
+        @Override
+        public Object convert(Object value) {
+            return "CUSTOM_" + value.toString();
+        }
+    }
+
     @Test
     public void custom_converter_should_work() {
         IJDBEngine<ITestSchema> engine = JDBEngine.builder(ITestSchema.class)
                 .dataSource(() -> dataSource)
-                .converters(new ReversingConverter())
+                .converter(new ReversingConverter())
                 .executor(testConfiguration.getScriptExecutor())
                 .build();
 
@@ -45,31 +60,52 @@ public class CustomConverterTest extends JdbAbstractTest {
     }
 
     @Test
-    public void custom_converters_should_replace_defaults() {
-        // Register only the reversing converter
+    public void custom_converter_should_add_to_defaults_not_replace_them() {
+        // A custom converter registered via .converter(...) doesn't disturb default handling of
+        // types it doesn't itself match - Enums still convert to their name() as usual.
         IJDBEngine<ITestSchema> engine = JDBEngine.builder(ITestSchema.class)
                 .dataSource(() -> dataSource)
-                .converters(new ReversingConverter())
+                .converter(new ReversingConverter())
                 .executor(testConfiguration.getScriptExecutor())
                 .build();
 
-        // EnumToStringConverter is a default converter.
-        // If it's replaced, TestEnum.VAL1 should NOT be converted to String "VAL1" by JDBScript.
-        
-        // We will now verify that we can PROVIDE a custom enum converter and it will be used instead of defaults.
+        engine.resetDB(db -> {
+            db.table_1().str_column_1(TestEnum.VAL1);
+        });
+
+        assertTableValues(table("table_1",
+                columns("str_column_1"),
+                row("VAL1")
+        ));
+    }
+
+    @Test
+    public void custom_converter_added_without_disabling_defaults_does_not_override_a_default() {
+        // .converter(...) only adds; converters run in registration order and the first match
+        // wins. The built-in EnumToStringConverter is registered before anything added here, so it
+        // still wins for Enums even though a custom Enum-handling converter was also registered.
+        IJDBEngine<ITestSchema> engine = JDBEngine.builder(ITestSchema.class)
+                .dataSource(() -> dataSource)
+                .converter(new CustomEnumConverter())
+                .executor(testConfiguration.getScriptExecutor())
+                .build();
+
+        engine.resetDB(db -> {
+            db.table_1().str_column_1(TestEnum.VAL1);
+        });
+
+        assertTableValues(table("table_1",
+                columns("str_column_1"),
+                row("VAL1")
+        ));
+    }
+
+    @Test
+    public void disableDefaultConverters_lets_a_custom_converter_replace_a_default() {
         IJDBEngine<ITestSchema> engineWithEnum = JDBEngine.builder(ITestSchema.class)
                 .dataSource(() -> dataSource)
-                .converters(new IJDBTypeConverter() {
-                    @Override
-                    public boolean canConvert(Object value) {
-                        return value instanceof Enum;
-                    }
-
-                    @Override
-                    public Object convert(Object value) {
-                        return "CUSTOM_" + value.toString();
-                    }
-                })
+                .disableDefaultConverters()
+                .converter(new CustomEnumConverter())
                 .executor(testConfiguration.getScriptExecutor())
                 .build();
 
@@ -81,6 +117,16 @@ public class CustomConverterTest extends JdbAbstractTest {
                 columns("str_column_1"),
                 row("CUSTOM_VAL1")
         ));
+    }
+
+    @Test
+    public void converter_should_reject_null() {
+        JDBEngine.Builder<ITestSchema> builder = JDBEngine.builder(ITestSchema.class)
+                .dataSource(() -> dataSource)
+                .executor(testConfiguration.getScriptExecutor());
+
+        assertThatThrownBy(() -> builder.converter(null))
+                .isInstanceOf(JDBScriptException.class);
     }
 
     public enum TestEnum {

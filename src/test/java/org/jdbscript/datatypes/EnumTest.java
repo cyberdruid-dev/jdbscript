@@ -8,8 +8,6 @@ import org.jdbscript.impl.conversion.EnumOrdinalConverter;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
-import java.util.List;
-
 @Test
 public class EnumTest extends JdbAbstractTest {
 
@@ -56,9 +54,10 @@ public class EnumTest extends JdbAbstractTest {
     }
 
     private final IJDBEngine<IEnumTestSchema> engine = createEngine(IEnumTestSchema.class);
-    private final IJDBEngine<IOrdinalEnumTestSchema> ordinalEngine = createEngine(IOrdinalEnumTestSchema.class,
-            List.of(new EnumOrdinalConverter())
-            );
+    private final IJDBEngine<IOrdinalEnumTestSchema> ordinalEngine = engineBuilder(IOrdinalEnumTestSchema.class)
+            .disableDefaultConverters()
+            .converter(new EnumOrdinalConverter())
+            .build();
 
     public void test_insert_enum_as_int() {
         TestEnum value1 = TestEnum.VALUE_1001;

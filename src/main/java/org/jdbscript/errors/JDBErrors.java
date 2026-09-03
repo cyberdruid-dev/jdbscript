@@ -26,6 +26,8 @@ public enum JDBErrors implements Supplier<JDBScriptException> {
     /** The metadata provider cannot be null. */
     METADATA_PROVIDER_IS_NULL(JDBScriptException.class,"metadata provider can not be null."  ),
     CACHE_STRATEGY_IS_NULL(JDBScriptException.class,"cache strategy can not be null."  ),
+    /** A converter passed to Builder.converter(...) cannot be null. */
+    CONVERTER_IS_NULL(JDBScriptException.class,"converter can not be null."  ),
     /** Table defined in interface but missing from DB. */
     MISSING_TABLE_IN_DB(JDBScriptException.class, "Table '%s' defined in interface %s but missing from DB"),
     /** Table found in DB but missing from schema interface. */

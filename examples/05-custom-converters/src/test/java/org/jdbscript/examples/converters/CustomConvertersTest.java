@@ -4,7 +4,6 @@ import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import org.jdbscript.IJDBEngine;
 import org.jdbscript.JDBEngine;
-import org.jdbscript.impl.conversion.EnumToStringConverter;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -40,13 +39,12 @@ class CustomConvertersTest {
                     """);
         }
 
-        // .converters(...) REPLACES the built-in converters (enum-to-string, java.util.Date,
-        // java.time.Instant) — it doesn't add to them. EnumToStringConverter is listed here
-        // explicitly for that reason: without it, ProductStatus below would have nothing that
-        // knows how to turn it into a bindable value, and the insert would fail.
+        // .converter(...) adds to the built-in converters (enum-to-string, java.util.Date,
+        // java.time.Instant) rather than replacing them, so ProductStatus below still converts via
+        // the default EnumToStringConverter - only Money needs a converter of its own here.
         engine = JDBEngine.builder(IAppSchema.class)
                 .dataSource(dataSource)
-                .converters(new MoneyConverter(), new EnumToStringConverter())
+                .converter(new MoneyConverter())
                 .build();
         priceCatalog = new PriceCatalog(dataSource);
     }

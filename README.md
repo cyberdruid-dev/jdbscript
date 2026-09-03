@@ -124,7 +124,7 @@ The builder provides several other methods for fine-tuning the engine:
 *   **Lazy DataSource**: Use `.dataSource(() -> getDataSource())` for lazy connection resolution.
 *   **Metadata Caching**: Use `.cacheStrategy(...)` to speed up tests (see [Metadata Caching](#metadata-caching)).
 *   **Schema Validation**: Use `.unmappedTableStrategy(...)` to control validation behavior (see [Schema Validation](#schema-validation)). Standard migration tables are ignored by default.
-*   **Custom Converters**: Use `.converters(...)` to register custom type mappings (see [Custom Type Converters](#custom-type-converters)).
+*   **Custom Converters**: Use `.converter(...)` to register custom type mappings (see [Custom Type Converters](#custom-type-converters)).
 
 ---
 
@@ -272,16 +272,25 @@ Use `suppressUnmappedTable(String...)` to ignore specific custom tables. By defa
 
 ## Custom Type Converters
 
-JDBScript comes with default converters for common types like Enums, UUIDs, and Dates. You can provide your own converters using the `.converters(...)` builder method:
+JDBScript comes with default converters for common types like Enums, UUIDs, and Dates. You can add your own using the `.converter(...)` builder method:
 
 ```java
 IJDBEngine<IAppSchema> engine = JDBEngine.builder(IAppSchema.class)
     .dataSource(dataSource)
-    .converters(new MyCustomConverter(), new AnotherConverter())
+    .converter(new MyCustomConverter())
+    .converter(new AnotherConverter())
     .build();
 ```
 
-**Note:** When you provide custom converters via the builder, they **replace** the default set of converters. If you want to keep the default behavior for some types, you must include the default converters (like `EnumToStringConverter`) in your list or ensure your custom converters handle those types.
+**Note:** `.converter(...)` **adds** to the default set rather than replacing it — call it once per converter to register several. Converters are tried in registration order, so a converter you add only gets a chance to run for types not already handled by an earlier one; the built-in defaults are checked first. To have your own converter take priority over a default for the same type (or to disable default conversion entirely), call `.disableDefaultConverters()` first:
+
+```java
+IJDBEngine<IAppSchema> engine = JDBEngine.builder(IAppSchema.class)
+    .dataSource(dataSource)
+    .disableDefaultConverters()
+    .converter(new MyCustomEnumConverter())
+    .build();
+```
 
 ---
 

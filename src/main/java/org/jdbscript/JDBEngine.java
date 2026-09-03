@@ -52,8 +52,11 @@ public class JDBEngine<T extends IDBSchema> implements IJDBEngine<T>{
         this.unmappedTableStrategy = builder.unmappedTableStrategy;
         this.suppressedTables = Set.copyOf(builder.suppressedTables);
         this.suppressDefaultUnmappedTables = builder.suppressDefaultUnmappedTables;
-        if (builder.converters != null) {
-            this.converter.setConverters(builder.converters);
+        if (builder.disableDefaultConverters) {
+            this.converter.setConverters(List.of());
+        }
+        for (IJDBTypeConverter converter : builder.additionalConverters) {
+            this.converter.addConverter(converter);
         }
     }
 
@@ -218,7 +221,8 @@ public class JDBEngine<T extends IDBSchema> implements IJDBEngine<T>{
         private final Class<T> dbSchemaClass;
         private Supplier<DataSource> dataSourceSupplier;
         private IScriptExecutor executor;
-        private Collection<IJDBTypeConverter> converters;
+        private final List<IJDBTypeConverter> additionalConverters = new ArrayList<>();
+        private boolean disableDefaultConverters = false;
         private List<String> cleanupOrder;
         private CacheStrategy cacheStrategy = CacheStrategy.INSTANCE;
         private ValidationStrategy unmappedTableStrategy = ValidationStrategy.LOG_WARN;
@@ -248,8 +252,31 @@ public class JDBEngine<T extends IDBSchema> implements IJDBEngine<T>{
             return this;
         }
 
-        public Builder<T> converters(IJDBTypeConverter... converters) {
-            this.converters = converters == null ? null : Arrays.asList(converters);
+        /**
+         * Registers a custom type converter, in addition to the built-in defaults (Enums, Dates,
+         * Instants) and any other converter already registered this way. Order matters: the first
+         * registered converter whose {@code canConvert} matches a value wins, so a converter added
+         * here only gets a chance to run for types not already handled by an earlier one - to have
+         * it take priority over a default, call {@link #disableDefaultConverters()} first.
+         * <p>
+         * This method is cumulative: call it once per converter to register several.
+         *
+         * @param converter the converter to register; must not be null
+         * @return this builder
+         */
+        public Builder<T> converter(IJDBTypeConverter converter) {
+            this.additionalConverters.add(checkNotNull(converter, CONVERTER_IS_NULL));
+            return this;
+        }
+
+        /**
+         * Disables the built-in default converters (Enums, Dates, Instants), so that only
+         * converters explicitly registered via {@link #converter(IJDBTypeConverter)} apply.
+         *
+         * @return this builder
+         */
+        public Builder<T> disableDefaultConverters() {
+            this.disableDefaultConverters = true;
             return this;
         }
 

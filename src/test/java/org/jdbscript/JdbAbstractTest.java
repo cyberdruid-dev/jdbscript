@@ -1,6 +1,5 @@
 package org.jdbscript;
 
-import org.jdbscript.impl.conversion.IJDBTypeConverter;
 import org.jdbscript.utils.TestConfiguration;
 import org.jdbscript.utils.TestDataSource;
 import org.slf4j.Logger;
@@ -46,16 +45,14 @@ public class JdbAbstractTest {
     }
 
     protected <T extends IDBSchema> JDBEngine<T> createEngine(Class<T> schemaClass) {
-        return createEngine(schemaClass, null);
+        return engineBuilder(schemaClass).build();
     }
 
-    protected <T extends IDBSchema> JDBEngine<T> createEngine(Class<T> schemaClass, List<IJDBTypeConverter> converters) {
+    protected <T extends IDBSchema> JDBEngine.Builder<T> engineBuilder(Class<T> schemaClass) {
         return JDBEngine.builder(schemaClass)
                 .dataSource(()->dataSource)
-                .converters(converters == null ? null : converters.toArray(new IJDBTypeConverter[0]))
                 .executor(testConfiguration.getScriptExecutor())
-                .cacheStrategy(CacheStrategy.GLOBAL)
-                .build();
+                .cacheStrategy(CacheStrategy.GLOBAL);
     }
 
 

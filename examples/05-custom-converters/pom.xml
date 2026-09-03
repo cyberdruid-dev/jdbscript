@@ -15,8 +15,8 @@
 
     <name>jdbscript-examples :: 05-custom-converters</name>
     <description>
-        Teaching jdbscript how to store a domain value type via IJDBTypeConverter, and the
-        gotcha that .converters(...) replaces the built-in converters instead of adding to them.
+        Teaching jdbscript how to store a domain value type via IJDBTypeConverter, registered
+        alongside the built-in converters with .converter(...).
     </description>
 
     <dependencies>
