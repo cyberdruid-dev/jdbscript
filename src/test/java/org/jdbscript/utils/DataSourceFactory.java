@@ -3,22 +3,12 @@ package org.jdbscript.utils;
 import org.jdbscript.DBMSType;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
-import liquibase.Liquibase;
-import liquibase.database.Database;
-import liquibase.database.DatabaseFactory;
-import liquibase.database.jvm.JdbcConnection;
-import liquibase.exception.DatabaseException;
-import liquibase.resource.ClassLoaderResourceAccessor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.sql.DataSource;
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.sql.Statement;
 
 class DataSourceFactory {
     private static final Logger log = LoggerFactory.getLogger(DataSourceFactory.class);
@@ -43,7 +33,7 @@ class DataSourceFactory {
     public DataSource createDataSource() {
         HikariDataSource newDataSource = newHikariPool();
         logSchema(newDataSource);
-        runLiquibase(newDataSource);
+        TestSchemaInitStrategyFactory.getStrategy(getDbmsType()).initSchema(newDataSource);
         return newDataSource;
     }
 
@@ -87,72 +77,4 @@ class DataSourceFactory {
         }
     }
 
-    private void runLiquibase(DataSource newDataSource) {
-        if (getDbmsType() == DBMSType.DUCKDB) {
-            log.info("Skipping Liquibase for DuckDB as it is not fully supported yet. Running manual initialization.");
-            runDuckdbInit(newDataSource);
-            return;
-        }
-        log.debug("runLiquibase()");
-        try(Connection connection = newDataSource.getConnection()) {
-            Database database = findDatabase(connection);
-            log.debug("Liquibase.database = {} ", database.getDatabaseProductName());
-            Liquibase liquibase = new Liquibase("db/changelog.yaml",
-                    new ClassLoaderResourceAccessor(),
-                    database);
-            liquibase.update();
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-        if (getDbmsType() == DBMSType.COCKROACHDB) {
-            fixupCockroachBlobColumns(newDataSource);
-        }
-    }
-
-    /**
-     * Liquibase has no CockroachDB-specific dialect registered, so a CockroachDB connection
-     * (made over the PostgreSQL JDBC driver) is treated as plain PostgreSQL and its abstract
-     * "blob" column type is mapped to {@code oid} (a PostgreSQL large-object reference).
-     * CockroachDB doesn't implement PostgreSQL large objects, so an {@code oid} column can't
-     * actually hold blob bytes there. Convert it to {@code BYTES} (CockroachDB's native binary
-     * type, aka {@code bytea}) after migration, to match how {@code CockroachDBStrategy} reads
-     * and writes blob columns.
-     */
-    private void fixupCockroachBlobColumns(DataSource dataSource) {
-        try (Connection connection = dataSource.getConnection();
-             Statement stmt = connection.createStatement()) {
-            // CockroachDB doesn't support an implicit OID -> BYTES cast, so ALTER ... TYPE fails;
-            // drop and recreate the column instead (the table is freshly migrated and empty).
-            stmt.execute("ALTER TABLE blob_table DROP COLUMN blob_column");
-            stmt.execute("ALTER TABLE blob_table ADD COLUMN blob_column BYTES");
-        } catch (SQLException e) {
-            throw new RuntimeException("Failed to fix up CockroachDB blob column type", e);
-        }
-    }
-
-    private void runDuckdbInit(DataSource dataSource) {
-        try (Connection connection = dataSource.getConnection();
-             Statement stmt = connection.createStatement()) {
-            InputStream is = getClass().getClassLoader().getResourceAsStream("db/duckdb-schema.sql");
-            if (is == null) {
-                throw new IOException("Could not find db/duckdb-schema.sql");
-            }
-            String sql = new String(is.readAllBytes(), StandardCharsets.UTF_8);
-            int count = 0;
-            for (String part : sql.split(";")) {
-                String trimmed = part.trim();
-                if (!trimmed.isEmpty()) {
-                    stmt.execute(trimmed);
-                    count++;
-                }
-            }
-            log.info("Initialized DuckDB schema with {} statements.", count);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to initialize DuckDB schema", e);
-        }
-    }
-
-    private Database findDatabase(Connection connection) throws DatabaseException {
-        return DatabaseFactory.getInstance().findCorrectDatabaseImplementation(new JdbcConnection(connection));
-    }
 }
