@@ -93,6 +93,12 @@ public class ClassScriptWrapper<T extends IDbSchema> {
         if(cc.getDeclaringClass() != null) {
             checkThat(isStatic(cc.getModifiers()), JdbsErrors.INNER_CLASS_SHOULD_BE_STATIC);
         }
+
+        for (CtConstructor constructor : cc.getDeclaredConstructors()) {
+            if (constructor.getParameterTypes().length > 0) {
+                throw JdbsErrors.SCRIPT_CONSTRUCTOR_HAS_PARAMETERS.get(cc.getName());
+            }
+        }
     }
 
     private void implementMethods(CtClass cc) throws CannotCompileException {

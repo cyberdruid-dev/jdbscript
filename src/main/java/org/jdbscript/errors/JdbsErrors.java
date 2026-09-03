@@ -29,7 +29,9 @@ public enum JdbsErrors implements Supplier<JDBScriptException> {
     /** Table defined in interface but missing from DB. */
     MISSING_TABLE_IN_DB(JDBScriptException.class, "Table '%s' defined in interface %s but missing from DB"),
     /** Table found in DB but missing from schema interface. */
-    UNMAPPED_TABLE_IN_DB(JDBScriptException.class, "Table '%s' found in DB but missing from schema interface %s");
+    UNMAPPED_TABLE_IN_DB(JDBScriptException.class, "Table '%s' found in DB but missing from schema interface %s"),
+    /** Script classes must have a no-args constructor and no other constructors. */
+    SCRIPT_CONSTRUCTOR_HAS_PARAMETERS(JDBScriptException.class, "Script class '%s' should not have constructors with parameters.");
 
     private final Class<? extends JDBScriptException> exception;
     private final String message;

@@ -12,12 +12,12 @@
   * [x] tests: DataSourceCacheKey - url mutations to same db should result in equal DataSourceCacheKey
   * [x] tests: various cache strategies;
 * [x] Add option: NONE|WARNING|ERROR on tables are missing for an schema interface.
-* [ ] fix table cleanup order:
+* [x] fix table cleanup order:
   * [ ] add user option to set the order
   * [x] autodetect FK dependencies(+caching), with error message on cyclic dependencies
   * [ ] option: add disableConstraintsDuringCleanup() (not for Oracle)
 * [x] test: is order of tables in script relevant?
-* [ ] data type conversion(e.g. Date -> seconds, Instant -> epoch ms):
+* [x] data type conversion(e.g. Date -> seconds, Instant -> epoch ms):
   * [x] option: allow default methods with same name to do conversion
   * [ ] option: add an annotation
 * [ ] implement updating db scripts(update some columns with known row id)
@@ -39,7 +39,7 @@
   * [x] DbmsType
   * [x] IScriptExecutor
 * [x] Test: Not leaking connections.
-* [ ] throw error if ClassScript's constructor has parameters.
+* [x] throw error if ClassScript's constructor has parameters.
 * [x] add JDBEngine()  constructor with ()->DataSource supplier
 * [ ] write a skill
 * Bugs:
