@@ -96,7 +96,12 @@ public class SqlMetadataProvider implements IMetadataProvider {
                 String schema = cnn.getSchema();
 
                 List<String> tables = new ArrayList<>();
-                try (ResultSet rs = metaData.getTables(catalog, schema, "%", new String[]{"TABLE"})) {
+                // For DuckDB, we might need to pass null for catalog/schema to see all tables in the current connection
+                String searchCatalog = (getDbmsType() == DbmsType.DUCKDB) ? null : catalog;
+                String searchSchema = (getDbmsType() == DbmsType.DUCKDB) ? null : schema;
+
+                String[] types = (getDbmsType() == DbmsType.DUCKDB) ? new String[]{"TABLE", "BASE TABLE"} : new String[]{"TABLE"};
+                try (ResultSet rs = metaData.getTables(searchCatalog, searchSchema, "%", types)) {
                     while (rs.next()) {
                         tables.add(rs.getString("TABLE_NAME"));
                     }
@@ -165,6 +170,12 @@ public class SqlMetadataProvider implements IMetadataProvider {
 
     private Set<String> getRawTableDependencies(DatabaseMetaData metaData, String catalog, String schema, String tableName) throws SQLException {
         Set<String> allDeps = new HashSet<>();
+        
+        if (getDbmsType() == DbmsType.DUCKDB) {
+            collectDuckdbDependencies(allDeps, tableName);
+            if (!allDeps.isEmpty()) return allDeps;
+        }
+
         collectImportedKeys(allDeps, metaData, catalog, schema, tableName);
 
         // If nothing found, try upper case
@@ -188,6 +199,26 @@ public class SqlMetadataProvider implements IMetadataProvider {
         }
 
         return allDeps;
+    }
+
+    private void collectDuckdbDependencies(Set<String> allDeps, String tableName) {
+        withConnection(cnn -> {
+            String sql = "SELECT referenced_table FROM duckdb_constraints WHERE UPPER(table_name) = UPPER(?) AND constraint_type = 'FOREIGN KEY'";
+            try (var stmt = cnn.prepareStatement(sql)) {
+                stmt.setString(1, tableName);
+                try (var rs = stmt.executeQuery()) {
+                    while (rs.next()) {
+                        String referencedTable = rs.getString(1);
+                        if (referencedTable != null) {
+                            log.debug("DuckDB: dependency found for {}: {}", tableName, referencedTable);
+                            allDeps.add(referencedTable.toUpperCase());
+                        }
+                    }
+                }
+            } catch (SQLException e) {
+                log.debug("Failed to query duckdb_constraints for table {}: {}", tableName, e.getMessage());
+            }
+        });
     }
 
     private void collectImportedKeys(Set<String> allDeps, DatabaseMetaData metaData, String catalog, String schema, String tableName) throws SQLException {

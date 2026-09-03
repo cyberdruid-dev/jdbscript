@@ -140,9 +140,9 @@ public class JdbAbstractTest {
                     int columnType = types.get(columnIndex-1);
                     Object value;
                     if(Objects.equals(expectedType,"blob")) {
-                        if(dbmsType == DbmsType.POSTGRESQL) {
+                        if(dbmsType == DbmsType.POSTGRESQL || dbmsType == DbmsType.DUCKDB) {
                             Blob blob = rs.getBlob(column);
-                            value = blob == null ? null : blob.getBytes(1, 100000);
+                            value = blob == null ? null : blob.getBytes(1, (int) blob.length());
                         } else {
                             value = rs.getBytes(column);
                         }
@@ -155,6 +155,8 @@ public class JdbAbstractTest {
                     } else if(Objects.equals(expectedType,"UUID")){
                         if(dbmsType == DbmsType.ORACLE) {
                             value = toUUID(rs.getBytes(columnIndex));
+                        } else if (dbmsType == DbmsType.DUCKDB) {
+                            value = rs.getObject(columnIndex);
                         } else {
                             String columnValue = rs.getString(columnIndex);
                             value = columnValue == null ? null : UUID.fromString(columnValue);
@@ -177,7 +179,14 @@ public class JdbAbstractTest {
                         }
                     } else {
                         value = switch (columnType) {
-                            case Types.BLOB -> rs.getBytes(columnIndex);
+                            case Types.BLOB -> {
+                                if (dbmsType == DbmsType.DUCKDB) {
+                                    Blob blob = rs.getBlob(columnIndex);
+                                    yield blob == null ? null : blob.getBytes(1, (int) blob.length());
+                                } else {
+                                    yield rs.getBytes(columnIndex);
+                                }
+                            }
                             case Types.DATE -> asLocalDate(rs.getDate(columnIndex));
                             case Types.TIMESTAMP -> rs.getTimestamp(columnIndex);
                             default -> rs.getObject(columnIndex);

@@ -30,6 +30,8 @@ public enum DbmsType {
     DB2("jdbc:db2"),
     /** CockroachDB database. */
     COCKROACHDB("jdbc:cockroachdb"),
+    /** DuckDB database. */
+    DUCKDB("jdbc:duckdb:"),
     /** SQLite database. */
     SQLITE("jdbc:sqlite");
 
@@ -89,6 +91,9 @@ public enum DbmsType {
      */
     public static DbmsType getTypeFromUrl(String url) {
         DbmsType result = UNKNOWN;
+        if (url == null) {
+            return result;
+        }
         for (var type : DbmsType.values()) {
             if (url.startsWith(type.urlStart)) {
                 result = type;

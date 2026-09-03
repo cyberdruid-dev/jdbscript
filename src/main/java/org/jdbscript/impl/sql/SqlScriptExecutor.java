@@ -56,6 +56,7 @@ public class SqlScriptExecutor implements IScriptExecutor {
             case COCKROACHDB -> new CockroachDBStrategy();
             case DB2 -> new Db2Strategy();
             case SQLITE -> new SqliteStrategy();
+            case DUCKDB -> new DuckdbStrategy();
             default -> new DefaultSqlExecutorStrategy();
         };
     }
@@ -135,7 +136,9 @@ public class SqlScriptExecutor implements IScriptExecutor {
             try(Statement stmt = cnn.createStatement()) {
                 for (var tableName : tableNames) {
                     String sql = createDeleteAllSql(tableName);
-                    stmt.execute(sql);
+                    log.debug("Executing cleanup SQL: {}", sql);
+                    int deleted = stmt.executeUpdate(sql);
+                    log.debug("Deleted {} rows from {}", deleted, tableName);
                 }
             }
         });

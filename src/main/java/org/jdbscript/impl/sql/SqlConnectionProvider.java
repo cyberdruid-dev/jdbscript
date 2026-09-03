@@ -33,9 +33,15 @@ public class SqlConnectionProvider {
     public void withConnection(JdbcConnectionConsumer consumer) {
         try(Connection cnn = dataSource.getConnection()) {
             cnn.getMetaData().getDriverName();
-            cnn.setAutoCommit(false);
+            // DuckDB sometimes has issues with transactions and foreign keys in the same transaction
+            boolean isDuckDB = cnn.getMetaData().getURL().startsWith("jdbc:duckdb:");
+            if (!isDuckDB) {
+                cnn.setAutoCommit(false);
+            }
             consumer.accept(cnn);
-            cnn.commit();
+            if (!isDuckDB) {
+                cnn.commit();
+            }
         } catch (RuntimeException e) {
             throw e;
         } catch (Exception e) {
