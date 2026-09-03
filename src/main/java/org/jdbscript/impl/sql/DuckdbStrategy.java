@@ -12,6 +12,32 @@ import java.util.UUID;
 
 class DuckdbStrategy extends DefaultSqlExecutorStrategy {
     @Override
+    public void afterInsert(Connection cnn) throws SQLException {
+        resetDuckdbSequences(cnn);
+    }
+
+    private void resetDuckdbSequences(Connection cnn) throws SQLException {
+        try (var stmt = cnn.createStatement()) {
+            Set<String> seqNames = new HashSet<>();
+            try (var rs = stmt.executeQuery("SELECT sequencename FROM pg_catalog.pg_sequences")) {
+                while (rs.next()) {
+                    seqNames.add(rs.getString(1));
+                }
+            }
+            for (String seqName : seqNames) {
+                // DuckDB sequences don't advance automatically on manual inserts.
+                // We advance them by a safe margin (10000) to avoid collisions with manual IDs.
+                // We use range() to call nextval multiple times as ALTER SEQUENCE RESTART is not yet fully supported in JDBC.
+                try (var rs = stmt.executeQuery("SELECT nextval('" + seqName + "') FROM range(1, 10000)")) {
+                    // Just execute and close
+                }
+            }
+        } catch (SQLException e) {
+            // Ignore if pg_sequences does not exist or other issues
+        }
+    }
+
+    @Override
     public void setInputStream(PreparedStatement stmt, int columnIndex, InputStream value) throws SQLException {
         if (value == null) {
             stmt.setNull(columnIndex, Types.BLOB);
