@@ -38,7 +38,7 @@ public class SqlConnectionProvider {
 
     private ISqlExecutorStrategy getStrategy(Connection cnn) throws SQLException {
         if (strategy == null) {
-            return SqlExecutorStrategyFactory.getStrategy(DBMSType.getType(cnn.getMetaData()));
+            strategy = SqlExecutorStrategyFactory.getStrategy(DBMSType.getType(cnn.getMetaData()));
         }
         return strategy;
     }

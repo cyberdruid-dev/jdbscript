@@ -54,6 +54,14 @@
     * [ ] Should work with class scripts too.
   * [ ] defaults: templates
   * [ ] defaults: generated ID
+    * [ ] Gotcha (found while writing examples/03-recordtools-defaults): `RecordTools.nextIntId`/
+      `nextLongId` advances its counter every time `defaults()` runs for a record, even when the
+      resulting `id(...)` call is a no-op because that column was already set explicitly
+      (`NotOverridingInvocationDecorator` skips the assignment, but the counter was already
+      incremented before the skipped call). Mixing explicit and generated ids in the same script
+      can leave bigger gaps than expected. Decide: skip advancing when the value won't be used
+      (would need `NotOverridingInvocationDecorator` to short-circuit the whole expression, not
+      just the setter), or just document it clearly?
   * [ ] Types conversions
     * [ ] Warnings if DB datatype has less precision and we set data that won't match? (java Date VS db DATE)
       * [ ] Alternative: leave it to dmbs (MySQL thorws exception)
