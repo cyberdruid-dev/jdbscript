@@ -151,6 +151,7 @@ public class JDBEngine<T extends IDBSchema> implements IJDBEngine<T>{
     @Override
     public void assertDBHasNot(Consumer<T> dbAsserts) {
         log.debug("assertDBHasNot(consumer={})", dbAsserts);
+        validateSchema();
         ScriptHandler<T> handler = new ScriptHandler(dbSchemaClass);
         dbAsserts.accept(handler.getProxy());
         JDBScript script = handler.getDbScript();
@@ -165,6 +166,7 @@ public class JDBEngine<T extends IDBSchema> implements IJDBEngine<T>{
     @Override
     public void assertDBHas(Consumer<T> dbAsserts) {
         log.debug("assertDBHas(consumer={})", dbAsserts);
+        validateSchema();
         ScriptHandler<T> handler = new ScriptHandler(dbSchemaClass);
         dbAsserts.accept(handler.getProxy());
         JDBScript script = handler.getDbScript();

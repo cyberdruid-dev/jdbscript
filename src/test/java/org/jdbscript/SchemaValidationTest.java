@@ -121,6 +121,30 @@ public class SchemaValidationTest extends JdbAbstractTest {
     }
 
     @Test
+    public void should_fail_when_table_is_missing_in_db__via_assertDBHas() {
+        executeUpdate("CREATE TABLE table1 (id INT)");
+        // table2 is missing
+
+        JDBEngine<ITestSchema> engine = createEngine(ITestSchema.class);
+
+        assertThatThrownBy(() -> engine.assertDBHas(db -> {}))
+                .isInstanceOf(JDBScriptException.class)
+                .hasMessageContaining("Table 'TABLE2' defined in interface ITestSchema but missing from DB");
+    }
+
+    @Test
+    public void should_fail_when_table_is_missing_in_db__via_assertDBHasNot() {
+        executeUpdate("CREATE TABLE table1 (id INT)");
+        // table2 is missing
+
+        JDBEngine<ITestSchema> engine = createEngine(ITestSchema.class);
+
+        assertThatThrownBy(() -> engine.assertDBHasNot(db -> {}))
+                .isInstanceOf(JDBScriptException.class)
+                .hasMessageContaining("Table 'TABLE2' defined in interface ITestSchema but missing from DB");
+    }
+
+    @Test
     public void should_warn_on_unmapped_table_by_default() {
         executeUpdate("CREATE TABLE table1 (id INT)");
         executeUpdate("CREATE TABLE table2 (id INT)");
