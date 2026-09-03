@@ -42,7 +42,6 @@ public class SqlScriptExecutor implements IScriptExecutor {
     private SqlMetadataProvider metadataProvider;
     private IJDBCache cache = new NoCache();
     private final Map<String, String> insertSqlCache = new ConcurrentHashMap<>();
-    private final Map<String, String> selectSqlCache = new ConcurrentHashMap<>();
  
     public SqlScriptExecutor() {
     }
@@ -172,16 +171,20 @@ public class SqlScriptExecutor implements IScriptExecutor {
     }
 
     private long countMatchingRows(JDBRecord record, PreparedStatementProvider stmtProvider) throws SQLException {
+        // Not cached: the SQL shape now depends on which columns are null for this specific record
+        // (see createSelectAssertSql), and building it is cheap string concatenation, not a JDBC
+        // round trip - the thing actually worth caching, the PreparedStatement, is already handled
+        // by stmtProvider.get(sql), keyed on this exact SQL text.
         List<String> columns = getSortedColumns(record);
-        String sqlKey = record.getTableName() + ":" + String.join(",", columns);
-        String sql = selectSqlCache.computeIfAbsent(sqlKey, k -> createSelectAssertSql(record, columns));
+        String sql = createSelectAssertSql(record, columns);
         PreparedStatement stmt = stmtProvider.get(sql);
         int paramIndex = 1;
         for (String column : columns) {
             Object value = record.getColumns().get(column);
-            // Each column's null-safe predicate binds the value twice - see createSelectAssertSql.
-            setColumnValue(stmt, paramIndex++, value);
-            setColumnValue(stmt, paramIndex++, value);
+            if (!isNullValue(value)) {
+                setColumnValue(stmt, paramIndex++, value);
+            }
+            // A null column is expressed as a literal "IS NULL" in the SQL - nothing to bind.
         }
         try (ResultSet rs = stmt.executeQuery()) {
             if (!rs.next()) {
@@ -205,22 +208,31 @@ public class SqlScriptExecutor implements IScriptExecutor {
         return columns;
     }
 
-    private String createSelectAssertSql(JDBRecord record, List<String> columns) {
-        String sql = "SELECT count(*) FROM " + record.getTableName();
-        sql += " WHERE "+nullSafeEquals(columns.get(0));
-        for(int i= 1; i< columns.size(); i++){
-            sql +=" AND "+nullSafeEquals(columns.get(i));
-        }
-        return sql;
-    }
-
     /**
      * {@code col = ?} never matches a bound NULL (SQL's {@code = NULL} is UNKNOWN, not TRUE), so an
-     * asserted record with a null column would otherwise never be found. This predicate matches
-     * NULL too; the caller must bind the same value to both {@code ?} placeholders it contains.
+     * asserted record with a null column would otherwise never be found. Building this per-record,
+     * aware of which columns are actually null, avoids that without needing a NULL-safe operator:
+     * a null column becomes a literal {@code col IS NULL} (no parameter), a non-null one stays a
+     * plain, fully-typed {@code col = ?}. (An earlier version bound the same value twice via
+     * {@code (col = ? OR (? IS NULL AND col IS NULL))} - portable everywhere we could test offline,
+     * but PostgreSQL's extended query protocol can't infer a type for the bare {@code ? IS NULL}
+     * parameter, since nothing else pins it to a concrete type, and rejects it at prepare time.)
      */
-    private String nullSafeEquals(String column) {
-        return "(" + column + " = ? OR (? IS NULL AND " + column + " IS NULL))";
+    private String createSelectAssertSql(JDBRecord record, List<String> columns) {
+        StringBuilder sql = new StringBuilder("SELECT count(*) FROM ").append(record.getTableName()).append(" WHERE ");
+        for (int i = 0; i < columns.size(); i++) {
+            if (i > 0) {
+                sql.append(" AND ");
+            }
+            String column = columns.get(i);
+            Object value = record.getColumns().get(column);
+            sql.append(column).append(isNullValue(value) ? " IS NULL" : " = ?");
+        }
+        return sql.toString();
+    }
+
+    private boolean isNullValue(Object value) {
+        return value == null || value instanceof TypedNull;
     }
 
     private String createInsertSql(JDBRecord record, List<String> columns) {
