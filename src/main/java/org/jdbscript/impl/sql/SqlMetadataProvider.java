@@ -9,6 +9,7 @@ import org.jdbscript.impl.sql.SqlConnectionProvider.JdbcConnectionConsumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -22,6 +23,7 @@ public class SqlMetadataProvider implements IMetadataProvider {
     private final SqlConnectionProvider connectionProvider;
     private IJDBCache cache = new NoCache();
     private DbmsType dbmsType;
+    private ISqlExecutorStrategy strategy;
 
     private record DbmsTypeKey() implements IJDBCacheKey<DbmsType> {}
     private record TableDependencyKey(String tableName) implements IJDBCacheKey<Set<String>> {}
@@ -37,6 +39,18 @@ public class SqlMetadataProvider implements IMetadataProvider {
 
     public void setCache(IJDBCache cache) {
         this.cache = cache != null ? cache : new NoCache();
+    }
+
+    public void setStrategy(ISqlExecutorStrategy strategy) {
+        this.strategy = strategy;
+    }
+
+    private ISqlExecutorStrategy getStrategy() {
+        if (strategy == null) {
+            DbmsType type = getDbmsType();
+            this.strategy = SqlExecutorStrategyFactory.getStrategy(type);
+        }
+        return strategy;
     }
 
     @Override
@@ -92,15 +106,11 @@ public class SqlMetadataProvider implements IMetadataProvider {
         if (allTables == null) {
             withConnection(cnn -> {
                 DatabaseMetaData metaData = cnn.getMetaData();
-                String catalog = cnn.getCatalog();
-                String schema = cnn.getSchema();
+                String searchCatalog = getStrategy().getSearchCatalog(cnn);
+                String searchSchema = getStrategy().getSearchSchema(cnn);
 
                 List<String> tables = new ArrayList<>();
-                // For DuckDB, we might need to pass null for catalog/schema to see all tables in the current connection
-                String searchCatalog = (getDbmsType() == DbmsType.DUCKDB) ? null : catalog;
-                String searchSchema = (getDbmsType() == DbmsType.DUCKDB) ? null : schema;
-
-                String[] types = (getDbmsType() == DbmsType.DUCKDB) ? new String[]{"TABLE", "BASE TABLE"} : new String[]{"TABLE"};
+                String[] types = getStrategy().getTableTypes();
                 try (ResultSet rs = metaData.getTables(searchCatalog, searchSchema, "%", types)) {
                     while (rs.next()) {
                         tables.add(rs.getString("TABLE_NAME"));
@@ -134,7 +144,7 @@ public class SqlMetadataProvider implements IMetadataProvider {
                 try {
                     rawDeps = cache.getOrCompute(new TableDependencyKey(tableName), k -> {
                         try {
-                            return getRawTableDependencies(metaData, catalog, schema, k.tableName());
+                            return getRawTableDependencies(cnn, catalog, schema, k.tableName());
                         } catch (SQLException e) {
                             throw new RuntimeException(e);
                         }
@@ -168,71 +178,8 @@ public class SqlMetadataProvider implements IMetadataProvider {
         return sorted;
     }
 
-    private Set<String> getRawTableDependencies(DatabaseMetaData metaData, String catalog, String schema, String tableName) throws SQLException {
-        Set<String> allDeps = new HashSet<>();
-        
-        if (getDbmsType() == DbmsType.DUCKDB) {
-            collectDuckdbDependencies(allDeps, tableName);
-            if (!allDeps.isEmpty()) return allDeps;
-        }
-
-        collectImportedKeys(allDeps, metaData, catalog, schema, tableName);
-
-        // If nothing found, try upper case
-        if (allDeps.isEmpty()) {
-            String upperTableName = tableName.toUpperCase();
-            if (!upperTableName.equals(tableName)) {
-                collectImportedKeys(allDeps, metaData, catalog, schema, upperTableName);
-            }
-        }
-
-        // For some DBs (like Postgres or Oracle) catalog/schema handling in getImportedKeys can be tricky.
-        // If still nothing found, try with null catalog and schema to be more permissive.
-        if (allDeps.isEmpty() && (catalog != null || schema != null)) {
-            collectImportedKeys(allDeps, metaData, null, null, tableName);
-            if (allDeps.isEmpty()) {
-                String upperTableName = tableName.toUpperCase();
-                if (!upperTableName.equals(tableName)) {
-                    collectImportedKeys(allDeps, metaData, null, null, upperTableName);
-                }
-            }
-        }
-
-        return allDeps;
-    }
-
-    private void collectDuckdbDependencies(Set<String> allDeps, String tableName) {
-        withConnection(cnn -> {
-            String sql = "SELECT referenced_table FROM duckdb_constraints WHERE UPPER(table_name) = UPPER(?) AND constraint_type = 'FOREIGN KEY'";
-            try (var stmt = cnn.prepareStatement(sql)) {
-                stmt.setString(1, tableName);
-                try (var rs = stmt.executeQuery()) {
-                    while (rs.next()) {
-                        String referencedTable = rs.getString(1);
-                        if (referencedTable != null) {
-                            log.debug("DuckDB: dependency found for {}: {}", tableName, referencedTable);
-                            allDeps.add(referencedTable.toUpperCase());
-                        }
-                    }
-                }
-            } catch (SQLException e) {
-                log.debug("Failed to query duckdb_constraints for table {}: {}", tableName, e.getMessage());
-            }
-        });
-    }
-
-    private void collectImportedKeys(Set<String> allDeps, DatabaseMetaData metaData, String catalog, String schema, String tableName) throws SQLException {
-        try (ResultSet rs = metaData.getImportedKeys(catalog, schema, tableName)) {
-            while (rs.next()) {
-                String pkTableName = rs.getString("PKTABLE_NAME");
-                if (pkTableName != null) {
-                    allDeps.add(pkTableName.toUpperCase());
-                }
-            }
-        } catch (SQLException e) {
-            // Some drivers might throw exception instead of returning empty result set if table not found or parameters are wrong
-            log.debug("Failed to get imported keys for table {}: {}", tableName, e.getMessage());
-        }
+    private Set<String> getRawTableDependencies(Connection cnn, String catalog, String schema, String tableName) throws SQLException {
+        return getStrategy().getRawTableDependencies(cnn, catalog, schema, tableName);
     }
 
     private void sortRecursive(String table, Map<String, Set<String>> dependencies,

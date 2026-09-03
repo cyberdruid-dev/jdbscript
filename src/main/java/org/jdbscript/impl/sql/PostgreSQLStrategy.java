@@ -17,6 +17,15 @@ class PostgreSQLStrategy extends  DefaultSqlExecutorStrategy{
         stmt.setObject(i, uuid);
     }
 
+    @Override
+    public Object getColumnValue(ResultSet rs, int columnIndex, String expectedType) throws SQLException {
+        if ("blob".equals(expectedType)) {
+            Blob blob = rs.getBlob(columnIndex);
+            return blob == null ? null : blob.getBytes(1, (int) blob.length());
+        }
+        return super.getColumnValue(rs, columnIndex, expectedType);
+    }
+
     public void resetPostgreSequences(Connection cnn) throws SQLException {
             try (Statement stmt = cnn.createStatement()) {
                 int majorVersion = getMajorVersion(stmt);

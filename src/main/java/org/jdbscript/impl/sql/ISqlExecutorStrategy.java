@@ -5,7 +5,9 @@ import org.jdbscript.impl.JDbScript;
 import java.io.InputStream;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Set;
 import java.util.UUID;
 
 public interface ISqlExecutorStrategy {
@@ -20,4 +22,18 @@ public interface ISqlExecutorStrategy {
     void setByteArray(PreparedStatement stmt, int i, byte[] value) throws SQLException;
 
     void setObject(PreparedStatement stmt, int i, Object value) throws SQLException;
+
+    void onConnection(Connection cnn) throws SQLException;
+
+    void commit(Connection cnn) throws SQLException;
+
+    String getSearchCatalog(Connection cnn) throws SQLException;
+
+    String getSearchSchema(Connection cnn) throws SQLException;
+
+    String[] getTableTypes();
+
+    Set<String> getRawTableDependencies(Connection cnn, String catalog, String schema, String tableName) throws SQLException;
+
+    Object getColumnValue(ResultSet rs, int columnIndex, String expectedType) throws SQLException;
 }

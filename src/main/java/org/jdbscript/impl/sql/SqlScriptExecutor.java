@@ -48,17 +48,13 @@ public class SqlScriptExecutor implements IScriptExecutor {
     }
 
     public void setDbmsType(DbmsType dbmsType) {
-        this.strategy = switch (dbmsType) {
-            case MSSQL -> new MssqlStrategy();
-            case HSQLDB -> new HsqldbStrategy();
-            case ORACLE -> new OracleStrategy();
-            case POSTGRESQL -> new PostgreSQLStrategy();
-            case COCKROACHDB -> new CockroachDBStrategy();
-            case DB2 -> new Db2Strategy();
-            case SQLITE -> new SqliteStrategy();
-            case DUCKDB -> new DuckdbStrategy();
-            default -> new DefaultSqlExecutorStrategy();
-        };
+        this.strategy = SqlExecutorStrategyFactory.getStrategy(dbmsType);
+        if (this.connectionProvider != null) {
+            this.connectionProvider.setStrategy(this.strategy);
+        }
+        if (this.metadataProvider != null) {
+            this.metadataProvider.setStrategy(this.strategy);
+        }
     }
 
     private ISqlExecutorStrategy getStrategy() {
@@ -75,6 +71,10 @@ public class SqlScriptExecutor implements IScriptExecutor {
         this.connectionProvider = new SqlConnectionProvider(value);
         this.metadataProvider = new SqlMetadataProvider(connectionProvider);
         this.metadataProvider.setCache(this.cache);
+        if (this.strategy != null) {
+            this.connectionProvider.setStrategy(this.strategy);
+            this.metadataProvider.setStrategy(this.strategy);
+        }
     }
 
     @Override

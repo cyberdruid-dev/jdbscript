@@ -120,6 +120,7 @@ public class JdbAbstractTest {
 
     protected void assertTableValues(ExpectedTable expectedTable) {
         DbmsType dbmsType = testConfiguration.getDbmsType();
+        org.jdbscript.impl.sql.ISqlExecutorStrategy strategy = org.jdbscript.impl.sql.SqlExecutorStrategyFactory.getStrategy(dbmsType);
         String tableName = expectedTable.tableName;
         String sql = "SELECT * FROM "+tableName;
         if(expectedTable.whereCondition != null) {
@@ -137,61 +138,7 @@ public class JdbAbstractTest {
                         column = column.split(":")[0];
                     }
                     int columnIndex = findColumn(dbColumns, column);
-                    int columnType = types.get(columnIndex-1);
-                    Object value;
-                    if(Objects.equals(expectedType,"blob")) {
-                        if(dbmsType == DbmsType.POSTGRESQL || dbmsType == DbmsType.DUCKDB) {
-                            Blob blob = rs.getBlob(column);
-                            value = blob == null ? null : blob.getBytes(1, (int) blob.length());
-                        } else {
-                            value = rs.getBytes(column);
-                        }
-                    } else if(Objects.equals(expectedType,"LocalDate")){
-                        if(dbmsType == DbmsType.SQLITE) {
-                            value = asLocalDate(rs.getString(columnIndex));
-                        } else {
-                            value = asLocalDate(rs.getDate(columnIndex));
-                        }
-                    } else if(Objects.equals(expectedType,"UUID")){
-                        if(dbmsType == DbmsType.ORACLE) {
-                            value = toUUID(rs.getBytes(columnIndex));
-                        } else if (dbmsType == DbmsType.DUCKDB) {
-                            value = rs.getObject(columnIndex);
-                        } else {
-                            String columnValue = rs.getString(columnIndex);
-                            value = columnValue == null ? null : UUID.fromString(columnValue);
-                        }
-                    } else if(Objects.equals(expectedType,"Date")){
-                        if(dbmsType == DbmsType.SQLITE) {
-                            Timestamp ts = asTimestamp(rs.getString(columnIndex));
-                            value = ts == null ? null : new Date(ts.getTime());
-                        } else {
-                            Calendar cal = Calendar.getInstance();
-                            cal.setTimeZone(TestConfiguration.UTC);
-                            Timestamp ts = rs.getTimestamp(columnIndex, cal);
-                            value = ts == null ? null : new Date(ts.getTime());
-                        }
-                    } else if(Objects.equals(expectedType,"Timestamp")){
-                        if(dbmsType == DbmsType.SQLITE) {
-                            value = asTimestamp(rs.getString(columnIndex));
-                        } else {
-                            value = rs.getTimestamp(columnIndex);
-                        }
-                    } else {
-                        value = switch (columnType) {
-                            case Types.BLOB -> {
-                                if (dbmsType == DbmsType.DUCKDB) {
-                                    Blob blob = rs.getBlob(columnIndex);
-                                    yield blob == null ? null : blob.getBytes(1, (int) blob.length());
-                                } else {
-                                    yield rs.getBytes(columnIndex);
-                                }
-                            }
-                            case Types.DATE -> asLocalDate(rs.getDate(columnIndex));
-                            case Types.TIMESTAMP -> rs.getTimestamp(columnIndex);
-                            default -> rs.getObject(columnIndex);
-                        };
-                    }
+                    Object value = strategy.getColumnValue(rs, columnIndex, expectedType);
                     values.add(value);
                 }
                 rows.add(new ExpectedTableRow(values));
@@ -206,24 +153,6 @@ public class JdbAbstractTest {
                 .withEqualsForType(this::dateEquals, Date.class)
                 .withEqualsForType(this::byteArrayEquals, byte[].class)
                 .isEqualTo(expectedTable);
-    }
-
-    private Timestamp asTimestamp(String timestampStr) throws ParseException {
-        if (timestampStr == null) return null;
-        try {
-            return new Timestamp(Long.parseLong(timestampStr));
-        } catch (NumberFormatException e) {
-            return new Timestamp(TIMESTAMP_FORMAT.parse(timestampStr).getTime());
-        }
-    }
-
-    private LocalDate asLocalDate(String dateStr) throws ParseException {
-        if (dateStr == null) return null;
-        try {
-            return asLocalDate(new Date(Long.parseLong(dateStr)));
-        } catch (NumberFormatException e) {
-            return asLocalDate(LOCAL_DATE_FORMAT.parse(dateStr));
-        }
     }
 
     protected LocalDate asLocalDate(Date date) {
@@ -370,21 +299,8 @@ public class JdbAbstractTest {
         }
     }
 
-    public static TableColumns columns(String... columns) {
+    protected static TableColumns columns(String... columns) {
         return new TableColumns(List.of(columns));
-    }
-
-    private UUID toUUID(byte[] bytes) {
-        if(bytes == null) {
-            return null;
-        }
-        long msb = 0;
-        long lsb = 0;
-        for (int i=0; i<8; i++)
-            msb = (msb << 8) | (bytes[i] & 0xff);
-        for (int i=8; i<16; i++)
-            lsb = (lsb << 8) | (bytes[i] & 0xff);
-        return new UUID(msb, lsb);
     }
 
     protected static <T> void assertAnyMatch(Collection<T> actualCollection, Predicate<T> predicate, String message) {

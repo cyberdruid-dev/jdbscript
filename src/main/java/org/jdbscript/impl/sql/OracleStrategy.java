@@ -15,6 +15,15 @@ class OracleStrategy extends DefaultSqlExecutorStrategy {
     }
 
     @Override
+    public Object getColumnValue(ResultSet rs, int columnIndex, String expectedType) throws SQLException {
+        if ("UUID".equals(expectedType)) {
+            byte[] bytes = rs.getBytes(columnIndex);
+            return bytes == null ? null : toUUID(bytes);
+        }
+        return super.getColumnValue(rs, columnIndex, expectedType);
+    }
+
+    @Override
     public void afterInsert(Connection cnn) throws SQLException {
         resetOracleSequences(cnn);
     }
@@ -66,6 +75,12 @@ class OracleStrategy extends DefaultSqlExecutorStrategy {
             }
         }
         return result;
+    }
+
+    private UUID toUUID(byte[] bytes) {
+        if (bytes == null) return null;
+        ByteBuffer byteBuffer = ByteBuffer.wrap(bytes);
+        return new UUID(byteBuffer.getLong(), byteBuffer.getLong());
     }
 
     private byte[] toBytes(UUID uuid) {

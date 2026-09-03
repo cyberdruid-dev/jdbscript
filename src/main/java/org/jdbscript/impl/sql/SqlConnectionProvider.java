@@ -1,5 +1,6 @@
 package org.jdbscript.impl.sql;
 
+import org.jdbscript.DbmsType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -17,6 +18,7 @@ public class SqlConnectionProvider {
     private static final Logger log = LoggerFactory.getLogger(SqlConnectionProvider.class);
 
     private final DataSource dataSource;
+    private ISqlExecutorStrategy strategy;
 
     @FunctionalInterface
     public interface JdbcConnectionConsumer {
@@ -30,18 +32,23 @@ public class SqlConnectionProvider {
 
     }
 
+    public void setStrategy(ISqlExecutorStrategy strategy) {
+        this.strategy = strategy;
+    }
+
+    private ISqlExecutorStrategy getStrategy(Connection cnn) throws SQLException {
+        if (strategy == null) {
+            return SqlExecutorStrategyFactory.getStrategy(DbmsType.getType(cnn.getMetaData()));
+        }
+        return strategy;
+    }
+
     public void withConnection(JdbcConnectionConsumer consumer) {
         try(Connection cnn = dataSource.getConnection()) {
-            cnn.getMetaData().getDriverName();
-            // DuckDB sometimes has issues with transactions and foreign keys in the same transaction
-            boolean isDuckDB = cnn.getMetaData().getURL().startsWith("jdbc:duckdb:");
-            if (!isDuckDB) {
-                cnn.setAutoCommit(false);
-            }
+            ISqlExecutorStrategy currentStrategy = getStrategy(cnn);
+            currentStrategy.onConnection(cnn);
             consumer.accept(cnn);
-            if (!isDuckDB) {
-                cnn.commit();
-            }
+            currentStrategy.commit(cnn);
         } catch (RuntimeException e) {
             throw e;
         } catch (Exception e) {
