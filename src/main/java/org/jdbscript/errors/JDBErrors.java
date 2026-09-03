@@ -6,7 +6,7 @@ import java.util.function.Supplier;
 /**
  * Predefined error types and standard messages for JDBScript validation and runtime failures.
  */
-public enum JdbsErrors implements Supplier<JDBScriptException> {
+public enum JDBErrors implements Supplier<JDBScriptException> {
     /** The provided executor class/instance is null. */
     EXECUTOR_IS_NULL(JDBScriptException.class, "executor class can not be null."),
     /** The provided data source is null. */
@@ -36,7 +36,7 @@ public enum JdbsErrors implements Supplier<JDBScriptException> {
     private final Class<? extends JDBScriptException> exception;
     private final String message;
 
-    JdbsErrors(Class<? extends JDBScriptException> exceptionClass, String message) {
+    JDBErrors(Class<? extends JDBScriptException> exceptionClass, String message) {
         this.exception = exceptionClass;
         this.message = message;
     }

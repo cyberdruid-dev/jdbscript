@@ -1,16 +1,15 @@
 package org.jdbscript.impl.sql;
 
-import org.jdbscript.DbmsType;
+import org.jdbscript.DBMSType;
 import org.jdbscript.impl.IMetadataProvider;
 import org.jdbscript.IScriptExecutor;
-import org.jdbscript.impl.JDbRecord;
-import org.jdbscript.impl.JDbScript;
+import org.jdbscript.impl.JDBRecord;
+import org.jdbscript.impl.JDBScript;
 import org.jdbscript.impl.TypedNull;
 import org.jdbscript.impl.cache.IJDBCache;
 import org.jdbscript.impl.cache.NoCache;
 import org.jdbscript.impl.sql.SqlConnectionProvider.JdbcConnectionConsumer;
 import org.jdbscript.impl.sql.SqlConnectionProvider.JdbcSessionConsumer;
-import org.jdbscript.impl.sql.SqlConnectionProvider.PreparedStatementProvider;
 import org.opentest4j.AssertionFailedError;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,11 +27,11 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static org.jdbscript.DbmsType.UNKNOWN;
+import static org.jdbscript.DBMSType.UNKNOWN;
 import static org.jdbscript.errors.Checks.checkIsNull;
 import static org.jdbscript.errors.Checks.checkNotNull;
-import static org.jdbscript.errors.JdbsErrors.DATASOURCE_ALREADY_SET;
-import static org.jdbscript.errors.JdbsErrors.DATASOURCE_IS_NOT_CONFIGURED;
+import static org.jdbscript.errors.JDBErrors.DATASOURCE_ALREADY_SET;
+import static org.jdbscript.errors.JDBErrors.DATASOURCE_IS_NOT_CONFIGURED;
 
 public class SqlScriptExecutor implements IScriptExecutor {
     private static final Logger log = LoggerFactory.getLogger(SqlScriptExecutor.class);
@@ -47,7 +46,7 @@ public class SqlScriptExecutor implements IScriptExecutor {
     public SqlScriptExecutor() {
     }
 
-    public void setDbmsType(DbmsType dbmsType) {
+    public void setDbmsType(DBMSType dbmsType) {
         this.strategy = SqlExecutorStrategyFactory.getStrategy(dbmsType);
         if (this.connectionProvider != null) {
             this.connectionProvider.setStrategy(this.strategy);
@@ -59,7 +58,7 @@ public class SqlScriptExecutor implements IScriptExecutor {
 
     private ISqlExecutorStrategy getStrategy() {
         if (strategy == null) {
-            DbmsType dbmsType = getMetadataProvider() != null ? getMetadataProvider().getDbmsType() : UNKNOWN;
+            DBMSType dbmsType = getMetadataProvider() != null ? getMetadataProvider().getDbmsType() : UNKNOWN;
             setDbmsType(dbmsType);
         }
         return strategy;
@@ -78,7 +77,7 @@ public class SqlScriptExecutor implements IScriptExecutor {
     }
 
     @Override
-    public void insert(JDbScript dbScript) {
+    public void insert(JDBScript dbScript) {
         withPreparedStatements((cnn, stmtProvider) -> {
             getStrategy().beforeInsert(cnn, dbScript);
             for (var record : dbScript.getRecords()) {
@@ -150,9 +149,9 @@ public class SqlScriptExecutor implements IScriptExecutor {
     }
 
     @Override
-    public void assertRowsExist(JDbScript script) {
+    public void assertRowsExist(JDBScript script) {
         withPreparedStatements((cnn, stmtProvider) -> {
-            for (JDbRecord record : script.getRecords()) {
+            for (JDBRecord record : script.getRecords()) {
                 List<String> columns = getSortedColumns(record);
                 String sqlKey = record.getTableName() + ":" + String.join(",", columns);
                 String sql = selectSqlCache.computeIfAbsent(sqlKey, k -> createSelectAssertSql(record, columns));
@@ -176,9 +175,9 @@ public class SqlScriptExecutor implements IScriptExecutor {
     }
 
     @Override
-    public void assertRowsNotExist(JDbScript script) {
+    public void assertRowsNotExist(JDBScript script) {
         withPreparedStatements((cnn, stmtProvider) -> {
-            for (JDbRecord record : script.getRecords()) {
+            for (JDBRecord record : script.getRecords()) {
                 List<String> columns = getSortedColumns(record);
                 String sqlKey = record.getTableName() + ":" + String.join(",", columns);
                 String sql = selectSqlCache.computeIfAbsent(sqlKey, k -> createSelectAssertSql(record, columns));
@@ -208,13 +207,13 @@ public class SqlScriptExecutor implements IScriptExecutor {
         }
     }
 
-    private List<String> getSortedColumns(JDbRecord record) {
+    private List<String> getSortedColumns(JDBRecord record) {
         List<String> columns = new ArrayList<>(record.getColumns().keySet());
         Collections.sort(columns);
         return columns;
     }
 
-    private String createSelectAssertSql(JDbRecord record, List<String> columns) {
+    private String createSelectAssertSql(JDBRecord record, List<String> columns) {
         String sql = "SELECT count(*) FROM " + record.getTableName();
         sql += " WHERE "+columns.get(0)+" = ?";
         for(int i= 1; i< columns.size(); i++){
@@ -223,7 +222,7 @@ public class SqlScriptExecutor implements IScriptExecutor {
         return sql;
     }
 
-    private String createInsertSql(JDbRecord record, List<String> columns) {
+    private String createInsertSql(JDBRecord record, List<String> columns) {
         String sql = "INSERT INTO " + record.getTableName();
         sql += " ( "+ String.join(",", columns) + " )";
         sql += " VALUES ";

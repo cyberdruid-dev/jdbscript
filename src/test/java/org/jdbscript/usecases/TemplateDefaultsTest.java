@@ -1,10 +1,7 @@
 package org.jdbscript.usecases;
 
-import org.jdbscript.IDbSchema;
-import org.jdbscript.IDbSchema.IDBRecord;
-import org.jdbscript.JDBEngine;
-import org.jdbscript.JdbAbstractTest;
-import org.jdbscript.RecordTools;
+import org.jdbscript.*;
+import org.jdbscript.IDBSchema.IDBRecord;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
@@ -21,7 +18,7 @@ public class TemplateDefaultsTest extends JdbAbstractTest {
             str_column_1(tools.strValue("value=${int_column_1}"));
         }
     }
-    private interface IDefaultsTestSchema extends IDbSchema {
+    private interface IDefaultsTestSchema extends IDBSchema {
 
         ITableWithDefaultsRecord table_with_defaults();
 

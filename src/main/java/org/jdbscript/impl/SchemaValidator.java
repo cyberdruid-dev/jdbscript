@@ -1,9 +1,9 @@
 package org.jdbscript.impl;
 
-import org.jdbscript.IDbSchema;
-import org.jdbscript.IDbSchema.IDBRecord;
+import org.jdbscript.IDBSchema;
+import org.jdbscript.IDBSchema.IDBRecord;
 import org.jdbscript.ValidationStrategy;
-import org.jdbscript.errors.JdbsErrors;
+import org.jdbscript.errors.JDBErrors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -14,8 +14,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.jdbscript.errors.Checks.checkNotNull;
-import static org.jdbscript.errors.JdbsErrors.DB_SCHEMA_IS_NULL;
-import static org.jdbscript.errors.JdbsErrors.METADATA_PROVIDER_IS_NULL;
+import static org.jdbscript.errors.JDBErrors.DB_SCHEMA_IS_NULL;
+import static org.jdbscript.errors.JDBErrors.METADATA_PROVIDER_IS_NULL;
 
 /**
  * Internal component for validating that the database tables match the schema interface.
@@ -30,7 +30,7 @@ public class SchemaValidator {
             "DATABASECHANGELOGLOCK"
     );
 
-    private final Class<? extends IDbSchema> dbSchemaClass;
+    private final Class<? extends IDBSchema> dbSchemaClass;
     private final IMetadataProvider provider;
     private final ValidationStrategy unmappedTableStrategy;
     private final Set<String> suppressedTables;
@@ -46,7 +46,7 @@ public class SchemaValidator {
      * @param suppressedTables set of suppressed table names (upper case)
      * @param suppressDefaultUnmappedTables whether to suppress default migration tables
      */
-    public SchemaValidator(Class<? extends IDbSchema> dbSchemaClass,
+    public SchemaValidator(Class<? extends IDBSchema> dbSchemaClass,
                            IMetadataProvider provider,
                            ValidationStrategy unmappedTableStrategy,
                            Set<String> suppressedTables,
@@ -85,14 +85,14 @@ public class SchemaValidator {
                 switch (unmappedTableStrategy) {
                     case LOG_WARN -> log.warn(msg);
                     case LOG_ERROR -> log.error(msg);
-                    case FAIL -> throw JdbsErrors.UNMAPPED_TABLE_IN_DB.get(dbTable, dbSchemaClass.getSimpleName());
+                    case FAIL -> throw JDBErrors.UNMAPPED_TABLE_IN_DB.get(dbTable, dbSchemaClass.getSimpleName());
                 }
             }
         }
 
         for (String interfaceTable : interfaceTables) {
             if (!dbTableSet.contains(interfaceTable)) {
-                throw JdbsErrors.MISSING_TABLE_IN_DB.get(interfaceTable, dbSchemaClass.getSimpleName());
+                throw JDBErrors.MISSING_TABLE_IN_DB.get(interfaceTable, dbSchemaClass.getSimpleName());
             }
         }
         schemaValidated = true;

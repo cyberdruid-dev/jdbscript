@@ -1,7 +1,7 @@
 package org.jdbscript.usecases;
 
-import org.jdbscript.IDbSchema;
-import org.jdbscript.IDbSchema.IDBRecord;
+import org.jdbscript.IDBSchema;
+import org.jdbscript.IDBSchema.IDBRecord;
 import org.jdbscript.IJDBEngine;
 import org.jdbscript.JdbAbstractTest;
 import org.opentest4j.AssertionFailedError;
@@ -25,7 +25,7 @@ public class DbAssertionsTest extends JdbAbstractTest {
         ITableForAssertions date_column_1(Date value);
     }
 
-    private interface IAssertionTestSchema extends IDbSchema {
+    private interface IAssertionTestSchema extends IDBSchema {
 
         ITableForAssertions table_for_assertions();
 

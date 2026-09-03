@@ -1,8 +1,6 @@
 package org.jdbscript.db;
 
-import org.jdbscript.IDbSchema;
-
-public interface ITestDbSchema extends IDbSchema {
+public interface ITestDBSchema extends org.jdbscript.IDBSchema {
 
     ITable1Record table_1();
     ITable2Record table_2();

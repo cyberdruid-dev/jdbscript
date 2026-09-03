@@ -1,10 +1,7 @@
 package org.jdbscript.datatypes;
 
-import org.jdbscript.IDbSchema;
-import org.jdbscript.IDbSchema.IDBRecord;
-import org.jdbscript.IJDBEngine;
-import org.jdbscript.JdbAbstractTest;
-import org.jdbscript.DbmsType;
+import org.jdbscript.*;
+import org.jdbscript.IDBSchema.IDBRecord;
 import org.jdbscript.utils.TestConfiguration;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
@@ -12,8 +9,6 @@ import org.testng.annotations.Test;
 
 import java.time.LocalDate;
 import java.util.*;
-
-import static org.jdbscript.DbmsType.SQLITE;
 
 @Test
 public class DateTest extends JdbAbstractTest {
@@ -23,7 +18,7 @@ public class DateTest extends JdbAbstractTest {
     private interface IDateTable extends IDBRecord {
         IDateTable date_column(Date value);
     }
-    private interface IDateTestSchema extends IDbSchema {
+    private interface IDateTestSchema extends IDBSchema {
 
         IDateTable date_table();
 
@@ -32,7 +27,7 @@ public class DateTest extends JdbAbstractTest {
     private interface ISqlDateTable extends IDBRecord {
         ISqlDateTable date_column(java.sql.Date value);
     }
-    private interface ISqlDateTestSchema extends IDbSchema {
+    private interface ISqlDateTestSchema extends IDBSchema {
 
         ISqlDateTable date_table();
 
@@ -40,7 +35,7 @@ public class DateTest extends JdbAbstractTest {
     private interface ILocalDateTable extends IDBRecord {
         ILocalDateTable date_column(LocalDate value);
     }
-    private interface ILocalDateTestSchema extends IDbSchema {
+    private interface ILocalDateTestSchema extends IDBSchema {
 
         ILocalDateTable date_table();
 
@@ -128,7 +123,7 @@ public class DateTest extends JdbAbstractTest {
 
     @DataProvider
     private Iterator<Date> dates(){
-        DbmsType dbms = this.testConfiguration.getDbmsType();
+        DBMSType dbms = this.testConfiguration.getDbmsType();
         List<Date> dates = new ArrayList<>();
         dates.addAll(List.of(
                 date(1925,5,5),

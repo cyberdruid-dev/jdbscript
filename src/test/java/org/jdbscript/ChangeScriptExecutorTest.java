@@ -1,8 +1,8 @@
 package org.jdbscript;
 
-import org.jdbscript.IDbSchema.IDBRecord;
+import org.jdbscript.IDBSchema.IDBRecord;
 import org.jdbscript.errors.JDBScriptException;
-import org.jdbscript.impl.JDbScript;
+import org.jdbscript.impl.JDBScript;
 import org.jdbscript.impl.sql.SqlScriptExecutor;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -18,7 +18,7 @@ public class ChangeScriptExecutorTest extends JdbAbstractTest {
     private interface ITable1Record extends IDBRecord {
         ITable1Record str_column_1(String value);
     }
-    private interface ITestSchema extends IDbSchema{
+    private interface ITestSchema extends IDBSchema {
 
         ITable1Record table_1();
 
@@ -33,7 +33,7 @@ public class ChangeScriptExecutorTest extends JdbAbstractTest {
         }
 
         @Override
-        public void insert(JDbScript dbScript) {
+        public void insert(JDBScript dbScript) {
             myScriptExecutorUsed = true;
             super.insert(dbScript);
         }

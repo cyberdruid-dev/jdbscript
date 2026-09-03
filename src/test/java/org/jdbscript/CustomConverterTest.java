@@ -3,16 +3,14 @@ package org.jdbscript;
 import org.jdbscript.impl.conversion.IJDBTypeConverter;
 import org.testng.annotations.Test;
 
-import java.util.List;
-
 @Test
 public class CustomConverterTest extends JdbAbstractTest {
 
-    private interface ITable1 extends IDbSchema.IDBRecord {
+    private interface ITable1 extends IDBSchema.IDBRecord {
         ITable1 str_column_1(Object value);
     }
 
-    private interface ITestSchema extends IDbSchema {
+    private interface ITestSchema extends IDBSchema {
         ITable1 table_1();
     }
 

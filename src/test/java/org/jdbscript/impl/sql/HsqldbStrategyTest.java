@@ -1,9 +1,8 @@
 package org.jdbscript.impl.sql;
 
-import org.jdbscript.DbmsType;
+import org.jdbscript.DBMSType;
 import org.testng.annotations.Test;
 
-import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
@@ -16,7 +15,6 @@ import java.sql.Statement;
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -25,7 +23,7 @@ public class HsqldbStrategyTest {
     @Test
     public void sqlScriptExecutor_should_use_HsqldbStrategy_for_hsqldb_dbms() throws Exception {
         SqlScriptExecutor executor = new SqlScriptExecutor();
-        executor.setDbmsType(DbmsType.HSQLDB);
+        executor.setDbmsType(DBMSType.HSQLDB);
 
         Field strategyField = SqlScriptExecutor.class.getDeclaredField("strategy");
         strategyField.setAccessible(true);

@@ -1,7 +1,7 @@
 package org.jdbscript.usecases;
 
-import org.jdbscript.IDbSchema;
-import org.jdbscript.IDbSchema.IDBRecord;
+import org.jdbscript.IDBSchema;
+import org.jdbscript.IDBSchema.IDBRecord;
 import org.jdbscript.IJDBEngine;
 import org.jdbscript.JdbAbstractTest;
 import org.testng.annotations.BeforeMethod;
@@ -18,7 +18,7 @@ public class OneTableSimpleTest extends JdbAbstractTest {
         ITable1Record str_column_1(String value);
         ITable1Record str_column_2(String value);
     }
-    private interface ITestSchema extends IDbSchema {
+    private interface ITestSchema extends IDBSchema {
 
         ITable1Record table_1();
 

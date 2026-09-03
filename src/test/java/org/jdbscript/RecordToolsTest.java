@@ -1,6 +1,6 @@
 package org.jdbscript;
 
-import org.jdbscript.impl.JDbRecord;
+import org.jdbscript.impl.JDBRecord;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
@@ -9,12 +9,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class RecordToolsTest {
 
     private RecordTools tools;
-    private JDbRecord record;
+    private JDBRecord record;
 
     @BeforeMethod
     public void setUp() throws Exception {
         this.tools = new RecordTools();
-        this.record = new JDbRecord("the_table_name");
+        this.record = new JDBRecord("the_table_name");
         this.tools.setRecord(this.record);
     }
 

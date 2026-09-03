@@ -1,6 +1,6 @@
 package org.jdbscript;
 
-import org.jdbscript.IDbSchema.IDBRecord;
+import org.jdbscript.IDBSchema.IDBRecord;
 import org.jdbscript.impl.IMetadataProvider;
 import org.jdbscript.impl.sql.SqlConnectionProvider;
 import org.jdbscript.impl.sql.SqlMetadataProvider;
@@ -19,11 +19,11 @@ public class MetadataProviderTest extends JdbAbstractTest {
         ICustomerRecord id(int value);
     }
 
-    private interface ITestSchema extends IDbSchema {
+    private interface ITestSchema extends IDBSchema {
         ICustomerRecord customers();
     }
 
-    private interface IIncompleteSchema extends IDbSchema {
+    private interface IIncompleteSchema extends IDBSchema {
         // Missing customers table
     }
 

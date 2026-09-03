@@ -10,8 +10,8 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static org.jdbscript.errors.Checks.checkNotNull;
-import static org.jdbscript.errors.JdbsErrors.CACHE_STRATEGY_IS_NULL;
-import static org.jdbscript.errors.JdbsErrors.DATASOURCE_IS_NULL;
+import static org.jdbscript.errors.JDBErrors.CACHE_STRATEGY_IS_NULL;
+import static org.jdbscript.errors.JDBErrors.DATASOURCE_IS_NULL;
 
 public class JDBCacheManager {
     private static JDBCacheManager instance = new JDBCacheManager();

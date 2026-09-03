@@ -1,6 +1,6 @@
 package org.jdbscript.impl.sql;
 
-import org.jdbscript.DbmsType;
+import org.jdbscript.DBMSType;
 import org.jdbscript.impl.IMetadataProvider;
 import org.jdbscript.impl.cache.IJDBCache;
 import org.jdbscript.impl.cache.IJDBCache.IJDBCacheKey;
@@ -22,12 +22,12 @@ public class SqlMetadataProvider implements IMetadataProvider {
 
     private final SqlConnectionProvider connectionProvider;
     private IJDBCache cache = new NoCache();
-    private DbmsType dbmsType;
+    private DBMSType dbmsType;
     private ISqlExecutorStrategy strategy;
 
-    private record DbmsTypeKey() implements IJDBCacheKey<DbmsType> {}
+    private record DBMSTypeKey() implements IJDBCacheKey<DBMSType> {}
     private record TableDependencyKey(String tableName) implements IJDBCacheKey<Set<String>> {}
-    private static final DbmsTypeKey DBMS_TYPE_KEY = new DbmsTypeKey();
+    private static final DBMSTypeKey DBMS_TYPE_KEY = new DBMSTypeKey();
 
 
     private List<String> allTables;
@@ -47,19 +47,19 @@ public class SqlMetadataProvider implements IMetadataProvider {
 
     private ISqlExecutorStrategy getStrategy() {
         if (strategy == null) {
-            DbmsType type = getDbmsType();
+            DBMSType type = getDbmsType();
             this.strategy = SqlExecutorStrategyFactory.getStrategy(type);
         }
         return strategy;
     }
 
     @Override
-    public DbmsType getDbmsType() {
+    public DBMSType getDbmsType() {
         if (dbmsType == null) {
             dbmsType = cache.getOrCompute(DBMS_TYPE_KEY, k -> {
-                final DbmsType[] detected = new DbmsType[1];
+                final DBMSType[] detected = new DBMSType[1];
                 withConnection(cnn -> {
-                    detected[0] = DbmsType.getType(cnn.getMetaData());
+                    detected[0] = DBMSType.getType(cnn.getMetaData());
                 });
                 return detected[0];
             });

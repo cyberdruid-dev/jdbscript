@@ -1,6 +1,6 @@
 package org.jdbscript.impl.sql;
 
-import org.jdbscript.impl.JDbScript;
+import org.jdbscript.impl.JDBScript;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
@@ -22,7 +22,7 @@ class DefaultSqlExecutorStrategy implements ISqlExecutorStrategy {
     }
 
     @Override
-    public void beforeInsert(Connection cnn, JDbScript dbScript) throws SQLException {
+    public void beforeInsert(Connection cnn, JDBScript dbScript) throws SQLException {
     }
 
     @Override

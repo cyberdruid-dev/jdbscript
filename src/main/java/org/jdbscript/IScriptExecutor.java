@@ -1,7 +1,7 @@
 package org.jdbscript;
  
 import org.jdbscript.impl.IMetadataProvider;
-import org.jdbscript.impl.JDbScript;
+import org.jdbscript.impl.JDBScript;
 import org.jdbscript.impl.cache.IJDBCache;
 
 import javax.sql.DataSource;
@@ -24,7 +24,7 @@ public interface IScriptExecutor {
      *
      * @param dbScript the compiled script containing records to insert
      */
-    void insert(JDbScript dbScript);
+    void insert(JDBScript dbScript);
 
     /**
      * Cleans up (deletes all records from) the specified tables.
@@ -35,9 +35,9 @@ public interface IScriptExecutor {
 
     IMetadataProvider getMetadataProvider();
 
-    void assertRowsExist(JDbScript script);
+    void assertRowsExist(JDBScript script);
 
-    void assertRowsNotExist(JDbScript script);
+    void assertRowsNotExist(JDBScript script);
 
     /**
      * Sets the cache to be used for metadata calculations.

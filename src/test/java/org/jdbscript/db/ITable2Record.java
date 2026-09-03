@@ -1,7 +1,7 @@
 package org.jdbscript.db;
 
 
-import org.jdbscript.IDbSchema.IDBRecord;
+import org.jdbscript.IDBSchema.IDBRecord;
 
 public interface ITable2Record extends IDBRecord {
     ITable2Record int_column_1(int value);

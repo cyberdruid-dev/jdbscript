@@ -1,6 +1,6 @@
 package org.jdbscript.utils;
 
-import org.jdbscript.DbmsType;
+import org.jdbscript.DBMSType;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import liquibase.Liquibase;
@@ -17,10 +17,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.Scanner;
 
 class DataSourceFactory {
     private static final Logger log = LoggerFactory.getLogger(DataSourceFactory.class);
@@ -28,7 +26,7 @@ class DataSourceFactory {
     private String jdbcUrl;
     private String jdbcUser;
     private String jdbcPassword;
-    private DbmsType dbmsType;
+    private DBMSType dbmsType;
 
     public void setJdbcUrl(String jdbcUrl) {
         this.jdbcUrl = jdbcUrl;
@@ -49,13 +47,13 @@ class DataSourceFactory {
         return newDataSource;
     }
 
-    public DbmsType getDbmsType() {
+    public DBMSType getDbmsType() {
         if(this.dbmsType == null) {
-            DbmsType type = DbmsType.getTypeFromUrl(jdbcUrl);
-            if (type == DbmsType.POSTGRESQL) {
+            DBMSType type = DBMSType.getTypeFromUrl(jdbcUrl);
+            if (type == DBMSType.POSTGRESQL) {
                 // CockroachDB often uses PostgreSQL JDBC URL. Try to refine detection if possible.
                 try (Connection connection = java.sql.DriverManager.getConnection(jdbcUrl, jdbcUser, jdbcPassword)) {
-                    this.dbmsType = DbmsType.getType(connection.getMetaData());
+                    this.dbmsType = DBMSType.getType(connection.getMetaData());
                 } catch (SQLException e) {
                     log.warn("Failed to refine DBMS type detection via connection, falling back to URL-based detection: {}", e.getMessage());
                     this.dbmsType = type;
@@ -64,7 +62,7 @@ class DataSourceFactory {
                 this.dbmsType = type;
             }
 
-            if(this.dbmsType == DbmsType.UNKNOWN) {
+            if(this.dbmsType == DBMSType.UNKNOWN) {
                 throw new UnsupportedOperationException("Unknown dbms type for JDBC URL: " + jdbcUrl);
             }
         }
@@ -90,7 +88,7 @@ class DataSourceFactory {
     }
 
     private void runLiquibase(DataSource newDataSource) {
-        if (getDbmsType() == DbmsType.DUCKDB) {
+        if (getDbmsType() == DBMSType.DUCKDB) {
             log.info("Skipping Liquibase for DuckDB as it is not fully supported yet. Running manual initialization.");
             runDuckdbInit(newDataSource);
             return;

@@ -1,6 +1,6 @@
 package org.jdbscript;
 
-import org.jdbscript.db.ITestDbSchema;
+import org.jdbscript.db.ITestDBSchema;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
@@ -11,12 +11,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Test
 public class TheTest extends JdbAbstractTest {
 
-    private abstract static class SomeDBScript implements ITestDbSchema {{
+    private abstract static class SomeDBScript implements ITestDBSchema {{
         table_1().str_column_1("Hello");
         table_1().str_column_1("Good Bye");
     }};
 
-    private final JDBEngine<ITestDbSchema> engine = JDBEngine.builder(ITestDbSchema.class)
+    private final JDBEngine<ITestDBSchema> engine = JDBEngine.builder(ITestDBSchema.class)
             .dataSource(dataSource)
             .build();
 

@@ -14,7 +14,7 @@ public final class Checks {
      * @param value the condition to check
      * @param error the error to throw if the condition is false
      */
-    public static void checkThat(boolean value, JdbsErrors error) {
+    public static void checkThat(boolean value, JDBErrors error) {
         if(!value) {
             throw error.get();
         }
@@ -28,7 +28,7 @@ public final class Checks {
      * @param error the error to throw if the value is null
      * @return the non-null value
      */
-    public static <T> T checkNotNull(T value, JdbsErrors error) {
+    public static <T> T checkNotNull(T value, JDBErrors error) {
         if(value == null) {
             throw error.get();
         }
@@ -41,7 +41,7 @@ public final class Checks {
      * @param value the object to check
      * @param error the error to throw if the value is not null
      */
-    public static void checkIsNull(Object value, JdbsErrors error) {
+    public static void checkIsNull(Object value, JDBErrors error) {
         if(value != null) {
             throw error.get();
         }

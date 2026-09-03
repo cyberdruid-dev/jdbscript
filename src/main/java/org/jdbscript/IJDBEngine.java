@@ -5,9 +5,9 @@ import java.util.function.Consumer;
 /**
  * Main engine interface for executing JDBScript database seeding, population, and cleanup operations.
  *
- * @param <T> the schema interface type extending {@link IDbSchema}
+ * @param <T> the schema interface type extending {@link IDBSchema}
  */
-public interface IJDBEngine <T extends IDbSchema>{
+public interface IJDBEngine <T extends IDBSchema>{
 
     /**
      * Cleans up all tables declared in the schema and executes the specified class-based script.

@@ -1,6 +1,6 @@
 package org.jdbscript.impl.sql;
 
-import org.jdbscript.DbmsType;
+import org.jdbscript.DBMSType;
 import org.testng.annotations.Test;
 
 import java.io.ByteArrayInputStream;
@@ -28,7 +28,7 @@ public class Db2StrategyTest {
     @Test
     public void sqlScriptExecutor_should_use_Db2Strategy_for_db2_dbms() throws Exception {
         SqlScriptExecutor executor = new SqlScriptExecutor();
-        executor.setDbmsType(DbmsType.DB2);
+        executor.setDbmsType(DBMSType.DB2);
 
         Field strategyField = SqlScriptExecutor.class.getDeclaredField("strategy");
         strategyField.setAccessible(true);

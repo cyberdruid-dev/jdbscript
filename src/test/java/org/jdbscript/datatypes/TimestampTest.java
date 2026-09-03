@@ -1,7 +1,7 @@
 package org.jdbscript.datatypes;
 
-import org.jdbscript.IDbSchema;
-import org.jdbscript.IDbSchema.IDBRecord;
+import org.jdbscript.IDBSchema;
+import org.jdbscript.IDBSchema.IDBRecord;
 import org.jdbscript.IJDBEngine;
 import org.jdbscript.JdbAbstractTest;
 import org.jdbscript.utils.TestConfiguration;
@@ -13,8 +13,6 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.*;
 
-import static org.jdbscript.DbmsType.SQLITE;
-
 @Test
 public class TimestampTest extends JdbAbstractTest {
 
@@ -23,7 +21,7 @@ public class TimestampTest extends JdbAbstractTest {
     private interface ITimestampTable extends IDBRecord {
         ITimestampTable timestamp_column(Date value);
     }
-    private interface ITimestampTestSchema extends IDbSchema {
+    private interface ITimestampTestSchema extends IDBSchema {
 
         ITimestampTable timestamp_table();
 
@@ -32,7 +30,7 @@ public class TimestampTest extends JdbAbstractTest {
     private interface IInstantTable extends IDBRecord {
         IInstantTable timestamp_column(Instant value);
     }
-    private interface IInstantTestSchema extends IDbSchema {
+    private interface IInstantTestSchema extends IDBSchema {
 
         IInstantTable timestamp_table();
 

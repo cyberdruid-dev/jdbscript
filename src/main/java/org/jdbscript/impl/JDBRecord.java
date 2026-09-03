@@ -3,11 +3,11 @@ package org.jdbscript.impl;
 import java.util.HashMap;
 import java.util.Map;
 
-public class JDbRecord {
+public class JDBRecord {
     private String tableName;
     private Map<String, Object> columns = new HashMap<>();
 
-    public JDbRecord(String tableName){
+    public JDBRecord(String tableName){
         this.tableName = tableName;
     }
 
@@ -25,7 +25,7 @@ public class JDbRecord {
 
     @Override
     public String toString() {
-        return "DbRecord [tableName=" + tableName + ", columns=" + columns + "]";
+        return "JDBRecord [tableName=" + tableName + ", columns=" + columns + "]";
     }
 
     public boolean hasValueFor(String columnName) {

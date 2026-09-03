@@ -3,25 +3,25 @@ package org.jdbscript.impl;
 import java.util.ArrayList;
 import java.util.List;
 
-public class JDbScript {
+public class JDBScript {
 
-    private final List<JDbRecord> records = new ArrayList<>();
+    private final List<JDBRecord> records = new ArrayList<>();
 
-    public List<JDbRecord> getRecords() {
+    public List<JDBRecord> getRecords() {
         return records;
     }
 
-    public void addRecord(JDbRecord record){
+    public void addRecord(JDBRecord record){
         records.add(record);
     }
 
-    public void append(JDbScript dbScript) {
+    public void append(JDBScript dbScript) {
         records.addAll(dbScript.records);
     }
 
     @Override
     public String toString() {
-        String result = "JDbScript[\n";
+        String result = "JDBScript[\n";
         for(var item: records) {
             result += item.toString() + "\n";
         }

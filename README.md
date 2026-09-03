@@ -70,26 +70,32 @@ testImplementation("org.jdbscript:jdbscript:1.0.0")
 
 ### 1. Define Your Schema Interfaces
 
-Define an interface extending `IDbSchema` representing your database schema, and record interfaces extending `IDBRecord` representing your tables:
+Define an interface extending `IDBSchema` representing your database schema, and record interfaces extending `IDBRecord` representing your tables:
 
 ```java
-import org.jdbscript.IDbSchema;
-import org.jdbscript.IDbSchema.IDBRecord;
+import org.jdbscript.IDBSchema;
+import org.jdbscript.IDBSchema.IDBRecord;
 
-public interface IAppSchema extends IDbSchema {
+public interface IAppSchema extends IDBSchema {
     IUserRecord users();
+
     IOrderRecord orders();
 
     interface IUserRecord extends IDBRecord {
         IUserRecord id(Long id);
+
         IUserRecord username(String username);
+
         IUserRecord email(String email);
+
         IUserRecord active(Boolean active);
     }
 
     interface IOrderRecord extends IDBRecord {
         IOrderRecord id(Long id);
+
         IOrderRecord user_id(Long userId);
+
         IOrderRecord total_amount(Double amount);
     }
 }
@@ -184,12 +190,14 @@ engine.resetDB(db -> {
 Provide default values directly within your record interfaces using Java default methods. You can also inject `RecordTools` to generate auto-incrementing IDs or template-based strings:
 
 ```java
-import org.jdbscript.IDbSchema.IDBRecord;
+import org.jdbscript.IDBSchema.IDBRecord;
 import org.jdbscript.RecordTools;
 
 public interface IUserRecord extends IDBRecord {
     IUserRecord id(Integer id);
+
     IUserRecord username(String username);
+
     IUserRecord email(String email);
 
     default void defaults(RecordTools tools) {

@@ -1,8 +1,8 @@
 package org.jdbscript.impl;
 
-import org.jdbscript.IDbRecordTools;
-import org.jdbscript.IDbSchema;
-import org.jdbscript.IDbSchema.IDBRecord;
+import org.jdbscript.IDBRecordTools;
+import org.jdbscript.IDBSchema;
+import org.jdbscript.IDBSchema.IDBRecord;
 import org.jdbscript.errors.JDBScriptException;
 import org.jdbscript.impl.javassist.ClassScriptWrapper;
 
@@ -13,18 +13,18 @@ import java.lang.reflect.Proxy;
 import java.util.*;
 import java.util.function.Consumer;
 
-public class ScriptHandler<T extends IDbSchema> {
+public class ScriptHandler<T extends IDBSchema> {
     private final static String DEFAULTS_METHOD_NAME = "defaults";
 
-    private final JDbScript dbScript = new JDbScript();
+    private final JDBScript dbScript = new JDBScript();
     private final Map<String,Object> tableTools = new HashMap<>();
     private Class<T> schemaClass;
 
     private static class AddedRecord {
-        JDbRecord record;
+        JDBRecord record;
         Object recordProxy;
         Class<?> tableDescriptionClass;
-        AddedRecord(Class<?> tableDescriptionClass, JDbRecord record, Object recordProxy) {
+        AddedRecord(Class<?> tableDescriptionClass, JDBRecord record, Object recordProxy) {
             this.record = record;
             this.tableDescriptionClass = tableDescriptionClass;
             this.recordProxy = recordProxy;
@@ -66,7 +66,7 @@ public class ScriptHandler<T extends IDbSchema> {
         Class<?> type = method.getReturnType();
         if (IDBRecord.class.isAssignableFrom(type)) {
             String tableName = method.getName();
-            JDbRecord record = new JDbRecord(tableName);
+            JDBRecord record = new JDBRecord(tableName);
             dbScript.addRecord(record);
             Object recordProxy = newProxy(type, new TableRecordHandler(record));
             records.add(new AddedRecord(type, record, recordProxy));
@@ -87,7 +87,7 @@ public class ScriptHandler<T extends IDbSchema> {
                 .findFirst();
     }
 
-    private void applyDefaults(Object recordProxy, Class<?> type, JDbRecord record) {
+    private void applyDefaults(Object recordProxy, Class<?> type, JDBRecord record) {
         findDefaultsMethod(type).ifPresent(m->{
                     try {
                         Object decorator = newProxy(type, new NotOverridingInvocationDecorator(record, recordProxy));
@@ -105,7 +105,7 @@ public class ScriptHandler<T extends IDbSchema> {
 
     }
 
-    private Optional<Object> getTableTools(Method m, JDbRecord record, Class<?> type)
+    private Optional<Object> getTableTools(Method m, JDBRecord record, Class<?> type)
             throws NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException {
 
         if(m.getParameterTypes().length > 1) {
@@ -121,8 +121,8 @@ public class ScriptHandler<T extends IDbSchema> {
                 tableTools.put(tableName, tools);
             }
             Object tools = tableTools.get(tableName);
-            if(tools instanceof IDbRecordTools) {
-                ((IDbRecordTools)tools).setRecord(record);
+            if(tools instanceof IDBRecordTools) {
+                ((IDBRecordTools)tools).setRecord(record);
             }
             result = Optional.of(tools);
         }
@@ -136,7 +136,7 @@ public class ScriptHandler<T extends IDbSchema> {
         scriptProxy = newProxy(dbSchemaClass, scriptHandler);
     }
 
-    public JDbScript getDbScript() {
+    public JDBScript getDbScript() {
         return dbScript;
     }
 
@@ -150,10 +150,10 @@ public class ScriptHandler<T extends IDbSchema> {
     }
 
     private static class NotOverridingInvocationDecorator implements InvocationHandler {
-        private final JDbRecord record;
+        private final JDBRecord record;
         private final Object nextProxy;
 
-        NotOverridingInvocationDecorator(JDbRecord record, Object nextProxy) {
+        NotOverridingInvocationDecorator(JDBRecord record, Object nextProxy) {
             this.record = record;
             this.nextProxy = nextProxy;
         }

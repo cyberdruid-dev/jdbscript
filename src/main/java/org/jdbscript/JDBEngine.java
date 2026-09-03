@@ -1,6 +1,6 @@
 package org.jdbscript;
 
-import org.jdbscript.errors.JdbsErrors;
+import org.jdbscript.errors.JDBErrors;
 import org.jdbscript.impl.*;
 import org.jdbscript.impl.cache.IJDBCache;
 import org.jdbscript.impl.cache.JDBCacheManager;
@@ -19,15 +19,15 @@ import java.util.stream.Collectors;
 
 import static org.jdbscript.errors.Checks.checkIsNull;
 import static org.jdbscript.errors.Checks.checkNotNull;
-import static org.jdbscript.errors.JdbsErrors.*;
+import static org.jdbscript.errors.JDBErrors.*;
 
 /**
  * Standard implementation of {@link IJDBEngine} providing fluent database seeding,
  * script execution, and table cleanup for a specified schema interface.
  *
- * @param <T> the schema interface type extending {@link IDbSchema}
+ * @param <T> the schema interface type extending {@link IDBSchema}
  */
-public class JDBEngine<T extends IDbSchema> implements IJDBEngine<T>{
+public class JDBEngine<T extends IDBSchema> implements IJDBEngine<T>{
     private static final Logger log = LoggerFactory.getLogger(JDBEngine.class);
 
     private final JDBTypeConverter converter = new JDBTypeConverter();
@@ -64,12 +64,12 @@ public class JDBEngine<T extends IDbSchema> implements IJDBEngine<T>{
      * @param <T>           the schema interface type
      * @return a new builder instance
      */
-    public static <T extends IDbSchema> Builder<T> builder(Class<T> dbSchemaClass) {
+    public static <T extends IDBSchema> Builder<T> builder(Class<T> dbSchemaClass) {
         return new Builder<>(dbSchemaClass);
     }
 
     private static Supplier<DataSource> toSupplier(DataSource dataSource) {
-        checkNotNull(dataSource, JdbsErrors.DATASOURCE_IS_NULL);
+        checkNotNull(dataSource, JDBErrors.DATASOURCE_IS_NULL);
         return ()->dataSource;
     }
 
@@ -101,7 +101,7 @@ public class JDBEngine<T extends IDbSchema> implements IJDBEngine<T>{
         ScriptHandler<T> handler = new ScriptHandler(dbSchemaClass);
         db.accept(handler.getProxy());
         handler.applyDefaults();
-        JDbScript script = handler.getDbScript();
+        JDBScript script = handler.getDbScript();
         converter.convertTypes(script);
         sortScript(script);
         getExecutor().insert(script);
@@ -153,7 +153,7 @@ public class JDBEngine<T extends IDbSchema> implements IJDBEngine<T>{
         log.debug("assertDBHasNot(consumer={})", dbAsserts);
         ScriptHandler<T> handler = new ScriptHandler(dbSchemaClass);
         dbAsserts.accept(handler.getProxy());
-        JDbScript script = handler.getDbScript();
+        JDBScript script = handler.getDbScript();
         converter.convertTypes(script);
         getExecutor().assertRowsNotExist(script);
     }
@@ -167,18 +167,18 @@ public class JDBEngine<T extends IDbSchema> implements IJDBEngine<T>{
         log.debug("assertDBHas(consumer={})", dbAsserts);
         ScriptHandler<T> handler = new ScriptHandler(dbSchemaClass);
         dbAsserts.accept(handler.getProxy());
-        JDbScript script = handler.getDbScript();
+        JDBScript script = handler.getDbScript();
         converter.convertTypes(script);
         getExecutor().assertRowsExist(script);
     }
 
-    private void sortScript(JDbScript script) {
-        List<JDbRecord> records = script.getRecords();
+    private void sortScript(JDBScript script) {
+        List<JDBRecord> records = script.getRecords();
         if (records.isEmpty()) {
             return;
         }
 
-        records.sort(Comparator.comparing(JDbRecord::getTableName, getMetadataProvider().getParentChildTableComparator()));
+        records.sort(Comparator.comparing(JDBRecord::getTableName, getMetadataProvider().getParentChildTableComparator()));
     }
 
     private List<String> getTableNames() {
@@ -212,7 +212,7 @@ public class JDBEngine<T extends IDbSchema> implements IJDBEngine<T>{
      *
      * @param <T> the schema interface type
      */
-    public static class Builder<T extends IDbSchema> {
+    public static class Builder<T extends IDBSchema> {
         private final Class<T> dbSchemaClass;
         private Supplier<DataSource> dataSourceSupplier;
         private IScriptExecutor executor;

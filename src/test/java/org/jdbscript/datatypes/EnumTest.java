@@ -1,7 +1,7 @@
 package org.jdbscript.datatypes;
 
-import org.jdbscript.IDbSchema;
-import org.jdbscript.IDbSchema.IDBRecord;
+import org.jdbscript.IDBSchema;
+import org.jdbscript.IDBSchema.IDBRecord;
 import org.jdbscript.IJDBEngine;
 import org.jdbscript.JdbAbstractTest;
 import org.jdbscript.impl.conversion.EnumOrdinalConverter;
@@ -26,7 +26,7 @@ public class EnumTest extends JdbAbstractTest {
     private interface IVarcharTable extends IDBRecord {
         IVarcharTable varchar_column(TestEnum value);
     }
-    private interface IEnumTestSchema extends IDbSchema {
+    private interface IEnumTestSchema extends IDBSchema {
 
         IVarcharTable varchar_table();
 
@@ -35,7 +35,7 @@ public class EnumTest extends JdbAbstractTest {
     private interface IIntTable extends IDBRecord {
         IIntTable int_column(TestEnum value);
     }
-    private interface IOrdinalEnumTestSchema extends IDbSchema {
+    private interface IOrdinalEnumTestSchema extends IDBSchema {
 
         IIntTable int_table();
 

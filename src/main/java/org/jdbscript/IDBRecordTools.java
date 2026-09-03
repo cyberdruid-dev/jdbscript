@@ -1,19 +1,19 @@
 package org.jdbscript;
 
-import org.jdbscript.impl.JDbRecord;
+import org.jdbscript.impl.JDBRecord;
 
 /**
  * Utility tools interface available to record default methods for dynamic value generation,
  * sequences, and template interpolation.
  */
-public interface IDbRecordTools {
+public interface IDBRecordTools {
 
     /**
      * Associates the current record context with these tools.
      *
      * @param record the current database record
      */
-    void setRecord(JDbRecord record);
+    void setRecord(JDBRecord record);
 
     /**
      * Generates or increments an integer sequence counter for the given name.

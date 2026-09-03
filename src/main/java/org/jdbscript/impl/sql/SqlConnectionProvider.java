@@ -1,6 +1,6 @@
 package org.jdbscript.impl.sql;
 
-import org.jdbscript.DbmsType;
+import org.jdbscript.DBMSType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -12,7 +12,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static org.jdbscript.errors.Checks.checkNotNull;
-import static org.jdbscript.errors.JdbsErrors.DATASOURCE_IS_NULL;
+import static org.jdbscript.errors.JDBErrors.DATASOURCE_IS_NULL;
 
 public class SqlConnectionProvider {
     private static final Logger log = LoggerFactory.getLogger(SqlConnectionProvider.class);
@@ -38,7 +38,7 @@ public class SqlConnectionProvider {
 
     private ISqlExecutorStrategy getStrategy(Connection cnn) throws SQLException {
         if (strategy == null) {
-            return SqlExecutorStrategyFactory.getStrategy(DbmsType.getType(cnn.getMetaData()));
+            return SqlExecutorStrategyFactory.getStrategy(DBMSType.getType(cnn.getMetaData()));
         }
         return strategy;
     }

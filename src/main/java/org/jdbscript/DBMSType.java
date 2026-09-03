@@ -9,7 +9,7 @@ import java.sql.Statement;
 /**
  * Supported database management systems detected by JDBC URL prefix.
  */
-public enum DbmsType {
+public enum DBMSType {
     /** Unknown or unsupported database type. */
     UNKNOWN("jdbc:UNKNOWN:"),
     /** MySQL database. */
@@ -37,20 +37,20 @@ public enum DbmsType {
 
     private final String urlStart;
 
-    DbmsType(String urlStart) {
+    DBMSType(String urlStart) {
         this.urlStart = urlStart;
     }
 
     /**
-     * Detects the {@link DbmsType} based on the JDBC connection metadata.
+     * Detects the {@link DBMSType} based on the JDBC connection metadata.
      *
      * @param metaData the JDBC database metadata
-     * @return the matching {@link DbmsType}, or {@link #UNKNOWN} if not recognized
+     * @return the matching {@link DBMSType}, or {@link #UNKNOWN} if not recognized
      */
-    public static DbmsType getType(DatabaseMetaData metaData) {
+    public static DBMSType getType(DatabaseMetaData metaData) {
         try {
             String url = metaData.getURL();
-            DbmsType type = getTypeFromUrl(url);
+            DBMSType type = getTypeFromUrl(url);
 
             if (type == POSTGRESQL) {
                 String productName = metaData.getDatabaseProductName();
@@ -84,17 +84,17 @@ public enum DbmsType {
     }
 
     /**
-     * Detects the {@link DbmsType} based on the JDBC connection URL.
+     * Detects the {@link DBMSType} based on the JDBC connection URL.
      *
      * @param url the JDBC connection URL
-     * @return the matching {@link DbmsType}, or {@link #UNKNOWN} if not recognized
+     * @return the matching {@link DBMSType}, or {@link #UNKNOWN} if not recognized
      */
-    public static DbmsType getTypeFromUrl(String url) {
-        DbmsType result = UNKNOWN;
+    public static DBMSType getTypeFromUrl(String url) {
+        DBMSType result = UNKNOWN;
         if (url == null) {
             return result;
         }
-        for (var type : DbmsType.values()) {
+        for (var type : DBMSType.values()) {
             if (url.startsWith(type.urlStart)) {
                 result = type;
                 break;

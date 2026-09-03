@@ -1,14 +1,9 @@
 package org.jdbscript.usecases;
 
-import org.jdbscript.IDbSchema;
-import org.jdbscript.IDbSchema.IDBRecord;
-import org.jdbscript.IJDBEngine;
-import org.jdbscript.JDBEngine;
-import org.jdbscript.JdbAbstractTest;
+import org.jdbscript.*;
+import org.jdbscript.IDBSchema.IDBRecord;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-
-import java.util.List;
 
 @Test
 public class CleanupOrderTest extends JdbAbstractTest {
@@ -31,7 +26,7 @@ public class CleanupOrderTest extends JdbAbstractTest {
         IOrderItemRecord quantity(int value);
     }
 
-    private interface IBaseSchema extends IDbSchema {
+    private interface IBaseSchema extends IDBSchema {
         IOrderItemRecord order_items();
         IOrderRecord orders();
     }

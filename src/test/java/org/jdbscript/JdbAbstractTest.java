@@ -13,7 +13,6 @@ import org.testng.annotations.BeforeMethod;
 
 import java.sql.*;
 import java.text.DateFormat;
-import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -46,11 +45,11 @@ public class JdbAbstractTest {
     public void afterClassClass() {
     }
 
-    protected <T extends IDbSchema> JDBEngine<T> createEngine(Class<T> schemaClass) {
+    protected <T extends IDBSchema> JDBEngine<T> createEngine(Class<T> schemaClass) {
         return createEngine(schemaClass, null);
     }
 
-    protected <T extends IDbSchema> JDBEngine<T> createEngine(Class<T> schemaClass, List<IJDBTypeConverter> converters) {
+    protected <T extends IDBSchema> JDBEngine<T> createEngine(Class<T> schemaClass, List<IJDBTypeConverter> converters) {
         return JDBEngine.builder(schemaClass)
                 .dataSource(()->dataSource)
                 .converters(converters == null ? null : converters.toArray(new IJDBTypeConverter[0]))
@@ -119,7 +118,7 @@ public class JdbAbstractTest {
     }
 
     protected void assertTableValues(ExpectedTable expectedTable) {
-        DbmsType dbmsType = testConfiguration.getDbmsType();
+        DBMSType dbmsType = testConfiguration.getDbmsType();
         org.jdbscript.impl.sql.ISqlExecutorStrategy strategy = org.jdbscript.impl.sql.SqlExecutorStrategyFactory.getStrategy(dbmsType);
         String tableName = expectedTable.tableName;
         String sql = "SELECT * FROM "+tableName;
@@ -211,12 +210,12 @@ public class JdbAbstractTest {
         }
     }
 
-    protected void skipFor(String featureName, DbmsType type) {
+    protected void skipFor(String featureName, DBMSType type) {
         skipFor(featureName, type, null, null);
     }
 
-    protected void skipFor(String featureName, DbmsType type, Class<?> scriptExecutorClass, String reason) {
-        DbmsType dbmsType = testConfiguration.getDbmsType();
+    protected void skipFor(String featureName, DBMSType type, Class<?> scriptExecutorClass, String reason) {
+        DBMSType dbmsType = testConfiguration.getDbmsType();
         Class<? extends IScriptExecutor> currentExecutorClass = testConfiguration.getScriptExecutor().getClass();
         if(dbmsType == type
                 && (scriptExecutorClass == null || scriptExecutorClass.isAssignableFrom(currentExecutorClass))

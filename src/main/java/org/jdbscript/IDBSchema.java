@@ -11,7 +11,7 @@ import java.util.function.Consumer;
  * <p>
  * Example:
  * <pre>{@code
- * public interface IAppSchema extends IDbSchema {
+ * public interface IAppSchema extends IDBSchema {
  *     IUserRecord users();
  *     IOrderRecord orders();
  *
@@ -23,21 +23,21 @@ import java.util.function.Consumer;
  * }
  * }</pre>
  */
-public interface IDbSchema {
+public interface IDBSchema {
 
     /**
      * Includes and executes an inline or lambda-based script within the current schema execution context.
      *
      * @param script a {@link Consumer} accepting the schema instance to populate records
      */
-    void include(Consumer<? extends IDbSchema> script);
+    void include(Consumer<? extends IDBSchema> script);
 
     /**
      * Includes and executes a class-based reusable script within the current schema execution context.
      *
      * @param script the class representing the reusable dataset/fixture to execute
      */
-    void include(Class<? extends IDbSchema> script);
+    void include(Class<? extends IDBSchema> script);
 
     /**
      * Marker interface for database table record representations.

@@ -1,6 +1,6 @@
 package org.jdbscript.impl.javassist;
 
-import org.jdbscript.IDbSchema;
+import org.jdbscript.IDBSchema;
 import org.jdbscript.JDBEngine;
 import org.jdbscript.JdbAbstractTest;
 import org.jdbscript.errors.JDBScriptException;
@@ -10,11 +10,11 @@ import static org.testng.Assert.assertThrows;
 
 public class ClassScriptWrapperRequirementTest extends JdbAbstractTest {
 
-    private interface ITestSchema extends IDbSchema {
+    private interface ITestSchema extends IDBSchema {
         ITable1Record table_1();
     }
 
-    private interface ITable1Record extends IDbSchema.IDBRecord {
+    private interface ITable1Record extends IDBSchema.IDBRecord {
         ITable1Record col(String val);
     }
 

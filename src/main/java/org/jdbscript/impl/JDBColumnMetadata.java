@@ -1,9 +1,9 @@
 package org.jdbscript.impl;
 
-public class JDbColumnMetadata {
+public class JDBColumnMetadata {
     private final String name;
 
-    public JDbColumnMetadata(String name) {
+    public JDBColumnMetadata(String name) {
         this.name = name;
     }
 

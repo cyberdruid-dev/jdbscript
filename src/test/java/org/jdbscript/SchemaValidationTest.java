@@ -5,7 +5,6 @@ import com.zaxxer.hikari.HikariDataSource;
 import org.jdbscript.errors.JDBScriptException;
 import org.jdbscript.utils.TestDataSource;
 import org.testng.Assert;
-import org.testng.SkipException;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeClass;
@@ -26,7 +25,7 @@ public class SchemaValidationTest extends JdbAbstractTest {
     private TestDataSource cleanDataSource;
     private HikariDataSource hikariDataSource;
 
-    private interface ITestSchema extends IDbSchema {
+    private interface ITestSchema extends IDBSchema {
         ITableRecord table1();
         ITableRecord table2();
 
@@ -102,7 +101,7 @@ public class SchemaValidationTest extends JdbAbstractTest {
     }
 
     @Override
-    protected <T extends IDbSchema> JDBEngine<T> createEngine(Class<T> schemaClass) {
+    protected <T extends IDBSchema> JDBEngine<T> createEngine(Class<T> schemaClass) {
         return JDBEngine.builder(schemaClass)
                 .dataSource(() -> cleanDataSource)
                 .executor(testConfiguration.getScriptExecutor())

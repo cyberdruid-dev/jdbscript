@@ -1,7 +1,7 @@
 package org.jdbscript.impl.conversion;
 
-import org.jdbscript.impl.JDbRecord;
-import org.jdbscript.impl.JDbScript;
+import org.jdbscript.impl.JDBRecord;
+import org.jdbscript.impl.JDBScript;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -21,11 +21,11 @@ public class JDBTypeConverter {
         converters.add(converter);
     }
 
-    public void convertTypes(JDbScript script) {
+    public void convertTypes(JDBScript script) {
         script.getRecords().forEach(this::convertTypes);
     }
 
-    private void convertTypes(JDbRecord jDbRecord) {
+    private void convertTypes(JDBRecord jDbRecord) {
         jDbRecord.getColumns().entrySet().forEach(this::convertTypes);
     }
 
