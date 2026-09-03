@@ -1,4 +1,15 @@
 databaseChangeLog:
+- property:
+    name: pk_type_def
+    value: bigint
+- property:
+    name: auto_inc
+    value: true
+    dbms: "!cloudspanner"
+- property:
+    name: auto_inc
+    value: false
+    dbms: "cloudspanner"
 - include:
     file: db/000-test-schema.yaml
 - include:

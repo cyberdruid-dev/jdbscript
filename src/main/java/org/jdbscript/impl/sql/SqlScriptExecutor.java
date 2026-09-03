@@ -233,7 +233,7 @@ public class SqlScriptExecutor implements IScriptExecutor {
     }
 
     private String createDeleteAllSql(String tableName) {
-        String sql = "DELETE FROM " + tableName;
+        String sql = "DELETE FROM " + tableName + " WHERE 1=1";
         return sql;
     }
 

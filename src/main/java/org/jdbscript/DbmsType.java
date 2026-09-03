@@ -33,7 +33,9 @@ public enum DbmsType {
     /** DuckDB database. */
     DUCKDB("jdbc:duckdb:"),
     /** SQLite database. */
-    SQLITE("jdbc:sqlite");
+    SQLITE("jdbc:sqlite"),
+    /** Google Cloud Spanner. */
+    SPANNER("jdbc:cloudspanner:");
 
     private final String urlStart;
 

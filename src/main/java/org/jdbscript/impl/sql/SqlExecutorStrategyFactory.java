@@ -16,6 +16,7 @@ public class SqlExecutorStrategyFactory {
             case COCKROACHDB -> new CockroachDBStrategy();
             case DUCKDB -> new DuckdbStrategy();
             case SQLITE -> new SqliteStrategy();
+            case SPANNER -> new SpannerStrategy();
             default -> new DefaultSqlExecutorStrategy();
         };
     }

@@ -96,9 +96,6 @@ public class TestConfiguration {
         if (jdbcUrl == null || jdbcUrl.isBlank()) {
             throw new NullPointerException(PROPERTY_JDBC_URL + " is null or blank");
         }
-        if (jdbcUser == null || jdbcUser.isBlank()) {
-            throw new NullPointerException(PROPERTY_JDBC_USER + " is null or blank");
-        }
     }
 
 }

@@ -7,11 +7,11 @@ databaseChangeLog:
             tableName: generated_int_id_table
             columns:
               - column:
-                  autoIncrement: true
+                  name: generated_id_column
+                  type: ${pk_type_def}
+                  autoIncrement: ${auto_inc}
                   constraints:
                     primaryKey: true
-                  name: generated_id_column
-                  type: int
               - column:
                   name: varchar_column
                   type: varchar(50)

@@ -20,6 +20,8 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Scanner;
 
 class DataSourceFactory {
@@ -98,13 +100,47 @@ class DataSourceFactory {
         log.debug("runLiquibase()");
         try(Connection connection = newDataSource.getConnection()) {
             Database database = findDatabase(connection);
-            log.debug("Liquibase.database = {} ", database.getDatabaseProductName());
+            if ("cloudspanner".equals(database.getShortName())) {
+                dropAllSpanner(connection);
+            }
             Liquibase liquibase = new Liquibase("db/changelog.yaml",
                     new ClassLoaderResourceAccessor(),
                     database);
-            liquibase.update();
+            liquibase.clearCheckSums();
+            liquibase.update("");
         } catch (Exception e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    private void dropAllSpanner(Connection connection) throws SQLException {
+        log.debug("dropAllSpanner()");
+        connection.setAutoCommit(true);
+        for (int i = 0; i < 5; i++) {
+            List<String> tables = new ArrayList<>();
+            try(ResultSet rs = connection.getMetaData().getTables(null, null, "%", new String[]{"TABLE"})) {
+                while(rs.next()) {
+                    tables.add(rs.getString("TABLE_NAME"));
+                }
+            }
+            if (tables.isEmpty() || (tables.size() <= 2 && tables.stream().allMatch(t -> t.startsWith("DATABASECHANGELOG")))) {
+                break;
+            }
+            try(Statement stmt = connection.createStatement()) {
+                for (String table : tables) {
+                    if (table.startsWith("DATABASECHANGELOG")) continue;
+                    try {
+                        stmt.execute("DROP TABLE " + table);
+                        log.debug("Dropped table: {}", table);
+                    } catch (Exception e) {
+                        // Ignore and try in next pass
+                    }
+                }
+            }
+        }
+        try(Statement stmt = connection.createStatement()) {
+            try { stmt.execute("DROP TABLE DATABASECHANGELOGLOCK"); } catch (Exception e) {}
+            try { stmt.execute("DROP TABLE DATABASECHANGELOG"); } catch (Exception e) {}
         }
     }
 

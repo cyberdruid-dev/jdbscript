@@ -74,7 +74,7 @@ public class JdbAbstractTest {
 
     protected void cleanupTables(String... tables) {
         for (String table : tables) {
-            executeUpdate("DELETE FROM "+table);
+            executeUpdate("DELETE FROM "+table+" WHERE 1=1");
         }
     }
 

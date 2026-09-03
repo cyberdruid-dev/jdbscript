@@ -15,6 +15,9 @@ public class JDBTypeConverter {
         converters.add(new EnumToStringConverter());
         converters.add(new DateConverter());
         converters.add(new InstantConverter());
+        converters.add(new LocalDateConverter());
+        converters.add(new LocalDateTimeConverter());
+        converters.add(new LocalTimeConverter());
     }
 
     public void addConverter(IJDBTypeConverter converter) {

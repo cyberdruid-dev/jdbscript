@@ -7,11 +7,23 @@ databaseChangeLog:
             tableName: int_table
             columns:
               - column:
+                  name: id
+                  type: ${pk_type_def}
+                  autoIncrement: ${auto_inc}
+                  constraints:
+                    primaryKey: true
+              - column:
                   name: int_column
                   type: int
         - createTable:
             tableName: varchar_table
             columns:
+              - column:
+                  name: id
+                  type: ${pk_type_def}
+                  autoIncrement: ${auto_inc}
+                  constraints:
+                    primaryKey: true
               - column:
                   name: varchar_column
                   type: varchar(150)
@@ -19,11 +31,23 @@ databaseChangeLog:
             tableName: boolean_table
             columns:
               - column:
+                  name: id
+                  type: ${pk_type_def}
+                  autoIncrement: ${auto_inc}
+                  constraints:
+                    primaryKey: true
+              - column:
                   name: boolean_column
                   type: boolean
         - createTable:
             tableName: date_table
             columns:
+              - column:
+                  name: id
+                  type: ${pk_type_def}
+                  autoIncrement: ${auto_inc}
+                  constraints:
+                    primaryKey: true
               - column:
                   name: date_column
                   type: date
@@ -31,17 +55,35 @@ databaseChangeLog:
             tableName: timestamp_table
             columns:
               - column:
+                  name: id
+                  type: ${pk_type_def}
+                  autoIncrement: ${auto_inc}
+                  constraints:
+                    primaryKey: true
+              - column:
                   name: timestamp_column
                   type: timestamp
         - createTable:
             tableName: uuid_table
             columns:
               - column:
+                  name: id
+                  type: ${pk_type_def}
+                  autoIncrement: ${auto_inc}
+                  constraints:
+                    primaryKey: true
+              - column:
                   name: uuid_column
                   type: uuid
         - createTable:
             tableName: blob_table
             columns:
+              - column:
+                  name: id
+                  type: ${pk_type_def}
+                  autoIncrement: ${auto_inc}
+                  constraints:
+                    primaryKey: true
               - column:
                   name: blob_column
                   type: blob
