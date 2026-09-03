@@ -26,7 +26,7 @@ Instead of writing verbose raw SQL scripts or maintaining fragile XML/JSON datas
 - **Cleanups & Resets**: Easily wipe tables (`cleanupDB`) and reset state before or between tests. Tables are automatically deleted in the correct order based on foreign key dependencies.
 - **Database Assertions**: Verify that specific records exist or do not exist in the database using the same fluent API.
 - **Metadata Caching**: Built-in caching for database metadata (FKs, columns) to speed up test execution.
-- **Multi-DBMS Compatibility**: Built-in support for PostgreSQL, MySQL, MariaDB, Oracle, Microsoft SQL Server, H2, HSQLDB, IBM DB2, and SQLite.
+- **Multi-DBMS Compatibility**: Built-in support for PostgreSQL, MySQL, MariaDB, Oracle, Microsoft SQL Server, H2, HSQLDB, IBM DB2, CockroachDB, SQLite, and DuckDB.
 - **Automatic Type Conversion**: Seamless handling of Java Enums, UUIDs, Dates, Timestamps, and binary data.
 - **Sequence Management**: Automatically resets database sequences to a high value (e.g., 10000+) after insertion to prevent primary key conflicts with manually assigned IDs (supported for PostgreSQL, Oracle, DB2, and HSQLDB).
 
@@ -42,7 +42,7 @@ Add the dependency to your `pom.xml`:
 <dependency>
     <groupId>org.jdbscript</groupId>
     <artifactId>jdbscript</artifactId>
-    <version>1.0.0</version>
+    <version>1.1.0</version>
     <scope>test</scope>
 </dependency>
 ```
@@ -51,12 +51,12 @@ Add the dependency to your `pom.xml`:
 
 **Groovy DSL** (`build.gradle`):
 ```groovy
-testImplementation 'org.jdbscript:jdbscript:1.0.0'
+testImplementation 'org.jdbscript:jdbscript:1.1.0'
 ```
 
 **Kotlin DSL** (`build.gradle.kts`):
 ```kotlin
-testImplementation("org.jdbscript:jdbscript:1.0.0")
+testImplementation("org.jdbscript:jdbscript:1.1.0")
 ```
 
 ### Requirements
@@ -125,6 +125,7 @@ The builder provides several other methods for fine-tuning the engine:
 *   **Metadata Caching**: Use `.cacheStrategy(...)` to speed up tests (see [Metadata Caching](#metadata-caching)).
 *   **Schema Validation**: Use `.unmappedTableStrategy(...)` to control validation behavior (see [Schema Validation](#schema-validation)). Standard migration tables are ignored by default.
 *   **Custom Converters**: Use `.converter(...)` to register custom type mappings (see [Custom Type Converters](#custom-type-converters)).
+*   **Manual Table Order**: Use `.tableDependencyOrder(...)` to override auto-detected insert/cleanup order when FK auto-detection can't be relied on (see [Manual Table Order Override](#manual-table-order-override)).
 
 ---
 
@@ -226,7 +227,22 @@ Purge all records from tables associated with the schema:
 engine.cleanupDB();
 ```
 
-JDBScript automatically detects foreign key dependencies and deletes records in the correct order to avoid constraint violations. If a circular dependency is detected, an exception will be thrown.
+JDBScript automatically detects foreign key dependencies and deletes records in the correct order to avoid constraint violations. If a circular dependency **between two or more tables** is detected, an exception will be thrown. A table referencing itself (e.g. an `employees` table with a `manager_id` column pointing back to `employees`) is not treated as a cycle. See [Manual Table Order Override](#manual-table-order-override) for an escape hatch when auto-detection can't determine the right order at all.
+
+---
+
+## Manual Table Order Override
+
+By default, JDBScript auto-detects table dependencies from foreign keys to decide insert and cleanup order. If a table's real dependencies aren't visible that way (missing FK metadata, views standing in for tables, cyclic references), override the order explicitly instead:
+
+```java
+IJDBEngine<IAppSchema> engine = JDBEngine.builder(IAppSchema.class)
+    .dataSource(dataSource)
+    .tableDependencyOrder(List.of("users", "orders"))
+    .build();
+```
+
+List every table your schema interface declares, parent-to-child. Records are inserted in exactly this order; `cleanupDB()` cleans them up in the exact reverse. Matching is case-insensitive, and any extra entries not declared by the schema interface are ignored. A schema-interface table missing from the list throws an exception - on first use of the engine (the first `insertDB`/`cleanupDB`/`assertDBHas`/`assertDBHasNot` call), not at `.build()` time, keeping engine construction itself lazy. Schema-vs-database validation (missing/unmapped tables) is unaffected by this override - it always runs against the real database, regardless of whether ordering is auto-detected or manual.
 
 ---
 
@@ -300,16 +316,17 @@ IJDBEngine<IAppSchema> engine = JDBEngine.builder(IAppSchema.class)
 
 | Database Engine | Tested Versions                       | Compatibility Status |
 | :--- |:--------------------------------------| :---: |
-| **PostgreSQL** | `9.x`, `12.x`, `16.x`, `17.x`, `18.x`| ![Passed](https://img.shields.io/badge/168%2F168-passing-success?style=flat-square) |
-| **MySQL** | `5.x`, `8.x`, `9.x`                   | ![Passed](https://img.shields.io/badge/168%2F168-passing-success?style=flat-square) |
-| **MariaDB** | `10.x`, `11.x`, `12.x`                | ![Passed](https://img.shields.io/badge/168%2F168-passing-success?style=flat-square) |
-| **Oracle** | `Oracle Free 23c`                     | ![Passed](https://img.shields.io/badge/168%2F168-passing-success?style=flat-square) |
-| **Microsoft SQL Server**| `2022`                                | ![Passed](https://img.shields.io/badge/168%2F168-passing-success?style=flat-square) |
-| **IBM DB2** | Latest                                | ![Passed](https://img.shields.io/badge/168%2F168-passing-success?style=flat-square) |
-| **CockroachDB** | Latest                                | ![Passed](https://img.shields.io/badge/168%2F168-passing-success?style=flat-square) |
-| **In-Memory / Embedded**| `H2`, `HSQLDB`                        | ![Passed](https://img.shields.io/badge/168%2F168-passing-success?style=flat-square) |
-| **SQLite** | Standard JDBC                         | ![Passed](https://img.shields.io/badge/168%2F168-passing-success?style=flat-square) |
-| **DuckDB** | Latest                                | ![Passed](https://img.shields.io/badge/168%2F168-passing-success?style=flat-square) |
+| **PostgreSQL** | `9.x`, `12.x`, `16.x`, `17.x`, `18.x`| ![Passed](https://img.shields.io/badge/196%2F196-passing-success?style=flat-square) |
+| **MySQL** | `5.x`, `8.x`, `9.x`                   | ![Passed](https://img.shields.io/badge/196%2F196-passing-success?style=flat-square) |
+| **MariaDB** | `10.x`, `11.x`, `12.x`                | ![Passed](https://img.shields.io/badge/196%2F196-passing-success?style=flat-square) |
+| **Oracle** | `Oracle Free 23c`                     | ![Passed](https://img.shields.io/badge/196%2F196-passing-success?style=flat-square) |
+| **Microsoft SQL Server**| `2022`                                | ![Passed](https://img.shields.io/badge/196%2F196-passing-success?style=flat-square) |
+| **IBM DB2** | Latest                                | ![Passed](https://img.shields.io/badge/196%2F196-passing-success?style=flat-square) |
+| **CockroachDB** | Latest                                | ![Passed](https://img.shields.io/badge/196%2F196-passing-success?style=flat-square) |
+| **H2** | `2.4.x`                               | ![Passed](https://img.shields.io/badge/196%2F196-passing-success?style=flat-square) |
+| **HSQLDB** | `2.7.x`                            | ![Passed](https://img.shields.io/badge/196%2F196-passing-success?style=flat-square) |
+| **SQLite** | Standard JDBC                         | ![Passed](https://img.shields.io/badge/196%2F196-passing-success?style=flat-square) |
+| **DuckDB** | Latest                                | ![Passed](https://img.shields.io/badge/196%2F196-passing-success?style=flat-square) |
 
 ---
 
