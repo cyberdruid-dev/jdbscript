@@ -291,15 +291,16 @@ IJDBEngine<IAppSchema> engine = JDBEngine.builder(IAppSchema.class)
 
 | Database Engine | Tested Versions                       | Compatibility Status |
 | :--- |:--------------------------------------| :---: |
-| **PostgreSQL** | `9.x`, `12.x`, `16.x`, `17.x`, `18.x`| ![Passed](https://img.shields.io/badge/166%2F166-passing-success?style=flat-square) |
-| **MySQL** | `5.x`, `8.x`, `9.x`                   | ![Passed](https://img.shields.io/badge/166%2F166-passing-success?style=flat-square) |
-| **MariaDB** | `10.x`, `11.x`, `12.x`                | ![Passed](https://img.shields.io/badge/166%2F166-passing-success?style=flat-square) |
-| **Oracle** | `Oracle Free 23c`                     | ![Passed](https://img.shields.io/badge/166%2F166-passing-success?style=flat-square) |
-| **Microsoft SQL Server**| `2022`                                | ![Passed](https://img.shields.io/badge/166%2F166-passing-success?style=flat-square) |
-| **IBM DB2** | Latest                                | ![Passed](https://img.shields.io/badge/166%2F166-passing-success?style=flat-square) |
-| **CockroachDB** | Latest                                | ![Passed](https://img.shields.io/badge/166%2F166-passing-success?style=flat-square) |
-| **In-Memory / Embedded**| `H2`, `HSQLDB`                        | ![Passed](https://img.shields.io/badge/166%2F166-passing-success?style=flat-square) |
-| **SQLite** | Standard JDBC                         | ![Passed](https://img.shields.io/badge/166%2F166-passing-success?style=flat-square) |
+| **PostgreSQL** | `9.x`, `12.x`, `16.x`, `17.x`, `18.x`| ![Passed](https://img.shields.io/badge/168%2F168-passing-success?style=flat-square) |
+| **MySQL** | `5.x`, `8.x`, `9.x`                   | ![Passed](https://img.shields.io/badge/168%2F168-passing-success?style=flat-square) |
+| **MariaDB** | `10.x`, `11.x`, `12.x`                | ![Passed](https://img.shields.io/badge/168%2F168-passing-success?style=flat-square) |
+| **Oracle** | `Oracle Free 23c`                     | ![Passed](https://img.shields.io/badge/168%2F168-passing-success?style=flat-square) |
+| **Microsoft SQL Server**| `2022`                                | ![Passed](https://img.shields.io/badge/168%2F168-passing-success?style=flat-square) |
+| **IBM DB2** | Latest                                | ![Passed](https://img.shields.io/badge/168%2F168-passing-success?style=flat-square) |
+| **CockroachDB** | Latest                                | ![Passed](https://img.shields.io/badge/168%2F168-passing-success?style=flat-square) |
+| **In-Memory / Embedded**| `H2`, `HSQLDB`                        | ![Passed](https://img.shields.io/badge/168%2F168-passing-success?style=flat-square) |
+| **SQLite** | Standard JDBC                         | ![Passed](https://img.shields.io/badge/168%2F168-passing-success?style=flat-square) |
+| **DuckDB** | Latest                                | ![Passed](https://img.shields.io/badge/168%2F168-passing-success?style=flat-square) |
 
 ---
 
