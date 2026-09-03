@@ -50,6 +50,11 @@ public class DbAssertionsTest extends JdbAbstractTest {
                 .boolean_column_1(false).int_column_1(102).date_column_1(date2);
     }};
 
+    public static abstract class AssertionsDatasetWithNull implements IAssertionTestSchema {{
+        table_for_assertions().str_column_1("str13").str_column_2(null)
+                .boolean_column_1(true).int_column_1(103).date_column_1(date1);
+    }};
+
 
     public void assertDBHas__passes_if__row_with_multiple_column_values_exists() {
         engine.resetDB(AssertionsDataset.class);
@@ -173,6 +178,26 @@ public class DbAssertionsTest extends JdbAbstractTest {
             engine.assertDBHasNot(db->{
                 db.table_for_assertions().str_column_1("str11");
                 db.table_for_assertions().str_column_1("strXX");
+            });
+        }, new AssertionFailedError("Expected row to NOT exist."));
+    }
+
+    @Test
+    public void assertDBHas__passes_if__row_with_null_column_value_exists() {
+        engine.resetDB(AssertionsDatasetWithNull.class);
+
+        engine.assertDBHas(db -> {
+            db.table_for_assertions().str_column_1("str13").str_column_2(null);
+        });
+    }
+
+    @Test
+    public void assertDBHasNot__FAIL_if_row_with_null_column_value_EXISTS() {
+        engine.resetDB(AssertionsDatasetWithNull.class);
+
+        expectFailure(()->{
+            engine.assertDBHasNot(db->{
+                db.table_for_assertions().str_column_1("str13").str_column_2(null);
             });
         }, new AssertionFailedError("Expected row to NOT exist."));
     }

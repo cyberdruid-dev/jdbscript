@@ -10,6 +10,7 @@ import org.jdbscript.impl.cache.IJDBCache;
 import org.jdbscript.impl.cache.NoCache;
 import org.jdbscript.impl.sql.SqlConnectionProvider.JdbcConnectionConsumer;
 import org.jdbscript.impl.sql.SqlConnectionProvider.JdbcSessionConsumer;
+import org.jdbscript.impl.sql.SqlConnectionProvider.PreparedStatementProvider;
 import org.opentest4j.AssertionFailedError;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -152,51 +153,42 @@ public class SqlScriptExecutor implements IScriptExecutor {
     public void assertRowsExist(JDBScript script) {
         withPreparedStatements((cnn, stmtProvider) -> {
             for (JDBRecord record : script.getRecords()) {
-                List<String> columns = getSortedColumns(record);
-                String sqlKey = record.getTableName() + ":" + String.join(",", columns);
-                String sql = selectSqlCache.computeIfAbsent(sqlKey, k -> createSelectAssertSql(record, columns));
-                PreparedStatement stmt = stmtProvider.get(sql);
-                for (int i = 0; i < columns.size(); i++) {
-                    Object value = record.getColumns().get(columns.get(i));
-                    setColumnValue(stmt, i + 1, value);
-                }
-                try (ResultSet rs = stmt.executeQuery()) {
-                    if (!rs.next()) {
-                        throw new RuntimeException("Fail to count rows in DB. Unexpectedly empty resultset.");
-                    }
-                    long count = rs.getLong(1);
-                    if (count == 0) {
-                        throw new AssertionFailedError("Expected row to exist.");
-                    }
+                if (countMatchingRows(record, stmtProvider) == 0) {
+                    throw new AssertionFailedError("Expected row to exist.");
                 }
             }
         });
-
     }
 
     @Override
     public void assertRowsNotExist(JDBScript script) {
         withPreparedStatements((cnn, stmtProvider) -> {
             for (JDBRecord record : script.getRecords()) {
-                List<String> columns = getSortedColumns(record);
-                String sqlKey = record.getTableName() + ":" + String.join(",", columns);
-                String sql = selectSqlCache.computeIfAbsent(sqlKey, k -> createSelectAssertSql(record, columns));
-                PreparedStatement stmt = stmtProvider.get(sql);
-                for (int i = 0; i < columns.size(); i++) {
-                    Object value = record.getColumns().get(columns.get(i));
-                    setColumnValue(stmt, i + 1, value);
-                }
-                try (ResultSet rs = stmt.executeQuery()) {
-                    if (!rs.next()) {
-                        throw new RuntimeException("Fail to count rows in DB. Unexpectedly empty resultset.");
-                    }
-                    long count = rs.getLong(1);
-                    if (count > 0) {
-                        throw new AssertionFailedError("Expected row to NOT exist.");
-                    }
+                if (countMatchingRows(record, stmtProvider) > 0) {
+                    throw new AssertionFailedError("Expected row to NOT exist.");
                 }
             }
         });
+    }
+
+    private long countMatchingRows(JDBRecord record, PreparedStatementProvider stmtProvider) throws SQLException {
+        List<String> columns = getSortedColumns(record);
+        String sqlKey = record.getTableName() + ":" + String.join(",", columns);
+        String sql = selectSqlCache.computeIfAbsent(sqlKey, k -> createSelectAssertSql(record, columns));
+        PreparedStatement stmt = stmtProvider.get(sql);
+        int paramIndex = 1;
+        for (String column : columns) {
+            Object value = record.getColumns().get(column);
+            // Each column's null-safe predicate binds the value twice - see createSelectAssertSql.
+            setColumnValue(stmt, paramIndex++, value);
+            setColumnValue(stmt, paramIndex++, value);
+        }
+        try (ResultSet rs = stmt.executeQuery()) {
+            if (!rs.next()) {
+                throw new RuntimeException("Fail to count rows in DB. Unexpectedly empty resultset.");
+            }
+            return rs.getLong(1);
+        }
     }
 
     @Override
@@ -215,11 +207,20 @@ public class SqlScriptExecutor implements IScriptExecutor {
 
     private String createSelectAssertSql(JDBRecord record, List<String> columns) {
         String sql = "SELECT count(*) FROM " + record.getTableName();
-        sql += " WHERE "+columns.get(0)+" = ?";
+        sql += " WHERE "+nullSafeEquals(columns.get(0));
         for(int i= 1; i< columns.size(); i++){
-            sql +=" AND "+columns.get(i)+" = ?";
+            sql +=" AND "+nullSafeEquals(columns.get(i));
         }
         return sql;
+    }
+
+    /**
+     * {@code col = ?} never matches a bound NULL (SQL's {@code = NULL} is UNKNOWN, not TRUE), so an
+     * asserted record with a null column would otherwise never be found. This predicate matches
+     * NULL too; the caller must bind the same value to both {@code ?} placeholders it contains.
+     */
+    private String nullSafeEquals(String column) {
+        return "(" + column + " = ? OR (? IS NULL AND " + column + " IS NULL))";
     }
 
     private String createInsertSql(JDBRecord record, List<String> columns) {
