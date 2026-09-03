@@ -19,6 +19,12 @@ public class SqlConnectionProvider {
 
     private final DataSource dataSource;
     private ISqlExecutorStrategy strategy;
+    // Reused instead of a plain ThreadLocal<Connection> so that a nested withConnection() call on
+    // the same thread (e.g. a metadata lookup triggered while an insert's connection is still open)
+    // reuses that connection instead of acquiring a second one from the same DataSource/pool, which
+    // can exhaust/deadlock a pool sized to 1. onConnection()/commit() still run exactly once, for
+    // the outermost caller only.
+    private final ReentrantResource<Connection> connectionResource = new ReentrantResource<>(this::acquireConnection);
 
     @FunctionalInterface
     public interface JdbcConnectionConsumer {
@@ -30,6 +36,14 @@ public class SqlConnectionProvider {
     public SqlConnectionProvider(DataSource dataSource) {
         this.dataSource = checkNotNull(dataSource, DATASOURCE_IS_NULL);
 
+    }
+
+    private Connection acquireConnection() {
+        try {
+            return dataSource.getConnection();
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public void setStrategy(ISqlExecutorStrategy strategy) {
@@ -44,11 +58,20 @@ public class SqlConnectionProvider {
     }
 
     public void withConnection(JdbcConnectionConsumer consumer) {
-        try(Connection cnn = dataSource.getConnection()) {
-            ISqlExecutorStrategy currentStrategy = getStrategy(cnn);
-            currentStrategy.onConnection(cnn);
-            consumer.accept(cnn);
-            currentStrategy.commit(cnn);
+        IReentrantResourceCallback<Connection> lifecycle = new IReentrantResourceCallback<>() {
+            @Override
+            public void afterOpen(Connection cnn) throws SQLException {
+                getStrategy(cnn).onConnection(cnn);
+            }
+
+            @Override
+            public void beforeClose(Connection cnn) throws SQLException {
+                getStrategy(cnn).commit(cnn);
+            }
+        };
+
+        try {
+            connectionResource.run(consumer::accept, lifecycle);
         } catch (RuntimeException e) {
             throw e;
         } catch (Exception e) {
