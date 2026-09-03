@@ -54,6 +54,7 @@ public class JdbAbstractTest {
                 .dataSource(()->dataSource)
                 .converters(converters == null ? null : converters.toArray(new IJDBTypeConverter[0]))
                 .executor(testConfiguration.getScriptExecutor())
+                .cacheStrategy(CacheStrategy.GLOBAL)
                 .build();
     }
 
