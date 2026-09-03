@@ -150,6 +150,97 @@ public class MetadataCachingTest {
     }
 
     @Test
+    public void test_table_discovery_uses_cache_and_rediscovers_after_clear() throws Exception {
+        SqlConnectionProvider provider = mock(SqlConnectionProvider.class);
+        Connection connection = mock(Connection.class);
+        DatabaseMetaData metaData = mock(DatabaseMetaData.class);
+        ResultSet tablesResultSet = mock(ResultSet.class);
+        ResultSet importedKeysResultSet = mock(ResultSet.class);
+
+        when(connection.getMetaData()).thenReturn(metaData);
+        when(metaData.getTables(any(), any(), any(), any())).thenReturn(tablesResultSet);
+        when(tablesResultSet.next()).thenReturn(true, true, false, true, true, false);
+        when(tablesResultSet.getString("TABLE_NAME")).thenReturn("T1", "T2", "T1", "T2");
+        when(metaData.getImportedKeys(any(), any(), any())).thenReturn(importedKeysResultSet);
+        when(importedKeysResultSet.next()).thenReturn(false);
+
+        doAnswer(invocation -> {
+            SqlConnectionProvider.JdbcConnectionConsumer consumer = invocation.getArgument(0);
+            consumer.accept(connection);
+            return null;
+        }).when(provider).withConnection(any());
+
+        // A real cache (not a mock/stub) is essential here: it exercises the actual
+        // ConcurrentHashMap.computeIfAbsent underneath, which throws IllegalStateException
+        // ("Recursive update") if getOrCompute is ever nested inside another getOrCompute call on
+        // the same cache - exactly the shape this test's two-table discovery+sort would hit if
+        // table discovery were cached naively.
+        IJDBCache cache = new InstanceCache();
+        SqlMetadataProvider metadataProvider = new SqlMetadataProvider(provider);
+        metadataProvider.setCache(cache);
+
+        assertEquals(metadataProvider.getAllTables(), List.of("T1", "T2"));
+        assertEquals(metadataProvider.getSortedTables().size(), 2);
+        verify(metaData, times(1)).getTables(any(), any(), any(), any());
+
+        // Second call must reuse the cached discovery, not re-query.
+        metadataProvider.getAllTables();
+        verify(metaData, times(1)).getTables(any(), any(), any(), any());
+
+        cache.clear();
+
+        // After clearing, discovery must run again - this is the actual bug: clearCache() only
+        // clearing the pluggable IJDBCache, with allTables/globalSortedTables memoized outside of
+        // it, meant a migration mid-run stayed invisible for the engine's whole lifetime.
+        metadataProvider.getAllTables();
+        verify(metaData, times(2)).getTables(any(), any(), any(), any());
+    }
+
+    @Test
+    public void test_sorted_tables_are_cached_and_reused() throws Exception {
+        SqlConnectionProvider provider = mock(SqlConnectionProvider.class);
+        Connection connection = mock(Connection.class);
+        DatabaseMetaData metaData = mock(DatabaseMetaData.class);
+        ResultSet tablesResultSet = mock(ResultSet.class);
+        ResultSet importedKeysResultSet = mock(ResultSet.class);
+
+        when(connection.getMetaData()).thenReturn(metaData);
+        when(metaData.getTables(any(), any(), any(), any())).thenReturn(tablesResultSet);
+        when(tablesResultSet.next()).thenReturn(true, true, false, true, true, false);
+        when(tablesResultSet.getString("TABLE_NAME")).thenReturn("T1", "T2", "T1", "T2");
+        when(metaData.getImportedKeys(any(), any(), any())).thenReturn(importedKeysResultSet);
+        when(importedKeysResultSet.next()).thenReturn(false);
+
+        doAnswer(invocation -> {
+            SqlConnectionProvider.JdbcConnectionConsumer consumer = invocation.getArgument(0);
+            consumer.accept(connection);
+            return null;
+        }).when(provider).withConnection(any());
+
+        // A real cache is essential here too: getSortedTables() nests getAllTables() (its own
+        // getOrCompute call) and sortTablesByDependencies's per-table getOrCompute calls inside its
+        // own getOrCompute(SORTED_TABLES_KEY, ...) - this only works because InstanceCache is
+        // required to support nested calls on the same thread.
+        IJDBCache cache = new InstanceCache();
+        SqlMetadataProvider metadataProvider = new SqlMetadataProvider(provider);
+        metadataProvider.setCache(cache);
+
+        List<String> sorted1 = metadataProvider.getSortedTables();
+        List<String> sorted2 = metadataProvider.getSortedTables();
+
+        assertSame(sorted1, sorted2, "sorted tables should be cached, not recomputed on every call");
+        verify(metaData, times(1)).getTables(any(), any(), any(), any());
+        verify(metaData, times(1)).getImportedKeys(any(), any(), eq("T1"));
+        verify(metaData, times(1)).getImportedKeys(any(), any(), eq("T2"));
+
+        cache.clear();
+
+        List<String> sorted3 = metadataProvider.getSortedTables();
+        assertNotSame(sorted1, sorted3, "must recompute after clear()");
+        verify(metaData, times(2)).getTables(any(), any(), any(), any());
+    }
+
+    @Test
     public void test_global_cache_strategy() throws SQLException {
         DataSource ds = mock(DataSource.class);
         Connection conn = mock(Connection.class);
