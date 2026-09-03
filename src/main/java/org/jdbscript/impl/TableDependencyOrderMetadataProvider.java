@@ -29,7 +29,25 @@ public class TableDependencyOrderMetadataProvider extends AbstractMetadataProvid
 
     @Override
     public List<String> getSortedTables() {
-        return parentToChildOrder;
+        // Resolved against the real, DB-reported casing (via getAllTables(), untouched by this
+        // override) rather than returned verbatim: getTableNames() uses these strings directly for
+        // cleanup SQL, and some DBMSes (MySQL/MariaDB on Linux, by default) treat unquoted table
+        // names as case-sensitive - "DELETE FROM Orders" fails there if the real table is "orders",
+        // even though the same statement is perfectly fine on H2/SQLite/DuckDB/HSQLDB.
+        List<String> realTables = getAllTables();
+        return parentToChildOrder.stream()
+                .map(name -> resolveRealCasing(name, realTables))
+                .toList();
+    }
+
+    private static String resolveRealCasing(String name, List<String> realTables) {
+        for (String real : realTables) {
+            if (real.equalsIgnoreCase(name)) {
+                return real;
+            }
+        }
+        // Not a real DB table (e.g. a stray extra entry) - fall back to what the caller gave.
+        return name;
     }
 
     @Override
