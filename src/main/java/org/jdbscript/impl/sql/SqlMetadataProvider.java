@@ -3,13 +3,12 @@ package org.jdbscript.impl.sql;
 import org.jdbscript.DbmsType;
 import org.jdbscript.impl.IMetadataProvider;
 import org.jdbscript.impl.cache.IJDBCache;
+import org.jdbscript.impl.cache.IJDBCache.IJDBCacheKey;
 import org.jdbscript.impl.cache.NoCache;
-import org.jdbscript.impl.cache.TableDependenciesKey;
 import org.jdbscript.impl.sql.SqlConnectionProvider.JdbcConnectionConsumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -23,6 +22,11 @@ public class SqlMetadataProvider implements IMetadataProvider {
     private final SqlConnectionProvider connectionProvider;
     private IJDBCache cache = new NoCache();
     private DbmsType dbmsType;
+
+    private record DbmsTypeKey() implements IJDBCacheKey<DbmsType> {}
+    private record TableDependencyKey(String tableName) implements IJDBCacheKey<Set<String>> {}
+    private static final DbmsTypeKey DBMS_TYPE_KEY = new DbmsTypeKey();
+
 
     private List<String> allTables;
     private List<String> globalSortedTables;
@@ -38,8 +42,12 @@ public class SqlMetadataProvider implements IMetadataProvider {
     @Override
     public DbmsType getDbmsType() {
         if (dbmsType == null) {
-            withConnection(cnn -> {
-                dbmsType = DbmsType.getTypeFromUrl(cnn.getMetaData().getURL());
+            dbmsType = cache.getOrCompute(DBMS_TYPE_KEY, k -> {
+                final DbmsType[] detected = new DbmsType[1];
+                withConnection(cnn -> {
+                    detected[0] = DbmsType.getType(cnn.getMetaData());
+                });
+                return detected[0];
             });
         }
         return dbmsType;
@@ -119,7 +127,7 @@ public class SqlMetadataProvider implements IMetadataProvider {
             for (String tableName : namesList) {
                 Set<String> rawDeps;
                 try {
-                    rawDeps = cache.getOrCompute(new TableDependenciesKey(tableName), k -> {
+                    rawDeps = cache.getOrCompute(new TableDependencyKey(tableName), k -> {
                         try {
                             return getRawTableDependencies(metaData, catalog, schema, k.tableName());
                         } catch (SQLException e) {

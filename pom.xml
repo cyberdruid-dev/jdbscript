@@ -235,7 +235,7 @@
         <profile>
             <id>cockroachdb</id>
             <properties>
-                <test.dbms.type>POSTGRESQL</test.dbms.type>
+                <test.dbms.type>COCKROACHDB</test.dbms.type>
             </properties>
         </profile>
         <profile>

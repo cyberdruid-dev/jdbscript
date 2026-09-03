@@ -53,6 +53,7 @@ public class SqlScriptExecutor implements IScriptExecutor {
             case HSQLDB -> new HsqldbStrategy();
             case ORACLE -> new OracleStrategy();
             case POSTGRESQL -> new PostgreSQLStrategy();
+            case COCKROACHDB -> new CockroachDBStrategy();
             case DB2 -> new Db2Strategy();
             default -> new DefaultSqlExecutorStrategy();
         };

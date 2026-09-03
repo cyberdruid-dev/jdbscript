@@ -279,7 +279,7 @@ IJDBEngine<IAppSchema> engine = JDBEngine.builder(IAppSchema.class)
 
 ## Supported Databases
 
-JDBScript automatically detects the target database type from the JDBC connection URL:
+JDBScript automatically detects the target database type from the JDBC connection:
 
 | DBMS | Driver / JDBC URL Prefix |
 | :--- | :--- |
@@ -292,6 +292,7 @@ JDBScript automatically detects the target database type from the JDBC connectio
 | **HSQLDB** | `jdbc:hsqldb:` |
 | **IBM DB2** | `jdbc:db2:` |
 | **SQLite** | `jdbc:sqlite:` |
+| **CockroachDB** | `jdbc:postgresql:` with metadata check|
 
 ---
 

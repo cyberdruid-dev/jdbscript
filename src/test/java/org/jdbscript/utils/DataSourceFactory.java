@@ -46,10 +46,21 @@ class DataSourceFactory {
     public DbmsType getDbmsType() {
         if(this.dbmsType == null) {
             DbmsType type = DbmsType.getTypeFromUrl(jdbcUrl);
-            if(type == DbmsType.UNKNOWN) {
+            if (type == DbmsType.POSTGRESQL) {
+                // CockroachDB often uses PostgreSQL JDBC URL. Try to refine detection if possible.
+                try (Connection connection = java.sql.DriverManager.getConnection(jdbcUrl, jdbcUser, jdbcPassword)) {
+                    this.dbmsType = DbmsType.getType(connection.getMetaData());
+                } catch (SQLException e) {
+                    log.warn("Failed to refine DBMS type detection via connection, falling back to URL-based detection: {}", e.getMessage());
+                    this.dbmsType = type;
+                }
+            } else {
+                this.dbmsType = type;
+            }
+
+            if(this.dbmsType == DbmsType.UNKNOWN) {
                 throw new UnsupportedOperationException("Unknown dbms type for JDBC URL: " + jdbcUrl);
             }
-            this.dbmsType = type;
         }
         return this.dbmsType;
     }

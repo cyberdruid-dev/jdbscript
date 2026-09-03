@@ -44,7 +44,7 @@
 * [ ] write a skill
 * Bugs:
   * [ ] Postgres <=12 can have IDENTITY column with hidden sequence (liquibase sometime generates it)
-  * [ ] Cockroachdb connects though postgres driver that confuses PostgreSQLStrategy
+  * [x] Cockroachdb connects though postgres driver that confuses PostgreSQLStrategy
 * Features:
   * [x] Class as script
   * [x] Include Scripts

@@ -1,5 +1,4 @@
 package org.jdbscript.impl.sql;
-
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
