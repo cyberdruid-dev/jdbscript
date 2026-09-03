@@ -63,8 +63,8 @@
   * [ ] JdbsUtils:
     * today(+-nDays) - use time units?
     * midnight(+-nDays)
-* [ ] SQLite support:
-  * [ ] SQLExecutor: how to handle date/time? (maybe don't? set it as it will be in db)
+* [x] SQLite support:
+  * [x] SQLExecutor: how to handle date/time? (handled by strategy and test infra)
 * [x] hsqldb support
 * [x] db2 support(?)
 * [x] Improvement: Reuse prepared statements for same tables.
@@ -117,10 +117,10 @@
   * [ ] Postgres
   * [ ] Oracle
   * [ ] H2
-  * [ ] CockroachDB?
+  * [x] CockroachDB?
   * [ ] Snowflake?
-  * [ ] IBM DB2?
-  * [ ] SQLite?
+  * [x] IBM DB2?
+  * [x] SQLite?
   * [ ] Google BigQuery?
 * [ ] autodetect table dependency -> cleanup order
 * [ ] Parametrized scripts?

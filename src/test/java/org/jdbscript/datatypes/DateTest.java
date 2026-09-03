@@ -48,7 +48,6 @@ public class DateTest extends JdbAbstractTest {
 
     @BeforeMethod
     public void beforeMethod(){
-        skipFor("date", SQLITE);
         cleanupTables(TABLE_NAME);
     }
 

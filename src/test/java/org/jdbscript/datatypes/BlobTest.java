@@ -37,7 +37,6 @@ public class BlobTest extends JdbAbstractTest {
 
     @BeforeMethod
     public void beforeMethod(){
-        skipFor("blobs", SQLITE);
         cleanupTables(TABLE_NAME);
     }
 

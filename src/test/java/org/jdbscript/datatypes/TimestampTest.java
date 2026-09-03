@@ -40,7 +40,6 @@ public class TimestampTest extends JdbAbstractTest {
 
     @BeforeMethod
     public void beforeMethod(){
-        skipFor("timestamp", SQLITE);
         cleanupTables(TABLE_NAME);
     }
 

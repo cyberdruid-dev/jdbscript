@@ -160,9 +160,15 @@ public class JdbAbstractTest {
                             value = columnValue == null ? null : UUID.fromString(columnValue);
                         }
                     } else if(Objects.equals(expectedType,"Date")){
-                        Calendar cal = Calendar.getInstance();
-                        cal.setTimeZone(TestConfiguration.UTC);
-                        value = new Date(rs.getTimestamp(columnIndex, cal).getTime());
+                        if(dbmsType == DbmsType.SQLITE) {
+                            Timestamp ts = asTimestamp(rs.getString(columnIndex));
+                            value = ts == null ? null : new Date(ts.getTime());
+                        } else {
+                            Calendar cal = Calendar.getInstance();
+                            cal.setTimeZone(TestConfiguration.UTC);
+                            Timestamp ts = rs.getTimestamp(columnIndex, cal);
+                            value = ts == null ? null : new Date(ts.getTime());
+                        }
                     } else if(Objects.equals(expectedType,"Timestamp")){
                         if(dbmsType == DbmsType.SQLITE) {
                             value = asTimestamp(rs.getString(columnIndex));
@@ -194,12 +200,21 @@ public class JdbAbstractTest {
     }
 
     private Timestamp asTimestamp(String timestampStr) throws ParseException {
-        return timestampStr == null? null : new Timestamp(TIMESTAMP_FORMAT.parse(timestampStr).getTime());
+        if (timestampStr == null) return null;
+        try {
+            return new Timestamp(Long.parseLong(timestampStr));
+        } catch (NumberFormatException e) {
+            return new Timestamp(TIMESTAMP_FORMAT.parse(timestampStr).getTime());
+        }
     }
 
-
     private LocalDate asLocalDate(String dateStr) throws ParseException {
-        return dateStr == null? null : asLocalDate(LOCAL_DATE_FORMAT.parse(dateStr));
+        if (dateStr == null) return null;
+        try {
+            return asLocalDate(new Date(Long.parseLong(dateStr)));
+        } catch (NumberFormatException e) {
+            return asLocalDate(LOCAL_DATE_FORMAT.parse(dateStr));
+        }
     }
 
     protected LocalDate asLocalDate(Date date) {
