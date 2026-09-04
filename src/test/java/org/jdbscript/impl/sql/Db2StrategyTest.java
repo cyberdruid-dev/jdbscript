@@ -9,9 +9,12 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
+import java.sql.Connection;
 import java.sql.ParameterMetaData;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.sql.Timestamp;
 import java.sql.Types;
 import java.time.Instant;
@@ -20,8 +23,10 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 public class Db2StrategyTest {
 
@@ -220,6 +225,93 @@ public class Db2StrategyTest {
         assertThat(recorder.calls).containsExactly(
                 "getParameterMetaData()",
                 "setTimestamp(1, " + new Timestamp(date.getTime()) + ")"
+        );
+    }
+
+    @Test
+    public void afterInsert_should_fail_clearly_when_sequence_discovery_itself_fails() {
+        // Same reasoning as DuckdbStrategyTest/HsqldbStrategyTest: an empty database still queries
+        // SYSCAT.SEQUENCES successfully, returning zero rows - so this query failing at all means
+        // something is actually wrong, not "no sequences". Swallowing it (the prior behavior) meant
+        // any sequences in the schema would silently go unreset after insert.
+        Db2Strategy strategy = new Db2Strategy();
+        Connection cnn = failingConnection(sql -> {
+            throw new SQLException("no such table: SYSCAT.SEQUENCES");
+        }, sql -> 0);
+
+        assertThatThrownBy(() -> strategy.afterInsert(cnn))
+                .isInstanceOf(SQLException.class)
+                .hasMessageContaining("SYSCAT.SEQUENCES")
+                .hasMessageContaining("no such table: SYSCAT.SEQUENCES");
+    }
+
+    @Test
+    public void afterInsert_should_fail_clearly_when_resetting_a_specific_sequence_fails() {
+        Db2Strategy strategy = new Db2Strategy();
+        Connection cnn = failingConnection(
+                sql -> listResultSet(List.of("SEQ1")),
+                sql -> {
+                    throw new SQLException("some low-level driver error");
+                });
+
+        assertThatThrownBy(() -> strategy.afterInsert(cnn))
+                .isInstanceOf(SQLException.class)
+                .hasMessageContaining("SEQ1")
+                .hasMessageContaining("some low-level driver error");
+    }
+
+    private interface QueryHandler {
+        ResultSet executeQuery(String sql) throws SQLException;
+    }
+
+    private interface UpdateHandler {
+        int executeUpdate(String sql) throws SQLException;
+    }
+
+    private static Connection failingConnection(QueryHandler queryHandler, UpdateHandler updateHandler) {
+        Statement statement = (Statement) Proxy.newProxyInstance(
+                Statement.class.getClassLoader(),
+                new Class<?>[]{Statement.class},
+                (proxy, method, args) -> {
+                    switch (method.getName()) {
+                        case "executeQuery":
+                            return queryHandler.executeQuery((String) args[0]);
+                        case "executeUpdate":
+                            return updateHandler.executeUpdate((String) args[0]);
+                        case "close":
+                            return null;
+                    }
+                    return null;
+                }
+        );
+        return (Connection) Proxy.newProxyInstance(
+                Connection.class.getClassLoader(),
+                new Class<?>[]{Connection.class},
+                (proxy, method, args) -> {
+                    if ("createStatement".equals(method.getName())) {
+                        return statement;
+                    }
+                    return null;
+                }
+        );
+    }
+
+    private static ResultSet listResultSet(List<String> values) {
+        AtomicInteger index = new AtomicInteger(-1);
+        return (ResultSet) Proxy.newProxyInstance(
+                ResultSet.class.getClassLoader(),
+                new Class<?>[]{ResultSet.class},
+                (proxy, method, args) -> {
+                    switch (method.getName()) {
+                        case "next":
+                            return index.incrementAndGet() < values.size();
+                        case "getString":
+                            return values.get(index.get());
+                        case "close":
+                            return null;
+                    }
+                    return null;
+                }
         );
     }
 

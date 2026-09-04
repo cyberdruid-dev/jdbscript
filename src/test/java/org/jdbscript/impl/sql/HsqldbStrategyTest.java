@@ -15,8 +15,10 @@ import java.sql.Statement;
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 public class HsqldbStrategyTest {
 
@@ -59,7 +61,7 @@ public class HsqldbStrategyTest {
         HsqldbStrategy strategy = new HsqldbStrategy();
         CallRecorder recorder = new CallRecorder();
         Connection cnn = recorder.createProxy(Connection.class);
-        
+
         // Mock sequences
         recorder.addResultSetRow("SELECT SEQUENCE_NAME FROM INFORMATION_SCHEMA.SYSTEM_SEQUENCES WHERE SEQUENCE_SCHEMA = 'PUBLIC'", "SEQ1");
         recorder.addResultSetRow("SELECT SEQUENCE_NAME FROM INFORMATION_SCHEMA.SYSTEM_SEQUENCES WHERE SEQUENCE_SCHEMA = 'PUBLIC'", "SEQ2");
@@ -69,6 +71,93 @@ public class HsqldbStrategyTest {
         assertThat(recorder.calls).contains(
                 "executeUpdate(ALTER SEQUENCE SEQ1 RESTART WITH 10000)",
                 "executeUpdate(ALTER SEQUENCE SEQ2 RESTART WITH 10000)"
+        );
+    }
+
+    @Test
+    public void afterInsert_should_fail_clearly_when_sequence_discovery_itself_fails() {
+        // Same reasoning as DuckdbStrategyTest: an empty database still queries
+        // INFORMATION_SCHEMA.SYSTEM_SEQUENCES successfully, returning zero rows - so this query
+        // failing at all means something is actually wrong, not "no sequences". Swallowing it (the
+        // prior behavior) meant any sequences in the schema would silently go unreset after insert.
+        HsqldbStrategy strategy = new HsqldbStrategy();
+        Connection cnn = failingConnection(sql -> {
+            throw new SQLException("no such table: INFORMATION_SCHEMA.SYSTEM_SEQUENCES");
+        }, sql -> 0);
+
+        assertThatThrownBy(() -> strategy.afterInsert(cnn))
+                .isInstanceOf(SQLException.class)
+                .hasMessageContaining("SYSTEM_SEQUENCES")
+                .hasMessageContaining("no such table: INFORMATION_SCHEMA.SYSTEM_SEQUENCES");
+    }
+
+    @Test
+    public void afterInsert_should_fail_clearly_when_resetting_a_specific_sequence_fails() {
+        HsqldbStrategy strategy = new HsqldbStrategy();
+        Connection cnn = failingConnection(
+                sql -> listResultSet(List.of("SEQ1")),
+                sql -> {
+                    throw new SQLException("some low-level driver error");
+                });
+
+        assertThatThrownBy(() -> strategy.afterInsert(cnn))
+                .isInstanceOf(SQLException.class)
+                .hasMessageContaining("SEQ1")
+                .hasMessageContaining("some low-level driver error");
+    }
+
+    private interface QueryHandler {
+        ResultSet executeQuery(String sql) throws SQLException;
+    }
+
+    private interface UpdateHandler {
+        int executeUpdate(String sql) throws SQLException;
+    }
+
+    private static Connection failingConnection(QueryHandler queryHandler, UpdateHandler updateHandler) {
+        Statement statement = (Statement) Proxy.newProxyInstance(
+                Statement.class.getClassLoader(),
+                new Class<?>[]{Statement.class},
+                (proxy, method, args) -> {
+                    switch (method.getName()) {
+                        case "executeQuery":
+                            return queryHandler.executeQuery((String) args[0]);
+                        case "executeUpdate":
+                            return updateHandler.executeUpdate((String) args[0]);
+                        case "close":
+                            return null;
+                    }
+                    return null;
+                }
+        );
+        return (Connection) Proxy.newProxyInstance(
+                Connection.class.getClassLoader(),
+                new Class<?>[]{Connection.class},
+                (proxy, method, args) -> {
+                    if ("createStatement".equals(method.getName())) {
+                        return statement;
+                    }
+                    return null;
+                }
+        );
+    }
+
+    private static ResultSet listResultSet(List<String> values) {
+        AtomicInteger index = new AtomicInteger(-1);
+        return (ResultSet) Proxy.newProxyInstance(
+                ResultSet.class.getClassLoader(),
+                new Class<?>[]{ResultSet.class},
+                (proxy, method, args) -> {
+                    switch (method.getName()) {
+                        case "next":
+                            return index.incrementAndGet() < values.size();
+                        case "getString":
+                            return values.get(index.get());
+                        case "close":
+                            return null;
+                    }
+                    return null;
+                }
         );
     }
 
@@ -93,11 +182,11 @@ public class HsqldbStrategyTest {
         @Override
         public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
             String methodName = method.getName();
-            
+
             if ("createStatement".equals(methodName)) {
                 return createProxy(Statement.class);
             }
-            
+
             if ("executeQuery".equals(methodName)) {
                 calls.add(methodName + "(" + args[0] + ")");
                 return createProxy(ResultSet.class);
@@ -111,7 +200,7 @@ public class HsqldbStrategyTest {
                 Object[] row = resultSetRows.remove(0);
                 return row[0];
             }
-            
+
             if ("close".equals(methodName)) {
                 return null;
             }
