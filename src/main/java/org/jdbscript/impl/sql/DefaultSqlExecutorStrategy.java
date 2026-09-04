@@ -119,7 +119,8 @@ class DefaultSqlExecutorStrategy implements ISqlExecutorStrategy {
         if ("blob".equals(expectedType)) {
             return rs.getBytes(columnIndex);
         } else if ("boolean".equals(expectedType)) {
-            return rs.getBoolean(columnIndex);
+            boolean value = rs.getBoolean(columnIndex);
+            return rs.wasNull() ? null : value;
         } else if ("UUID".equals(expectedType)) {
             String columnValue = rs.getString(columnIndex);
             return columnValue == null ? null : UUID.fromString(columnValue);
