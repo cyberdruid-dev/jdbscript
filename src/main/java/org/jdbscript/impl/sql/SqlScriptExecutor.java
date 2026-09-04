@@ -33,6 +33,7 @@ import static org.jdbscript.errors.Checks.checkIsNull;
 import static org.jdbscript.errors.Checks.checkNotNull;
 import static org.jdbscript.errors.JDBErrors.DATASOURCE_ALREADY_SET;
 import static org.jdbscript.errors.JDBErrors.DATASOURCE_IS_NOT_CONFIGURED;
+import static org.jdbscript.errors.JDBErrors.EMPTY_ASSERTION_RECORD;
 
 public class SqlScriptExecutor implements IScriptExecutor {
     private static final Logger log = LoggerFactory.getLogger(SqlScriptExecutor.class);
@@ -176,6 +177,9 @@ public class SqlScriptExecutor implements IScriptExecutor {
         // round trip - the thing actually worth caching, the PreparedStatement, is already handled
         // by stmtProvider.get(sql), keyed on this exact SQL text.
         List<String> columns = getSortedColumns(record);
+        if (columns.isEmpty()) {
+            throw EMPTY_ASSERTION_RECORD.get(record.getTableName());
+        }
         String sql = createSelectAssertSql(record, columns);
         PreparedStatement stmt = stmtProvider.get(sql);
         int paramIndex = 1;

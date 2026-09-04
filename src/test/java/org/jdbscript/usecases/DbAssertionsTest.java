@@ -4,6 +4,7 @@ import org.jdbscript.IDBSchema;
 import org.jdbscript.IDBSchema.IDBRecord;
 import org.jdbscript.IJDBEngine;
 import org.jdbscript.JdbAbstractTest;
+import org.jdbscript.errors.JDBScriptException;
 import org.opentest4j.AssertionFailedError;
 import org.testng.annotations.Test;
 
@@ -11,6 +12,7 @@ import java.util.Calendar;
 import java.util.Date;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.fail;
 
 @Test
@@ -200,6 +202,26 @@ public class DbAssertionsTest extends JdbAbstractTest {
                 db.table_for_assertions().str_column_1("str13").str_column_2(null);
             });
         }, new AssertionFailedError("Expected row to NOT exist."));
+    }
+
+    @Test
+    public void assertDBHas__fails_clearly_if_record_has_no_columns_set() {
+        engine.resetDB(AssertionsDataset.class);
+
+        assertThatThrownBy(() -> engine.assertDBHas(db -> {
+            db.table_for_assertions();
+        })).isInstanceOf(JDBScriptException.class)
+                .hasMessageContaining("table_for_assertions");
+    }
+
+    @Test
+    public void assertDBHasNot__fails_clearly_if_record_has_no_columns_set() {
+        engine.resetDB(AssertionsDataset.class);
+
+        assertThatThrownBy(() -> engine.assertDBHasNot(db -> {
+            db.table_for_assertions();
+        })).isInstanceOf(JDBScriptException.class)
+                .hasMessageContaining("table_for_assertions");
     }
 
     protected void expectFailure(Runnable block, AssertionFailedError expectedError){

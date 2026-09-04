@@ -38,7 +38,11 @@ public enum JDBErrors implements Supplier<JDBScriptException> {
     SCRIPT_CONSTRUCTOR_HAS_PARAMETERS(JDBScriptException.class, "Script class '%s' should not have constructors with parameters."),
     /** A table declared in the schema interface is missing from Builder.tableDependencyOrder(...). */
     TABLE_MISSING_FROM_DEPENDENCY_ORDER(JDBScriptException.class,
-            "Table(s) declared in schema interface but missing from tableDependencyOrder(...): %s");
+            "Table(s) declared in schema interface but missing from tableDependencyOrder(...): %s"),
+    /** assertDBHas/assertDBHasNot called with a record that has no columns set. */
+    EMPTY_ASSERTION_RECORD(JDBScriptException.class,
+            "assertDBHas/assertDBHasNot requires at least one column to be set to match against, "
+                    + "but table '%s' had none set.");
 
     private final Class<? extends JDBScriptException> exception;
     private final String message;
