@@ -37,7 +37,7 @@
           (see ../pom.xml). Run `mvn install` at the repo root first so this resolves locally.
           Bump this once jdbscript is published and pin to a released version instead.
         -->
-        <jdbscript.version>1.1.0-SNAPSHOT</jdbscript.version>
+        <jdbscript.version>1.1.0</jdbscript.version>
 
         <junit.version>5.11.4</junit.version>
         <h2.version>2.4.240</h2.version>
