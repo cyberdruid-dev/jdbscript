@@ -101,6 +101,8 @@ public interface IAppSchema extends IDBSchema {
 }
 ```
 
+Each fluent setter's method name is used verbatim as the SQL column name - that's why it's `user_id`, not `userId`. There's no camelCase-to-snake_case conversion or annotation to override it; name your methods exactly as the column is named in the database.
+
 ### 2. Initialize `JDBEngine`
 
 Create an instance of `JDBEngine` using the builder:
