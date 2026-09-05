@@ -43,6 +43,15 @@ public interface IDBSchema {
      * Marker interface for database table record representations.
      * <p>
      * Interfaces extending {@code IDBRecord} define fluent builder methods for column values.
+     * Each method's name is used verbatim as the SQL column name - {@code user_id(Long id)} sets
+     * the {@code user_id} column, not {@code userId}. There's no camelCase-to-snake_case
+     * conversion or annotation to override it: name your methods exactly as the column is named
+     * in the database. A record is backed by a dynamic proxy, so the name is read from the
+     * invoked {@link java.lang.reflect.Method} at call time and inserted unquoted into the
+     * generated SQL - so an exact match still follows your DBMS's own case-folding rules for
+     * unquoted identifiers (e.g. Postgres lowercases, Oracle uppercases).
+     * </p>
+     * <p>
      * Default methods can be defined to set default column values using {@link RecordTools}.
      * </p>
      */
