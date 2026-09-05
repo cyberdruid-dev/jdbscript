@@ -39,7 +39,7 @@
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <project.build.outputTimestamp>2026-09-05T19:57:16Z</project.build.outputTimestamp>
+        <project.build.outputTimestamp>2026-09-05T19:57:16+00:00</project.build.outputTimestamp>
         <slf4jVersion>2.0.18</slf4jVersion>
         <logbackVersion>1.6.3</logbackVersion>
         <test.jdbc.url/>
