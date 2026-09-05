@@ -18,6 +18,7 @@ public class TheTest extends JdbAbstractTest {
 
     private final JDBEngine<ITestDBSchema> engine = JDBEngine.builder(ITestDBSchema.class)
             .dataSource(dataSource)
+            .feature(JDBFeature.DB2_ID_OWNED_SEQUENCE_RESTART_WITH)
             .build();
 
     @BeforeMethod

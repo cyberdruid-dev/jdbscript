@@ -47,6 +47,7 @@ public class CustomConverterTest extends JdbAbstractTest {
                 .dataSource(() -> dataSource)
                 .converter(new ReversingConverter())
                 .executor(testConfiguration.getScriptExecutor())
+                .feature(JDBFeature.DB2_ID_OWNED_SEQUENCE_RESTART_WITH)
                 .build();
 
         engine.resetDB(db -> {
@@ -67,6 +68,7 @@ public class CustomConverterTest extends JdbAbstractTest {
                 .dataSource(() -> dataSource)
                 .converter(new ReversingConverter())
                 .executor(testConfiguration.getScriptExecutor())
+                .feature(JDBFeature.DB2_ID_OWNED_SEQUENCE_RESTART_WITH)
                 .build();
 
         engine.resetDB(db -> {
@@ -88,6 +90,7 @@ public class CustomConverterTest extends JdbAbstractTest {
                 .dataSource(() -> dataSource)
                 .converter(new CustomEnumConverter())
                 .executor(testConfiguration.getScriptExecutor())
+                .feature(JDBFeature.DB2_ID_OWNED_SEQUENCE_RESTART_WITH)
                 .build();
 
         engine.resetDB(db -> {
@@ -107,6 +110,7 @@ public class CustomConverterTest extends JdbAbstractTest {
                 .disableDefaultConverters()
                 .converter(new CustomEnumConverter())
                 .executor(testConfiguration.getScriptExecutor())
+                .feature(JDBFeature.DB2_ID_OWNED_SEQUENCE_RESTART_WITH)
                 .build();
 
         engineWithEnum.resetDB(db -> {

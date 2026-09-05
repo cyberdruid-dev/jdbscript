@@ -1,6 +1,8 @@
 package org.jdbscript.impl.sql;
 
 import org.jdbscript.DBMSType;
+import org.jdbscript.JDBFeature;
+import org.jdbscript.JDBFeatureSet;
 import org.testng.annotations.Test;
 
 import java.io.ByteArrayInputStream;
@@ -246,10 +248,10 @@ public class Db2StrategyTest {
     }
 
     @Test
-    public void afterInsert_should_fail_clearly_when_resetting_a_specific_sequence_fails() {
+    public void afterInsert_should_fail_clearly_when_resetting_a_regular_sequence_fails() {
         Db2Strategy strategy = new Db2Strategy();
         Connection cnn = failingConnection(
-                sql -> listResultSet(List.of("SEQ1")),
+                sql -> sequenceResultSet(List.of(SeqRow.regular("SEQ1"))),
                 sql -> {
                     throw new SQLException("some low-level driver error");
                 });
@@ -260,12 +262,111 @@ public class Db2StrategyTest {
                 .hasMessageContaining("some low-level driver error");
     }
 
+    @Test
+    public void afterInsert_should_reset_a_regular_sequence_via_alter_sequence() throws SQLException {
+        Db2Strategy strategy = new Db2Strategy();
+        List<String> executed = new ArrayList<>();
+        Connection cnn = failingConnection(
+                sql -> sequenceResultSet(List.of(SeqRow.regular("SEQ1"))),
+                recording(executed));
+
+        strategy.afterInsert(cnn);
+
+        assertThat(executed).containsExactly("ALTER SEQUENCE SEQ1 RESTART WITH 10000");
+    }
+
+    @Test
+    public void afterInsert_with_no_feature_set_should_fail_clearly_for_an_identity_owned_sequence() {
+        // DB2_ID_OWNED_SEQUENCE_ERROR is the default - see JDBFeature - so leaving this
+        // unconfigured must fail loudly rather than silently leave the identity column unreset,
+        // the same way an unset feature never silently degrades to "do nothing" anywhere else.
+        Db2Strategy strategy = new Db2Strategy();
+        Connection cnn = failingConnection(
+                sql -> sequenceResultSet(List.of(SeqRow.identityOwned("SQL123", "GENERATED_INT_ID_TABLE", "GENERATED_ID_COLUMN"))),
+                sql -> 0);
+
+        assertThatThrownBy(() -> strategy.afterInsert(cnn))
+                .isInstanceOf(SQLException.class)
+                .hasMessageContaining("GENERATED_INT_ID_TABLE")
+                .hasMessageContaining("GENERATED_ID_COLUMN")
+                .hasMessageContaining("JDBFeature");
+    }
+
+    @Test
+    public void afterInsert_with_NOT_MODIFIED_feature_should_leave_identity_owned_sequence_untouched() throws SQLException {
+        Db2Strategy strategy = new Db2Strategy();
+        strategy.setFeatures(JDBFeatureSet.of(JDBFeature.DB2_ID_OWNED_SEQUENCE_NOT_MODIFIED));
+        List<String> executed = new ArrayList<>();
+        Connection cnn = failingConnection(
+                sql -> sequenceResultSet(List.of(SeqRow.identityOwned("SQL123", "GENERATED_INT_ID_TABLE", "GENERATED_ID_COLUMN"))),
+                recording(executed));
+
+        strategy.afterInsert(cnn);
+
+        assertThat(executed).isEmpty();
+    }
+
+    @Test
+    public void afterInsert_with_RESTART_WITH_feature_should_alter_table_for_identity_owned_sequence() throws SQLException {
+        Db2Strategy strategy = new Db2Strategy();
+        strategy.setFeatures(JDBFeatureSet.of(JDBFeature.DB2_ID_OWNED_SEQUENCE_RESTART_WITH));
+        List<String> executed = new ArrayList<>();
+        Connection cnn = failingConnection(
+                sql -> sequenceResultSet(List.of(SeqRow.identityOwned("SQL123", "GENERATED_INT_ID_TABLE", "GENERATED_ID_COLUMN"))),
+                recording(executed));
+
+        strategy.afterInsert(cnn);
+
+        assertThat(executed).containsExactly(
+                "ALTER TABLE GENERATED_INT_ID_TABLE ALTER COLUMN GENERATED_ID_COLUMN RESTART WITH 10000");
+    }
+
+    @Test
+    public void afterInsert_with_RESTART_WITH_feature_should_fail_clearly_when_the_alter_table_itself_fails() {
+        Db2Strategy strategy = new Db2Strategy();
+        strategy.setFeatures(JDBFeatureSet.of(JDBFeature.DB2_ID_OWNED_SEQUENCE_RESTART_WITH));
+        Connection cnn = failingConnection(
+                sql -> sequenceResultSet(List.of(SeqRow.identityOwned("SQL123", "GENERATED_INT_ID_TABLE", "GENERATED_ID_COLUMN"))),
+                sql -> {
+                    throw new SQLException("some low-level driver error");
+                });
+
+        assertThatThrownBy(() -> strategy.afterInsert(cnn))
+                .isInstanceOf(SQLException.class)
+                .hasMessageContaining("GENERATED_INT_ID_TABLE")
+                .hasMessageContaining("GENERATED_ID_COLUMN")
+                .hasMessageContaining("some low-level driver error");
+    }
+
+    @Test
+    public void afterInsert_should_reset_a_regular_sequence_regardless_of_the_identity_feature() throws SQLException {
+        // A regular, user-created sequence is unaffected by the DB2_ID_OWNED_SEQUENCE_* feature -
+        // that feature only governs sequences DB2 itself created for an identity column.
+        Db2Strategy strategy = new Db2Strategy();
+        strategy.setFeatures(JDBFeatureSet.of(JDBFeature.DB2_ID_OWNED_SEQUENCE_NOT_MODIFIED));
+        List<String> executed = new ArrayList<>();
+        Connection cnn = failingConnection(
+                sql -> sequenceResultSet(List.of(SeqRow.regular("SEQ1"))),
+                recording(executed));
+
+        strategy.afterInsert(cnn);
+
+        assertThat(executed).containsExactly("ALTER SEQUENCE SEQ1 RESTART WITH 10000");
+    }
+
     private interface QueryHandler {
         ResultSet executeQuery(String sql) throws SQLException;
     }
 
     private interface UpdateHandler {
         int executeUpdate(String sql) throws SQLException;
+    }
+
+    private static UpdateHandler recording(List<String> executed) {
+        return sql -> {
+            executed.add(sql);
+            return 0;
+        };
     }
 
     private static Connection failingConnection(QueryHandler queryHandler, UpdateHandler updateHandler) {
@@ -296,7 +397,18 @@ public class Db2StrategyTest {
         );
     }
 
-    private static ResultSet listResultSet(List<String> values) {
+    /** A row of the SYSCAT.SEQUENCES/SYSCAT.COLIDENTATTRIBUTES join Db2Strategy queries. */
+    private record SeqRow(String name, String seqType, String tableName, String columnName) {
+        static SeqRow regular(String name) {
+            return new SeqRow(name, "S", null, null);
+        }
+
+        static SeqRow identityOwned(String name, String tableName, String columnName) {
+            return new SeqRow(name, "I", tableName, columnName);
+        }
+    }
+
+    private static ResultSet sequenceResultSet(List<SeqRow> rows) {
         AtomicInteger index = new AtomicInteger(-1);
         return (ResultSet) Proxy.newProxyInstance(
                 ResultSet.class.getClassLoader(),
@@ -304,9 +416,16 @@ public class Db2StrategyTest {
                 (proxy, method, args) -> {
                     switch (method.getName()) {
                         case "next":
-                            return index.incrementAndGet() < values.size();
+                            return index.incrementAndGet() < rows.size();
                         case "getString":
-                            return values.get(index.get());
+                            SeqRow row = rows.get(index.get());
+                            return switch ((String) args[0]) {
+                                case "SEQNAME" -> row.name();
+                                case "SEQTYPE" -> row.seqType();
+                                case "TABNAME" -> row.tableName();
+                                case "COLNAME" -> row.columnName();
+                                default -> throw new IllegalArgumentException("Unexpected column: " + args[0]);
+                            };
                         case "close":
                             return null;
                     }

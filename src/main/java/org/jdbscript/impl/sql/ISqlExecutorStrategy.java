@@ -1,5 +1,6 @@
 package org.jdbscript.impl.sql;
 
+import org.jdbscript.JDBFeatureSet;
 import org.jdbscript.impl.JDBScript;
 
 import java.io.InputStream;
@@ -36,4 +37,13 @@ public interface ISqlExecutorStrategy {
     Set<String> getRawTableDependencies(Connection cnn, String catalog, String schema, String tableName) throws SQLException;
 
     Object getColumnValue(ResultSet rs, int columnIndex, String expectedType) throws SQLException;
+
+    /**
+     * Sets the enabled features. No-op by default; only a strategy with DBMS-specific behavior
+     * gated by a feature overrides this (e.g. DB2's identity-owned-sequence handling).
+     *
+     * @param features the enabled features
+     */
+    default void setFeatures(JDBFeatureSet features) {
+    }
 }

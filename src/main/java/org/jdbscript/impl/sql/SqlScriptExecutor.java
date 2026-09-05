@@ -1,6 +1,7 @@
 package org.jdbscript.impl.sql;
 
 import org.jdbscript.DBMSType;
+import org.jdbscript.JDBFeatureSet;
 import org.jdbscript.impl.IMetadataProvider;
 import org.jdbscript.IScriptExecutor;
 import org.jdbscript.impl.JDBRecord;
@@ -42,8 +43,9 @@ public class SqlScriptExecutor implements IScriptExecutor {
     private ISqlExecutorStrategy strategy;
     private SqlMetadataProvider metadataProvider;
     private IJDBCache cache = new NoCache();
+    private JDBFeatureSet features = JDBFeatureSet.empty();
     private final Map<String, String> insertSqlCache = new ConcurrentHashMap<>();
- 
+
     public SqlScriptExecutor() {
     }
 
@@ -54,6 +56,15 @@ public class SqlScriptExecutor implements IScriptExecutor {
         }
         if (this.metadataProvider != null) {
             this.metadataProvider.setStrategy(this.strategy);
+        }
+        this.strategy.setFeatures(this.features);
+    }
+
+    @Override
+    public void setFeatures(JDBFeatureSet features) {
+        this.features = features != null ? features : JDBFeatureSet.empty();
+        if (this.strategy != null) {
+            this.strategy.setFeatures(this.features);
         }
     }
 

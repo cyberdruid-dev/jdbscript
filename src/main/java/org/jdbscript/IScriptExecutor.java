@@ -45,4 +45,12 @@ public interface IScriptExecutor {
      * @param cache the metadata cache
      */
     void setCache(IJDBCache cache);
+
+    /**
+     * Sets the enabled features. Implementations that don't have any DBMS-specific behavior gated
+     * by a feature can ignore this.
+     *
+     * @param features the enabled features
+     */
+    void setFeatures(JDBFeatureSet features);
 }

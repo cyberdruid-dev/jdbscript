@@ -69,6 +69,7 @@ public class CleanupOrderTest extends JdbAbstractTest {
         IJDBEngine<ITestSchema> engineWithOrder = JDBEngine.builder(ITestSchema.class)
                 .dataSource(()->dataSource)
                 .executor(testConfiguration.getScriptExecutor())
+                .feature(JDBFeature.DB2_ID_OWNED_SEQUENCE_RESTART_WITH)
                 .build();
 
         engineWithOrder.insertDB(db -> {

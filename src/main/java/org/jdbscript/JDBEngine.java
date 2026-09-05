@@ -43,6 +43,7 @@ public class JDBEngine<T extends IDBSchema> implements IJDBEngine<T>{
     private final ValidationStrategy unmappedTableStrategy;
     private final Set<String> suppressedTables;
     private final boolean suppressDefaultUnmappedTables;
+    private final JDBFeatureSet features;
 
     private JDBEngine(Builder<T> builder) {
         this.dbSchemaClass = checkNotNull(builder.dbSchemaClass, DB_SCHEMA_IS_NULL);
@@ -53,6 +54,7 @@ public class JDBEngine<T extends IDBSchema> implements IJDBEngine<T>{
         this.unmappedTableStrategy = builder.unmappedTableStrategy;
         this.suppressedTables = Set.copyOf(builder.suppressedTables);
         this.suppressDefaultUnmappedTables = builder.suppressDefaultUnmappedTables;
+        this.features = JDBFeatureSet.copyOf(builder.features);
         if (builder.disableDefaultConverters) {
             this.converter.setConverters(List.of());
         }
@@ -150,6 +152,7 @@ public class JDBEngine<T extends IDBSchema> implements IJDBEngine<T>{
             }
             this.executor.setDataSource(getDataSource());
             this.executor.setCache(getCache());
+            this.executor.setFeatures(features);
             this.schemaValidator = new SchemaValidator(dbSchemaClass, executor.getMetadataProvider(),
                     unmappedTableStrategy, suppressedTables, suppressDefaultUnmappedTables);
         }
@@ -240,6 +243,7 @@ public class JDBEngine<T extends IDBSchema> implements IJDBEngine<T>{
         private ValidationStrategy unmappedTableStrategy = ValidationStrategy.LOG_WARN;
         private final Set<String> suppressedTables = new HashSet<>();
         private boolean suppressDefaultUnmappedTables = true;
+        private final JDBFeatureSet features = JDBFeatureSet.empty();
 
         private Builder(Class<T> dbSchemaClass) {
             this.dbSchemaClass = dbSchemaClass;
@@ -362,6 +366,19 @@ public class JDBEngine<T extends IDBSchema> implements IJDBEngine<T>{
          */
         public Builder<T> suppressDefaultUnmappedTables(boolean suppress) {
             this.suppressDefaultUnmappedTables = suppress;
+            return this;
+        }
+
+        /**
+         * Enables a narrow, DBMS-specific behavior switch (see {@link JDBFeature}). Cumulative
+         * across groups, but within the same group a later call replaces an earlier one rather
+         * than adding to it.
+         *
+         * @param feature the feature to enable
+         * @return this builder
+         */
+        public Builder<T> feature(JDBFeature feature) {
+            this.features.add(feature);
             return this;
         }
 

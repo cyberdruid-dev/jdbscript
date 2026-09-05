@@ -59,6 +59,7 @@ public class ChangeScriptExecutorTest extends JdbAbstractTest {
         JDBEngine<ITestSchema> engine = JDBEngine.builder(ITestSchema.class)
                 .dataSource(dataSource)
                 .executor(new MyScriptExecutor())
+                .feature(JDBFeature.DB2_ID_OWNED_SEQUENCE_RESTART_WITH)
                 .build();
 
         engine.resetDB((db)->{

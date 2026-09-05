@@ -52,7 +52,13 @@ public class JdbAbstractTest {
         return JDBEngine.builder(schemaClass)
                 .dataSource(()->dataSource)
                 .executor(testConfiguration.getScriptExecutor())
-                .cacheStrategy(CacheStrategy.GLOBAL);
+                .cacheStrategy(CacheStrategy.GLOBAL)
+                // DB2_ID_OWNED_SEQUENCE_ERROR is the default, and these generic tests don't care to
+                // exercise it - it's DB2-only and only bites schemas with an identity column
+                // (see GENERATED_INT_ID_TABLE), so pick the fully-correct behavior here rather than
+                // making every generic test fail on the db2 profile. Db2FeatureTest exercises all
+                // three DB2_ID_OWNED_SEQUENCE_* alternatives directly, against a live DB2.
+                .feature(JDBFeature.DB2_ID_OWNED_SEQUENCE_RESTART_WITH);
     }
 
 
@@ -210,6 +216,18 @@ public class JdbAbstractTest {
 
     protected void skipFor(String featureName, DBMSType type) {
         skipFor(featureName, type, null, null);
+    }
+
+    /**
+     * Inverse of {@link #skipFor}: skips unless the current profile is exactly {@code type} - for
+     * a test that only makes sense against one specific DBMS (e.g. a DBMS-specific
+     * {@link JDBFeature} group) rather than one that applies everywhere except a few.
+     */
+    protected void skipUnless(String featureName, DBMSType type) {
+        DBMSType dbmsType = testConfiguration.getDbmsType();
+        if (dbmsType != type) {
+            throw new SkipException("%s only supported on %s.".formatted(featureName, type));
+        }
     }
 
     protected void skipFor(String featureName, DBMSType type, Class<?> scriptExecutorClass, String reason) {
