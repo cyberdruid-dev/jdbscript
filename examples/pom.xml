@@ -25,6 +25,8 @@
         <module>04-scripting-power</module>
         <module>05-custom-converters</module>
         <module>06-insert-power</module>
+        <module>07-testcontainers</module>
+        <module>08-springboot</module>
     </modules>
 
     <properties>
@@ -44,6 +46,10 @@
         <hikaricp.version>7.1.0</hikaricp.version>
         <slf4j.version>2.0.18</slf4j.version>
         <logback.version>1.6.3</logback.version>
+
+        <!-- Used by 07-testcontainers only. -->
+        <testcontainers.version>1.21.4</testcontainers.version>
+        <postgresql.version>42.7.13</postgresql.version>
     </properties>
 
     <dependencyManagement>
@@ -81,6 +87,26 @@
                 <groupId>ch.qos.logback</groupId>
                 <artifactId>logback-classic</artifactId>
                 <version>${logback.version}</version>
+                <scope>test</scope>
+            </dependency>
+
+            <!-- Used by 07-testcontainers only. -->
+            <dependency>
+                <groupId>org.testcontainers</groupId>
+                <artifactId>junit-jupiter</artifactId>
+                <version>${testcontainers.version}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.testcontainers</groupId>
+                <artifactId>postgresql</artifactId>
+                <version>${testcontainers.version}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.postgresql</groupId>
+                <artifactId>postgresql</artifactId>
+                <version>${postgresql.version}</version>
                 <scope>test</scope>
             </dependency>
         </dependencies>

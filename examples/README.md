@@ -29,5 +29,7 @@ mvn test
 | 04 | [`04-scripting-power`](04-scripting-power) | A script is just Java: generating 100+ rows with a for loop, and why seeding your randomness (`new Random(42)`) matters for reproducibility. |
 | 05 | [`05-custom-converters`](05-custom-converters) | Teaching jdbscript a domain value type via `IJDBTypeConverter`, registered alongside the built-in converters with `.converter(...)`. |
 | 06 | [`06-insert-power`](06-insert-power) | `insertDB` used to interleave arrange and act within a single test — simulating a sequence of events over time, not just one static snapshot. |
+| 07 | [`07-testcontainers`](07-testcontainers) | 01-quickstart's exact schema and seeding code, run against a real PostgreSQL instance started by Testcontainers instead of in-memory H2. Requires Docker. |
+| 08 | [`08-springboot`](08-springboot) | jdbscript dropped into a `@SpringBootTest`, using the `DataSource` bean spring-boot-starter-jdbc already auto-configured — no jdbscript-specific Spring integration exists or is needed. |
 
 See the main [README](../README.md) for the full feature list in prose form.
