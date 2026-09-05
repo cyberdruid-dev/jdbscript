@@ -64,10 +64,10 @@ public final class JDBFeatureSet {
     }
 
     /**
-     * The feature active for {@code group}, or {@code fallback} if the group has no active member.
+     * The feature active for {@code featureGroup}, or {@code fallback} if the group has no active member.
      *
-     * @param group    the feature group to look up
-     * @param fallback returned when {@code group} has no active member
+     * @param featureGroup the feature group to look up
+     * @param fallback     returned when {@code featureGroup} has no active member
      * @return the active feature for the group, or {@code fallback}
      */
     public JDBFeature getOrDefault(JDBFeature.Group featureGroup, JDBFeature fallback) {
