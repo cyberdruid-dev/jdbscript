@@ -1,155 +1,120 @@
 # JDBScript TODO & Roadmap
 
-### Goals:
+### Goals
 * Simple to use
-* Robust (across different dbms & jdk)
+* Robust (across different DBMS & JDK)
 * Explainability
   * proper logging
 * Extensible(?)
 
-### TODO:
-* [x] Add metadata cache
-  * [x] tests: DataSourceCacheKey - url mutations to same db should result in equal DataSourceCacheKey
-  * [x] tests: various cache strategies;
-* [x] Add option: NONE|WARNING|ERROR on tables are missing for an schema interface.
-* [x] fix table cleanup order:
-  * [ ] add user option to set the order
-  * [x] autodetect FK dependencies(+caching), with error message on cyclic dependencies
-  * [ ] option: add disableConstraintsDuringCleanup() (not for Oracle)
-* [x] test: is order of tables in script relevant?
-* [x] data type conversion(e.g. Date -> seconds, Instant -> epoch ms):
-  * [x] option: allow default methods with same name to do conversion
-  * [ ] option: add an annotation
-* [ ] implement updating db scripts(update some columns with known row id)
-* [x] implement simple assertions
-* [ ] handle date/timestamp precision mismatch. (e.g. mariadb with assertDBhas() for dates)
-* [ ] sequence autocorrection/manual updates
-  * [x] a) Set all sequences to 10000+
-    * [x] a.1) reset sequences while cleanup
-    * [ ] a.2) reset with dbscript command();
-  * [ ] b) give access to sequences from script.
-* [x] !!Create Strategies for different DBMSs (PostgreSQL/OracleSequenceResetter....)
-* [ ] Tests for sequence resets
-* [ ] What exceptions to throw?
-* [ ] Fix naming: Db/DB/Jdb/JDBS/....
-* [x] Document public interfaces and classes.
-  * [x] JDBEngine/IJDBEngine
-  * [x] IDbSchema
-  * [x] RecordTools/IDbRecordTools
-  * [x] DbmsType
-  * [x] IScriptExecutor
-* [x] Test: Not leaking connections.
-* [x] throw error if ClassScript's constructor has parameters.
-* [x] add JDBEngine()  constructor with ()->DataSource supplier
-* [ ] write a skill
-* Bugs:
-  * [ ] Postgres <=12 can have IDENTITY column with hidden sequence (liquibase sometime generates it)
-  * [x] Cockroachdb connects though postgres driver that confuses PostgreSQLStrategy
-* Features:
-  * [x] Class as script
-  * [x] Include Scripts
-    * [x] should work from Class scripts
-    * [x] should work from Consumer scripts
-  * [ ] defaults
-    * [ ] Should work with class scripts too.
-  * [ ] defaults: templates
-  * [ ] defaults: generated ID
-    * [ ] Gotcha (found while writing examples/03-recordtools-defaults): `RecordTools.nextIntId`/
-      `nextLongId` advances its counter every time `defaults()` runs for a record, even when the
-      resulting `id(...)` call is a no-op because that column was already set explicitly
-      (`NotOverridingInvocationDecorator` skips the assignment, but the counter was already
-      incremented before the skipped call). Mixing explicit and generated ids in the same script
-      can leave bigger gaps than expected. Decide: skip advancing when the value won't be used
-      (would need `NotOverridingInvocationDecorator` to short-circuit the whole expression, not
-      just the setter), or just document it clearly?
-  * [ ] Types conversions
-    * [ ] Warnings if DB datatype has less precision and we set data that won't match? (java Date VS db DATE)
-      * [ ] Alternative: leave it to dmbs (MySQL thorws exception)
-    * [x] enums: name(default),ordinal
-    * [ ] custom types? - need test
-    * [ ] custom converters on field(e.g. UUID can be stored in different ways)
-  * [ ] JdbsUtils:
-    * today(+-nDays) - use time units?
-    * midnight(+-nDays)
-* [x] SQLite support:
-  * [x] SQLExecutor: how to handle date/time? (handled by strategy and test infra)
-* [x] hsqldb support
-* [x] db2 support(?)
-* [x] Improvement: Reuse prepared statements for same tables.
-* [ ] Validate an IDBRecord interface's declared column methods against the DB table's actual
-  columns - same idea as SchemaValidator's table check, one level deeper. Today a misspelled/
-  wrong-case fluent setter surfaces as a raw JDBC SQLException at insert time, not a clear
+## Open
+
+#### Schema & Column Validation
+* [ ] Validate an `IDBRecord` interface's declared column methods against the DB table's actual
+  columns - same idea as `SchemaValidator`'s table check, one level deeper. Today a misspelled/
+  wrong-case fluent setter surfaces as a raw JDBC `SQLException` at insert time, not a clear
   jdbscript error.
-  * reuse SchemaValidator.findRecordMethods()'s reflection approach (clazz.getMethods(), filter
-    Object/default/`defaults`), just applied to an IDBRecord subtype instead of the schema
-    interface
+  * reuse `SchemaValidator.findRecordMethods()`'s reflection approach (`clazz.getMethods()`,
+    filter Object/default/`defaults`), just applied to an `IDBRecord` subtype instead of the
+    schema interface
   * one direction only: interface declares a column the DB doesn't have -> always fail. Unlike
     tables, DB columns absent from the interface are normal (audit columns, unused optional
-    fields) and shouldn't warn - no unmappedTableStrategy-style toggle needed
-  * validate lazily per table, on first use of that record type; reuse CacheStrategy so it's not
-    a DatabaseMetaData.getColumns() call per insert
+    fields) and shouldn't warn - no `unmappedTableStrategy`-style toggle needed
+  * validate lazily per table, on first use of that record type; reuse `CacheStrategy` so it's
+    not a `DatabaseMetaData.getColumns()` call per insert
+  * supersedes the old, vaguer "`engine.verifySchema()`" idea - table-level validation already
+    ships automatically on first use; this is the column-level counterpart
+* [ ] Explore table/column name case sensitivity - generated SQL inserts identifiers unquoted, so
+  an exact match already depends on each DBMS's own case-folding rules; decide if/how jdbscript
+  should help here beyond documenting it (done for columns - see `IDBRecord`'s javadoc)
 
-### OLD TODO:
-* [ ] @Default, @GeneratedId - are applied before send script to executor
-  * !Problem: @Default can not accept arbitrary object as value, only exact type of primitive or a Class<?>
-  * [ ] !ALTERNATIVE: defaults(Tools tools){}
-    * [ ] Tools - any class that have:
-      * default public constructor
-      * setJDBScriptAccessor(JDBScriptAccessor) - to access script state; 
-    * [ ] DefaultTools
-      * [ ] getNextId(name) - implementation? (name - is table scoped (default to null? empty param?))
-      * [ ] intValue(String expr) - evaluated upon values of current records
-    * [ ] defaults() method is called on proxy that prevents overriding existing value.
-    * [ ] tools should have some access to JDBScript in question (JDBScriptAccessor??)
-* [ ] @GeneratedId - applied to db field, generates Id(=max(table.ids))
-* [ ] @Default - applied to db field, if field value was not specified set the value to annotation value
-* [ ] Tests:
-  * [ ] check not @GeneratedId,@Default applied to same db field.
-  * [ ] check @GeneratedId,@Default are not from some other package(by mistake).
-  * [ ] Throw exception if some values were not specified neither in script nor in defaults.
-* [ ] ensure test passes with autocommit=true|false
-* [ ] Explore table name case sensitivity
-* [x] Make tests pass on Oracle db
-* [x] make logging work
-* [x] make script class with private constructor work
-* [x] run tests with different DBMS
-  * [x] MySQL
-  * [x] MariaDB
-  * [x] Postgres
-  * [x] Oracle
-  * [x] MSSQl
-  *  [x] configure test in TeamCity to run against multiple dbms
-* [x] test for null in executor class
-* [x] Setup TeamCity Builds
-* [x] Handle inner nonstatic classes(throw explaining exception?)
+#### Type Conversion
+* [ ] Warn (or leave to the DBMS) when a Java value has more precision than the DB column
+  supports (e.g. `Date` vs a DB `DATE` column; MariaDB + `assertDBHas()` on timestamps)
+  * alternative: leave it to the DBMS - MySQL already throws on this
+* [ ] Custom types - needs a dedicated test
+* [ ] Per-field custom converters (e.g. a UUID stored differently in different columns) - check
+  how much of this `.converter(...)` already covers before starting
+* [ ] Annotation-based conversion option - reconsider whether this is still needed now that
+  `.converter(...)` / `.disableDefaultConverters()` cover custom mapping without annotations
 
-### Requirements:
-* Minimal JDK version?
-  * Using InvocationHandler.invokeDefaults() -> Java16
-* [Deploy to Maven Central](https://maven.apache.org/repository/guide-central-repository-upload.html)
+#### Defaults & Generated IDs
+* [ ] `defaults()` should work from class-based scripts too, not just lambdas
+* [ ] Defaults: templating
+* [ ] Gotcha (found while writing examples/03-recordtools-defaults): `RecordTools.nextIntId`/
+  `nextLongId` advances its counter every time `defaults()` runs for a record, even when the
+  resulting `id(...)` call is a no-op because that column was already set explicitly
+  (`NotOverridingInvocationDecorator` skips the assignment, but the counter was already
+  incremented before the skipped call). Mixing explicit and generated ids in the same script
+  can leave bigger gaps than expected. Decide: skip advancing when the value won't be used
+  (would need `NotOverridingInvocationDecorator` to short-circuit the whole expression, not
+  just the setter), or just document it clearly?
 
-### Possible Features:
-* [ ] defaults + templating
-* [ ] id autogeneration(@GeneratedId)
-* [ ] sequence autocorrection/manual updates
-* [ ] support different DBMS:
-  * [ ] MySQL/MariaDB
-  * [ ] Postgres
-  * [ ] Oracle
-  * [ ] H2
-  * [x] CockroachDB?
-  * [ ] Snowflake?
-  * [x] IBM DB2?
-  * [x] SQLite?
-  * [ ] Google BigQuery?
-* [ ] autodetect table dependency -> cleanup order
+#### Sequences
+* [ ] Reset sequences on demand via an explicit script command, not just during cleanup
+* [ ] Give scripts direct access to sequences
+* [ ] Dedicated tests for sequence resets (beyond the per-DBMS strategy tests that exist today)
+
+#### Cleanup & Table Order
+* [ ] `disableConstraintsDuringCleanup()` option (not applicable to Oracle)
+
+#### Scripts & API
+* [ ] `updateDB` - update specific columns on a known row id, not just insert/reset
 * [ ] Parametrized scripts?
-* [ ] Java->DB types conversions 
-* [ ] possibility to split the schema into multiple interfaces
-* [ ] Easy Spring integration
-* [ ] Single table inserts (maybe helpful in inline updates of practical use)
-* [ ] Generate Schema interfaces from DB
-* [ ] engine.verifySchema() - to check that java and db schema are compatible.
-* [ ] Caching scripts inside engine(with option to disable)
-* [ ] Kotlin support?(should work, but maybe can be done better)
-* [x] abstract classes as scripts
+* [ ] Split a schema across multiple interfaces
+* [ ] Single-table inserts (useful for inline updates)
+* [ ] Cache parsed scripts inside the engine (with an option to disable)
+* [ ] `JdbsUtils`: `today(+-nDays)` (use time units?), `midnight(+-nDays)`
+
+#### Ecosystem Integration
+* [ ] Generate schema interfaces from an existing DB
+* [ ] Kotlin support? (should already work, but may be improvable)
+* [ ] Easy Spring integration - `examples/08-springboot` already proves a plain `DataSource` bean
+  is enough with zero extra code; re-scope this if something beyond that is actually wanted
+  (e.g. an autoconfiguration starter)
+* [ ] Future DBMS ideas: 
+  * [ ] Spanner
+  * [ ] Snowflake?
+  * [ ] Google BigQuery?
+
+#### Naming, Design Questions & Housekeeping
+* [ ] Write a SKILL.md
+* [ ] What exceptions should be thrown, as a general policy? (open design question)
+* [ ] Ensure tests pass with `autocommit=true|false`
+
+#### Bugs
+* [ ] Postgres <=12 can have an IDENTITY column with a hidden sequence (Liquibase sometimes
+  generates it)
+
+## Shipped
+Grouped summary of completed work - see git history for detail.
+
+* **Metadata caching**: `INSTANCE`/`GLOBAL`/`NONE` strategies, `DataSourceCacheKey` tests
+* **Schema validation**: unmapped-table strategy (`LOG_WARN`/`LOG_ERROR`/`FAIL`), default
+  migration-table suppression
+* **Table order**: FK auto-detection with caching and a cyclic-dependency error; manual override
+  via `Builder.tableDependencyOrder(...)`
+* **Type conversion**: `Date`/`Instant`, enums (name/ordinal), default-method-based conversion,
+  custom converters (`.converter(...)` / `.disableDefaultConverters()`)
+* **Assertions**: `assertDBHas` / `assertDBHasNot`
+* **Sequences**: reset-to-10000+ on cleanup, per-DBMS reset strategies, DB2 identity-owned-sequence
+  handling via `JDBFeature` / `.feature(...)`
+* **Scripts**: class-based and abstract-class scripts, `include(...)` composition (from both class
+  and lambda scripts), constructor-parameter guard on class scripts, reusable prepared statements
+  per table
+* **ID generation**: `RecordTools.nextIntId`/`nextLongId`, templated string values
+  (`RecordTools.strValue`)
+* **DBMS support**: MySQL, MariaDB, Postgres, Oracle, MSSQL, H2, HSQLDB, SQLite, DuckDB, DB2,
+  CockroachDB (including working around its Postgres-driver detection confusing
+  `PostgreSQLStrategy`)
+* **Engine**: builder pattern (`JDBEngine.builder(...)`), lazy `DataSource` supplier,
+  lazy engine construction, no leaked connections (tested)
+* **Docs**: all public interfaces/classes documented (`JDBEngine`/`IJDBEngine`, `IDBSchema`,
+  `RecordTools`/`IDBRecordTools`, `DBMSType`, `IScriptExecutor`)
+* **Infra**: TeamCity CI across all supported DBMS x JDK 17/21/25; inner non-static script
+  classes throw an explaining exception; null-handling tested in the executor
+* **Released**: v1.1.0 published to Maven Central (2026-09-05)
+
+## Requirements
+* JDK 17+ (uses `InvocationHandler.invokeDefault`, which needs Java 16+; project targets 17)
+* [x] Deploy to Maven Central - published
