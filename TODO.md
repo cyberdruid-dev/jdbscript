@@ -65,8 +65,10 @@
 * [ ] Single-table inserts (useful for inline updates)
 * [ ] Cache parsed scripts inside the engine (with an option to disable)
 * [ ] `JdbsUtils`: `today(+-nDays)` (use time units?), `midnight(+-nDays)`
+* [ ] add a callback for db modification? (e.g. for app's cache reset)
 
 #### Ecosystem Integration
+* [ ] Find a way to test liqubase/flyway patches?
 * [ ] Generate schema interfaces from an existing DB
 * [ ] Kotlin support? (should already work, but may be improvable)
 * [ ] Easy Spring integration - `examples/08-springboot` already proves a plain `DataSource` bean
