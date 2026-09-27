@@ -32,6 +32,8 @@ public enum JDBErrors implements Supplier<JDBScriptException> {
     UNMAPPED_TABLE_STRATEGY_IS_NULL(JDBScriptException.class,"unmapped table strategy can not be null."  ),
     /** A feature passed to Builder.feature(...) cannot be null. */
     FEATURE_IS_NULL(JDBScriptException.class,"feature can not be null."  ),
+    /** A callback passed to Builder.onDataChange(...) cannot be null. */
+    DATA_CHANGE_LISTENER_IS_NULL(JDBScriptException.class,"data change listener can not be null."  ),
     /** Table defined in interface but missing from DB. */
     MISSING_TABLE_IN_DB(JDBScriptException.class, "Table '%s' defined in interface %s but missing from DB"),
     /** Table found in DB but missing from schema interface. */

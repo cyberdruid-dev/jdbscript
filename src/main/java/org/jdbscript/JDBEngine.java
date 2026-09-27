@@ -1,6 +1,7 @@
 package org.jdbscript;
 
 import org.jdbscript.errors.JDBErrors;
+import org.jdbscript.errors.JDBScriptException;
 import org.jdbscript.impl.*;
 import org.jdbscript.impl.cache.IJDBCache;
 import org.jdbscript.impl.cache.JDBCacheManager;
@@ -44,6 +45,7 @@ public class JDBEngine<T extends IDBSchema> implements IJDBEngine<T>{
     private final Set<String> suppressedTables;
     private final boolean suppressDefaultUnmappedTables;
     private final JDBFeatureSet features;
+    private final List<ThrowingRunnable> dataChangeListeners;
 
     private JDBEngine(Builder<T> builder) {
         this.dbSchemaClass = checkNotNull(builder.dbSchemaClass, DB_SCHEMA_IS_NULL);
@@ -55,6 +57,7 @@ public class JDBEngine<T extends IDBSchema> implements IJDBEngine<T>{
         this.suppressedTables = Set.copyOf(builder.suppressedTables);
         this.suppressDefaultUnmappedTables = builder.suppressDefaultUnmappedTables;
         this.features = JDBFeatureSet.copyOf(builder.features);
+        this.dataChangeListeners = List.copyOf(builder.dataChangeListeners);
         if (builder.disableDefaultConverters) {
             this.converter.setConverters(List.of());
         }
@@ -94,28 +97,38 @@ public class JDBEngine<T extends IDBSchema> implements IJDBEngine<T>{
 
     @Override
     public void resetDB(Class<? extends T> scriptClass) {
-        cleanupDB();
-        insertDB(scriptClass);
+        cleanupDBInternal();
+        insertDBInternal(scriptClass);
+        notifyDataChange();
     }
 
     @Override
     public void insertDB(Class<? extends T> scriptClass) {
         log.debug("insertDB({})", scriptClass.getName());
-        insertDB(db->{
-            db.include(scriptClass);
-        });
+        insertDBInternal(scriptClass);
+        notifyDataChange();
     }
 
     @Override
     public void resetDB(Consumer<T> db) {
         log.debug("resetDb(consumer={})", db);
-        cleanupDB();
-        insertDB(db);
+        cleanupDBInternal();
+        insertDBInternal(db);
+        notifyDataChange();
     }
 
     @Override
     public void insertDB(Consumer<T> db) {
         log.debug("insertDB(consumer={})", db);
+        insertDBInternal(db);
+        notifyDataChange();
+    }
+
+    private void insertDBInternal(Class<? extends T> scriptClass) {
+        insertDBInternal(db -> db.include(scriptClass));
+    }
+
+    private void insertDBInternal(Consumer<T> db) {
         validateSchema();
         ScriptHandler<T> handler = new ScriptHandler(dbSchemaClass);
         db.accept(handler.getProxy());
@@ -124,6 +137,16 @@ public class JDBEngine<T extends IDBSchema> implements IJDBEngine<T>{
         converter.convertTypes(script);
         sortScript(script);
         getExecutor().insert(script);
+    }
+
+    private void notifyDataChange() {
+        for (ThrowingRunnable listener : dataChangeListeners) {
+            try {
+                listener.run();
+            } catch (Exception e) {
+                throw new JDBScriptException("onDataChange listener threw an exception.", e);
+            }
+        }
     }
 
     private synchronized IJDBCache getCache() {
@@ -167,6 +190,11 @@ public class JDBEngine<T extends IDBSchema> implements IJDBEngine<T>{
 
     @Override
     public void cleanupDB() {
+        cleanupDBInternal();
+        notifyDataChange();
+    }
+
+    private void cleanupDBInternal() {
         getExecutor().cleanupTables(getTableNamesCleanupOrder());
     }
 
@@ -244,6 +272,7 @@ public class JDBEngine<T extends IDBSchema> implements IJDBEngine<T>{
         private final Set<String> suppressedTables = new HashSet<>();
         private boolean suppressDefaultUnmappedTables = true;
         private final JDBFeatureSet features = JDBFeatureSet.empty();
+        private final List<ThrowingRunnable> dataChangeListeners = new ArrayList<>();
 
         private Builder(Class<T> dbSchemaClass) {
             this.dbSchemaClass = dbSchemaClass;
@@ -379,6 +408,25 @@ public class JDBEngine<T extends IDBSchema> implements IJDBEngine<T>{
          */
         public Builder<T> feature(JDBFeature feature) {
             this.features.add(feature);
+            return this;
+        }
+
+        /**
+         * Registers a callback invoked once after each successful data-changing call -
+         * {@link JDBEngine#resetDB}, {@link JDBEngine#insertDB} (either overload), or
+         * {@link JDBEngine#cleanupDB} - e.g. to invalidate an application-level cache. Not invoked
+         * by {@code assertDBHas}/{@code assertDBHasNot}, which don't mutate the database, nor when
+         * the triggering call itself fails. Any exception the callback throws is wrapped in a
+         * {@link JDBScriptException} and propagated to the caller of that data-changing call.
+         * <p>
+         * This method is cumulative: call it once per callback to register several; all run in
+         * registration order.
+         *
+         * @param callback invoked after a successful data-changing operation; must not be null
+         * @return this builder
+         */
+        public Builder<T> onDataChange(ThrowingRunnable callback) {
+            this.dataChangeListeners.add(checkNotNull(callback, DATA_CHANGE_LISTENER_IS_NULL));
             return this;
         }
 
