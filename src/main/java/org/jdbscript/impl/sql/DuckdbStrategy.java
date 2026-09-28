@@ -36,11 +36,15 @@ class DuckdbStrategy extends DefaultSqlExecutorStrategy {
                                 + e.getMessage(), e);
             }
             for (String seqName : seqNames) {
-                // DuckDB sequences don't advance automatically on manual inserts.
-                // We advance them by a safe margin (10000) to avoid collisions with manual IDs.
-                // We use range() to call nextval multiple times as ALTER SEQUENCE RESTART is not yet fully supported in JDBC.
-                try (var rs = stmt.executeQuery("SELECT nextval('" + seqName + "') FROM range(1, 10000)")) {
-                    // Just execute and close
+                try {
+                    if (!isPastSafeFloor(stmt, seqName)) {
+                        // DuckDB sequences don't advance automatically on manual inserts. We
+                        // advance them by a safe margin (10000) to avoid collisions with manual
+                        // IDs. We use range() to call nextval multiple times as ALTER SEQUENCE
+                        // RESTART is not yet fully supported in JDBC.
+                        try (var rs = stmt.executeQuery("SELECT nextval('" + seqName + "') FROM range(1, 10000)")) {
+                        }
+                    }
                 } catch (SQLException e) {
                     throw new SQLException(
                             "Failed to reset DuckDB sequence '" + seqName + "' to a safe value after "
@@ -48,6 +52,13 @@ class DuckdbStrategy extends DefaultSqlExecutorStrategy {
                                     + "with manually-inserted ones: " + e.getMessage(), e);
                 }
             }
+        }
+    }
+
+    private boolean isPastSafeFloor(java.sql.Statement stmt, String seqName) throws SQLException {
+        try (var rs = stmt.executeQuery(
+                "SELECT last_value FROM duckdb_sequences() WHERE sequence_name = '" + seqName + "'")) {
+            return rs.next() && rs.getLong(1) >= 10000;
         }
     }
 
