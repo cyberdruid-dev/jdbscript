@@ -59,16 +59,19 @@ public class LiquibaseMigrator implements MigrationRunner {
         // (see https://github.com/liquibase/liquibase/issues/2267, closed without a fix). Drop
         // tables directly instead; this also naturally clears DATABASECHANGELOG, same as
         // dropAll() does everywhere else.
-        if (isSqlite(dataSource)) {
+        DBMSType dbmsType = detectDbmsType(dataSource);
+        if (dbmsType == DBMSType.SQLITE) {
             resetSqlite(dataSource);
+        } else if (dbmsType == DBMSType.SPANNER) {
+            resetSpanner(dataSource);
         } else {
             run(dataSource, Liquibase::dropAll);
         }
     }
 
-    private boolean isSqlite(DataSource dataSource) {
+    private DBMSType detectDbmsType(DataSource dataSource) {
         try (Connection connection = dataSource.getConnection()) {
-            return DBMSType.getType(connection.getMetaData()) == DBMSType.SQLITE;
+            return DBMSType.getType(connection.getMetaData());
         } catch (SQLException e) {
             throw new JDBScriptException("Failed to detect database type (changelog '" + changeLogFile + "').", e);
         }
@@ -91,6 +94,45 @@ public class LiquibaseMigrator implements MigrationRunner {
             }
         } catch (SQLException e) {
             throw new JDBScriptException("Failed to reset SQLite database (changelog '" + changeLogFile + "').", e);
+        }
+    }
+
+    private void resetSpanner(DataSource dataSource) {
+        // Spanner forbids DDL while a read/write transaction is open, but dropAll() opens one
+        // itself (to acquire the changelog lock) before issuing its DROP TABLE statements,
+        // failing with "DDL-statements are not allowed inside a read/write transaction." Drop
+        // tables directly in autocommit mode instead - Spanner also has no SQLite-style pragma to
+        // disable FK enforcement, so this retries over several passes, dropping whatever is
+        // FK-free each time, until nothing (non-changelog) is left.
+        try (Connection connection = dataSource.getConnection()) {
+            connection.setAutoCommit(true);
+            for (int i = 0; i < 5; i++) {
+                List<String> tables = new ArrayList<>();
+                try (var rs = connection.getMetaData().getTables(null, null, "%", new String[]{"TABLE"})) {
+                    while (rs.next()) {
+                        tables.add(rs.getString("TABLE_NAME"));
+                    }
+                }
+                if (tables.isEmpty() || (tables.size() <= 2 && tables.stream().allMatch(t -> t.startsWith("DATABASECHANGELOG")))) {
+                    break;
+                }
+                try (Statement statement = connection.createStatement()) {
+                    for (String table : tables) {
+                        if (table.startsWith("DATABASECHANGELOG")) continue;
+                        try {
+                            statement.execute("DROP TABLE " + table);
+                        } catch (Exception e) {
+                            // FK-dependent table not yet droppable this pass - retry next iteration.
+                        }
+                    }
+                }
+            }
+            try (Statement statement = connection.createStatement()) {
+                try { statement.execute("DROP TABLE DATABASECHANGELOGLOCK"); } catch (Exception e) {}
+                try { statement.execute("DROP TABLE DATABASECHANGELOG"); } catch (Exception e) {}
+            }
+        } catch (SQLException e) {
+            throw new JDBScriptException("Failed to reset Spanner database (changelog '" + changeLogFile + "').", e);
         }
     }
 

@@ -75,8 +75,9 @@ databaseChangeLog:
         - sql:
             # Nested 2-arg CONCAT, not CONCAT(a, b, c): Oracle's and DB2's CONCAT only accept
             # exactly 2 arguments, unlike MySQL/Postgres/H2/MSSQL's variadic form - this works on
-            # all of them.
-            sql: UPDATE migration_person SET full_name = CONCAT(CONCAT(first_name, ' '), last_name)
+            # all of them. The trailing WHERE is needed for Spanner, which rejects an UPDATE with
+            # no WHERE clause outright.
+            sql: UPDATE migration_person SET full_name = CONCAT(CONCAT(first_name, ' '), last_name) WHERE 1=1
   - changeSet:
       id: 009-tag-after-full-name-backfill
       author: jdbscript-tests
