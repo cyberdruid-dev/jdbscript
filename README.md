@@ -42,7 +42,7 @@ Add the dependency to your `pom.xml`:
 <dependency>
     <groupId>org.jdbscript</groupId>
     <artifactId>jdbscript</artifactId>
-    <version>1.1.0</version>
+    <version>1.2.0</version>
     <scope>test</scope>
 </dependency>
 ```
@@ -51,12 +51,12 @@ Add the dependency to your `pom.xml`:
 
 **Groovy DSL** (`build.gradle`):
 ```groovy
-testImplementation 'org.jdbscript:jdbscript:1.1.0'
+testImplementation 'org.jdbscript:jdbscript:1.2.0'
 ```
 
 **Kotlin DSL** (`build.gradle.kts`):
 ```kotlin
-testImplementation("org.jdbscript:jdbscript:1.1.0")
+testImplementation("org.jdbscript:jdbscript:1.2.0")
 ```
 
 ### Requirements
