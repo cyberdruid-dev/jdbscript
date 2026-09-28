@@ -175,6 +175,12 @@
                     <version>2.7.4</version>
                     <scope>test</scope>
                 </dependency>
+                <dependency>
+                    <groupId>org.flywaydb</groupId>
+                    <artifactId>flyway-database-hsqldb</artifactId>
+                    <version>${flywayVersion}</version>
+                    <scope>test</scope>
+                </dependency>
             </dependencies>
         </profile>
         <profile>
@@ -189,6 +195,12 @@
                     <version>11.1.4.4</version>
                     <scope>test</scope>
                 </dependency>
+                <dependency>
+                    <groupId>org.flywaydb</groupId>
+                    <artifactId>flyway-database-db2</artifactId>
+                    <version>${flywayVersion}</version>
+                    <scope>test</scope>
+                </dependency>
             </dependencies>
         </profile>
         <profile>
@@ -201,6 +213,12 @@
                     <groupId>com.microsoft.sqlserver</groupId>
                     <artifactId>mssql-jdbc</artifactId>
                     <version>13.4.0.jre11</version>
+                    <scope>test</scope>
+                </dependency>
+                <dependency>
+                    <groupId>org.flywaydb</groupId>
+                    <artifactId>flyway-sqlserver</artifactId>
+                    <version>${flywayVersion}</version>
                     <scope>test</scope>
                 </dependency>
             </dependencies>
@@ -410,6 +428,12 @@
                     <groupId>com.oracle.database.jdbc</groupId>
                     <artifactId>ojdbc11</artifactId>
                     <version>23.26.3.0.0</version>
+                    <scope>test</scope>
+                </dependency>
+                <dependency>
+                    <groupId>org.flywaydb</groupId>
+                    <artifactId>flyway-database-oracle</artifactId>
+                    <version>${flywayVersion}</version>
                     <scope>test</scope>
                 </dependency>
             </dependencies>

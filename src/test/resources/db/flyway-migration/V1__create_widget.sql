@@ -1,3 +1,3 @@
 CREATE TABLE widget (
-    id INT PRIMARY KEY
+    id INT NOT NULL PRIMARY KEY
 );

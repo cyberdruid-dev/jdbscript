@@ -1,1 +1,1 @@
-ALTER TABLE migration_person ADD COLUMN full_name VARCHAR(200);
+ALTER TABLE migration_person ADD full_name VARCHAR(200);

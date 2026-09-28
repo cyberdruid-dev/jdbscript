@@ -1,4 +1,4 @@
 CREATE TABLE migration_customer (
-    id INT PRIMARY KEY,
+    id INT NOT NULL PRIMARY KEY,
     name VARCHAR(100)
 );

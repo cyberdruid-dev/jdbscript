@@ -1,1 +1,1 @@
-ALTER TABLE widget ADD COLUMN description VARCHAR(200);
+ALTER TABLE widget ADD description VARCHAR(200);
