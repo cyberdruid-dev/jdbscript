@@ -2,6 +2,13 @@ databaseChangeLog:
 - property:
     name: pk_type_def
     value: bigint
+    dbms: "!sqlite"
+- property:
+    # SQLite's AUTOINCREMENT keyword is only legal on a column declared exactly INTEGER (not
+    # BIGINT, even though both share the same storage affinity there).
+    name: pk_type_def
+    value: integer
+    dbms: "sqlite"
 - property:
     name: auto_inc
     value: true

@@ -29,7 +29,9 @@ class PostgreSQLStrategy extends  DefaultSqlExecutorStrategy{
                 List<String> seqNames = getSequences(stmt);
                 // GREATEST() makes this advance-only: setval() alone would rewind a sequence
                 // that's already past 10000, handing out a value it gave out once already.
-                String sql = "SELECT setval('%1$s', GREATEST((SELECT COALESCE(last_value, 0) FROM pg_sequences WHERE sequencename = '%1$s'), 10000), true);";
+                // Selecting last_value from the sequence relation itself (rather than the
+                // pg_sequences catalog view, added only in PG10+) works on every Postgres version.
+                String sql = "SELECT setval('%1$s', GREATEST((SELECT last_value FROM %1$s), 10000), true);";
                 for (String seqName : seqNames) {
                     stmt.executeQuery(String.format(sql, seqName));
                 }
