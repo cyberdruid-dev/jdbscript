@@ -1,6 +1,7 @@
 package org.jdbscript;
 
 import org.jdbscript.impl.JDBRecord;
+import org.jdbscript.impl.TypedNull;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -45,7 +46,8 @@ public class RecordTools implements IDBRecordTools {
         Matcher m = TEMPLATE_PATTERN.matcher(result);
         return m.replaceAll((match)->{
             String key = match.group(1);
-            return Matcher.quoteReplacement(record.getColumns().get(key)+"");
+            Object value = record.getColumns().get(key);
+            return Matcher.quoteReplacement(String.valueOf(value instanceof TypedNull ? null : value));
         });
     }
 

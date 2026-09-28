@@ -4,6 +4,7 @@ import org.jdbscript.CacheStrategy;
 import org.testng.annotations.Test;
 
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -116,6 +117,55 @@ public class InstanceCacheTest extends AbstractCacheTest {
         t2.join();
 
         assertThat(computeCalls.get()).isEqualTo(1);
+    }
+
+    @Test
+    public void a_slow_compute_should_not_block_other_keys() throws InterruptedException {
+        IJDBCache cache = cacheManager.getCache(CacheStrategy.INSTANCE, defaultDataSource);
+        TestStringKey slow = key("slow");
+        TestStringKey cached = key("cached");
+        TestStringKey fresh = key("fresh");
+        cache.getOrCompute(cached, k -> "cached-value");
+        CountDownLatch computing = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+
+        Thread slowThread = new Thread(() -> cache.getOrCompute(slow, k -> {
+            computing.countDown();
+            await(release);
+            return "slow-value";
+        }));
+        slowThread.start();
+        try {
+            assertThat(computing.await(5, TimeUnit.SECONDS)).isTrue();
+
+            assertThat(cache.getOrCompute(cached, k -> "recomputed")).isEqualTo("cached-value");
+            assertThat(cache.getOrCompute(fresh, k -> "fresh-value")).isEqualTo("fresh-value");
+        } finally {
+            release.countDown();
+            slowThread.join();
+        }
+        assertThat(cache.getOrCompute(slow, k -> "recomputed")).isEqualTo("slow-value");
+    }
+
+    @Test
+    public void a_compute_racing_clear_should_not_store_its_stale_result() throws InterruptedException {
+        IJDBCache cache = cacheManager.getCache(CacheStrategy.INSTANCE, defaultDataSource);
+        TestStringKey key = key("racing-clear");
+        CountDownLatch computing = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+
+        Thread computeThread = new Thread(() -> cache.getOrCompute(key, k -> {
+            computing.countDown();
+            await(release);
+            return "stale";
+        }));
+        computeThread.start();
+        assertThat(computing.await(5, TimeUnit.SECONDS)).isTrue();
+        cache.clear();
+        release.countDown();
+        computeThread.join();
+
+        assertThat(cache.getOrCompute(key, k -> "fresh")).isEqualTo("fresh");
     }
 
     private static void await(CountDownLatch latch) {

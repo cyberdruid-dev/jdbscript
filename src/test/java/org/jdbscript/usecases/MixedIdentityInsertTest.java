@@ -8,6 +8,8 @@ import org.jdbscript.JdbAbstractTest;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 /**
  * A single insert script can freely mix records that supply an identity/auto-increment column's
  * value with records that leave it to the database - expected on every DBMS, though MSSQL is the
@@ -73,6 +75,22 @@ public class MixedIdentityInsertTest extends JdbAbstractTest {
                 columns("varchar_column"),
                 row("g-a"),
                 row("g-b")
+        ));
+    }
+
+    @Test
+    public void failed_explicit_id_insert_should_not_break_a_later_implicit_id_insert(){
+        skipFor("Native auto-increment", DBMSType.SPANNER);
+        engine.insertDB((db)-> db.generated_int_id_table().generated_id_column(777777).varchar_column("original"));
+        assertThatThrownBy(() -> engine.insertDB((db)->
+                db.generated_int_id_table().generated_id_column(777777).varchar_column("duplicate")));
+
+        engine.insertDB((db)-> db.generated_int_id_table().varchar_column("implicit"));
+
+        assertTableValues(table(TABLE_NAME_GENERATED,
+                columns("varchar_column"),
+                row("original"),
+                row("implicit")
         ));
     }
 }

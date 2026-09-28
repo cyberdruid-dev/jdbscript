@@ -40,7 +40,7 @@ public class SqlScriptExecutor implements IScriptExecutor {
     private static final Logger log = LoggerFactory.getLogger(SqlScriptExecutor.class);
  
     private SqlConnectionProvider connectionProvider;
-    private ISqlExecutorStrategy strategy;
+    private volatile ISqlExecutorStrategy strategy;
     private SqlMetadataProvider metadataProvider;
     private IJDBCache cache = new NoCache();
     private JDBFeatureSet features = JDBFeatureSet.empty();
@@ -49,20 +49,22 @@ public class SqlScriptExecutor implements IScriptExecutor {
     public SqlScriptExecutor() {
     }
 
-    public void setDbmsType(DBMSType dbmsType) {
-        this.strategy = SqlExecutorStrategyFactory.getStrategy(dbmsType);
+    public synchronized void setDbmsType(DBMSType dbmsType) {
+        // Assigned last: getStrategy() reads it without locking.
+        ISqlExecutorStrategy newStrategy = SqlExecutorStrategyFactory.getStrategy(dbmsType);
+        newStrategy.setFeatures(this.features);
+        newStrategy.setCache(this.cache);
         if (this.connectionProvider != null) {
-            this.connectionProvider.setStrategy(this.strategy);
+            this.connectionProvider.setStrategy(newStrategy);
         }
         if (this.metadataProvider != null) {
-            this.metadataProvider.setStrategy(this.strategy);
+            this.metadataProvider.setStrategy(newStrategy);
         }
-        this.strategy.setFeatures(this.features);
-        this.strategy.setCache(this.cache);
+        this.strategy = newStrategy;
     }
 
     @Override
-    public void setFeatures(JDBFeatureSet features) {
+    public synchronized void setFeatures(JDBFeatureSet features) {
         this.features = features != null ? features : JDBFeatureSet.empty();
         if (this.strategy != null) {
             this.strategy.setFeatures(this.features);
@@ -70,15 +72,25 @@ public class SqlScriptExecutor implements IScriptExecutor {
     }
 
     private ISqlExecutorStrategy getStrategy() {
-        if (strategy == null) {
-            DBMSType dbmsType = getMetadataProvider() != null ? getMetadataProvider().getDbmsType() : UNKNOWN;
-            setDbmsType(dbmsType);
+        ISqlExecutorStrategy current = strategy;
+        if (current != null) {
+            return current;
         }
-        return strategy;
+        DBMSType dbmsType = detectDbmsType();
+        synchronized (this) {
+            if (strategy == null) {
+                setDbmsType(dbmsType);
+            }
+            return strategy;
+        }
+    }
+
+    private DBMSType detectDbmsType() {
+        return getMetadataProvider() != null ? getMetadataProvider().getDbmsType() : UNKNOWN;
     }
 
     @Override
-    public void setDataSource(DataSource value) {
+    public synchronized void setDataSource(DataSource value) {
         checkIsNull(this.connectionProvider, DATASOURCE_ALREADY_SET);
         this.connectionProvider = new SqlConnectionProvider(value);
         this.metadataProvider = new SqlMetadataProvider(connectionProvider);
@@ -93,17 +105,27 @@ public class SqlScriptExecutor implements IScriptExecutor {
     public void insert(JDBScript dbScript) {
         withPreparedStatements((cnn, stmtProvider) -> {
             getStrategy().beforeInsert(cnn, dbScript);
-            for (var record : dbScript.getRecords()) {
-                getStrategy().beforeEachInsert(cnn, record);
-                List<String> columns = getSortedColumns(record);
-                String sqlKey = record.getTableName() + ":" + String.join(",", columns);
-                String sql = insertSqlCache.computeIfAbsent(sqlKey, k -> createInsertSql(record, columns));
-                PreparedStatement stmt = stmtProvider.get(sql);
-                for (int i = 0; i < columns.size(); i++) {
-                    Object value = record.getColumns().get(columns.get(i));
-                    setColumnValue(stmt, i + 1, value);
+            try {
+                for (var record : dbScript.getRecords()) {
+                    getStrategy().beforeEachInsert(cnn, record);
+                    List<String> columns = getSortedColumns(record);
+                    String sqlKey = record.getTableName() + ":" + String.join(",", columns);
+                    String sql = insertSqlCache.computeIfAbsent(sqlKey, k -> createInsertSql(record, columns));
+                    PreparedStatement stmt = stmtProvider.get(sql);
+                    for (int i = 0; i < columns.size(); i++) {
+                        Object value = record.getColumns().get(columns.get(i));
+                        setColumnValue(stmt, i + 1, value);
+                    }
+                    stmt.execute();
                 }
-                stmt.execute();
+            } catch (Throwable e) {
+                // Must run even on failure: MSSQL's IDENTITY_INSERT would otherwise stay ON for the pooled connection.
+                try {
+                    getStrategy().afterInsert(cnn);
+                } catch (Throwable cleanupError) {
+                    e.addSuppressed(cleanupError);
+                }
+                throw e;
             }
             getStrategy().afterInsert(cnn);
         });
@@ -213,7 +235,7 @@ public class SqlScriptExecutor implements IScriptExecutor {
     }
 
     @Override
-    public void setCache(IJDBCache cache) {
+    public synchronized void setCache(IJDBCache cache) {
         this.cache = cache != null ? cache : new NoCache();
         if (this.metadataProvider != null) {
             this.metadataProvider.setCache(this.cache);

@@ -2,38 +2,53 @@ package org.jdbscript.impl.cache;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
 public final class InstanceCache implements IJDBCache {
     private final Map storage = new HashMap<>();
+    private final Map<Object, Object> keyLocks = new ConcurrentHashMap<>();
+    private long clearCount;
 
-    // synchronized, and a plain (non-concurrent) map rather than ConcurrentHashMap.computeIfAbsent:
-    // a computeFunction that itself calls getOrCompute again (e.g. resolving one cached value while
-    // computing another) needs that nested call to succeed instead of throwing
-    // "IllegalStateException: Recursive update" - which is exactly what computeIfAbsent does when
-    // it detects a reentrant call on the same map, regardless of any external synchronization the
-    // caller uses. A `synchronized` method uses a monitor lock, which - unlike computeIfAbsent's
-    // internal locking - is reentrant per-thread: a nested call from the same thread proceeds
-    // normally, while calls from other threads still serialize as usual.
+    // Per-key lock rather than one for the whole cache: computing does blocking JDBC I/O. Plain
+    // monitors rather than ConcurrentHashMap.computeIfAbsent, which throws "Recursive update" when
+    // a compute function calls getOrCompute again.
     @Override
-    public synchronized <V, K extends IJDBCacheKey<V>> V getOrCompute(K key, Function<K, V> computeFunction) {
-        if (storage.containsKey(key)) {
-            return (V) storage.get(key);
+    public <V, K extends IJDBCacheKey<V>> V getOrCompute(K key, Function<K, V> computeFunction) {
+        synchronized (this) {
+            if (storage.containsKey(key)) {
+                return (V) storage.get(key);
+            }
         }
-        V computed = computeFunction.apply(key);
-        if (computed != null) {
-            storage.put(key, computed);
+        synchronized (keyLocks.computeIfAbsent(key, k -> new Object())) {
+            long clearCountBeforeCompute;
+            synchronized (this) {
+                if (storage.containsKey(key)) {
+                    return (V) storage.get(key);
+                }
+                clearCountBeforeCompute = clearCount;
+            }
+            V computed = computeFunction.apply(key);
+            storeUnlessClearedSince(key, computed, clearCountBeforeCompute);
+            return computed;
         }
-        return computed;
+    }
+
+    private synchronized void storeUnlessClearedSince(Object key, Object value, long clearCountBeforeCompute) {
+        if (value != null && clearCount == clearCountBeforeCompute) {
+            storage.put(key, value);
+        }
     }
 
     @Override
     public synchronized <K extends IJDBCacheKey<?>> void invalidate(K key) {
+        clearCount++;
         storage.remove(key);
     }
 
     @Override
     public synchronized void clear() {
+        clearCount++;
         storage.clear();
     }
 }

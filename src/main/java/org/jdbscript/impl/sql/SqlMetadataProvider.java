@@ -23,7 +23,7 @@ public class SqlMetadataProvider implements IMetadataProvider {
     private final SqlConnectionProvider connectionProvider;
     private IJDBCache cache = new NoCache();
     private DBMSType dbmsType;
-    private ISqlExecutorStrategy strategy;
+    private volatile ISqlExecutorStrategy strategy;
 
     private record DBMSTypeKey() implements IJDBCacheKey<DBMSType> {}
     private record TableDependencyKey(String tableName) implements IJDBCacheKey<Set<String>> {}

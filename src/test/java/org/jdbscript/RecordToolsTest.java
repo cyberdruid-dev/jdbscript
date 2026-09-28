@@ -1,6 +1,7 @@
 package org.jdbscript;
 
 import org.jdbscript.impl.JDBRecord;
+import org.jdbscript.impl.TypedNull;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
@@ -124,5 +125,16 @@ public class RecordToolsTest {
 
         assertThat(result).describedAs("strValue('%s')", template)
                 .isEqualTo(expectedResult);
+    }
+
+    @Test
+    public void strValue_should_substitute_null_for_an_explicitly_null_column(){
+        String template = "prefix-${col}";
+        this.record.setColumnValue("col", new TypedNull(String.class));
+
+        String result = tools.strValue(template);
+
+        assertThat(result).describedAs("strValue('%s')", template)
+                .isEqualTo("prefix-null");
     }
 }

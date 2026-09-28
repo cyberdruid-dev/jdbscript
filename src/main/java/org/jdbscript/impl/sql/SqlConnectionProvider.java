@@ -18,7 +18,7 @@ public class SqlConnectionProvider {
     private static final Logger log = LoggerFactory.getLogger(SqlConnectionProvider.class);
 
     private final DataSource dataSource;
-    private ISqlExecutorStrategy strategy;
+    private volatile ISqlExecutorStrategy strategy;
     // Reused instead of a plain ThreadLocal<Connection> so that a nested withConnection() call on
     // the same thread (e.g. a metadata lookup triggered while an insert's connection is still open)
     // reuses that connection instead of acquiring a second one from the same DataSource/pool, which

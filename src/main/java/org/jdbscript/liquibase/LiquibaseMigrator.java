@@ -146,7 +146,9 @@ public class LiquibaseMigrator implements MigrationRunner {
             // Not just for the JDBC connection (the outer try already closes that) - Liquibase
             // keeps this Database in an internal per-instance executor cache that's only cleared
             // by close(), so skipping it leaks an entry there on every call.
-            try (Liquibase liquibase = new Liquibase(changeLogFile, new ClassLoaderResourceAccessor(), database)) {
+            ClassLoader contextClassLoader = Thread.currentThread().getContextClassLoader();
+            ClassLoader loader = contextClassLoader != null ? contextClassLoader : LiquibaseMigrator.class.getClassLoader();
+            try (Liquibase liquibase = new Liquibase(changeLogFile, new ClassLoaderResourceAccessor(loader), database)) {
                 action.run(liquibase);
             }
         } catch (JDBScriptException e) {
