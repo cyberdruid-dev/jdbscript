@@ -496,6 +496,15 @@
             <version>7.1.0</version>
             <scope>test</scope>
         </dependency>
+        <!-- Used unconditionally by internal plumbing tests (e.g. ConnectionReentrancyTest) that
+             need some trivial embedded DB regardless of which DBMS profile is under test; the h2
+             profile additionally uses this same dependency when H2 itself is the DBMS under test. -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <version>2.4.240</version>
+            <scope>test</scope>
+        </dependency>
         <dependency>
             <groupId>org.liquibase</groupId>
             <artifactId>liquibase-core</artifactId>
