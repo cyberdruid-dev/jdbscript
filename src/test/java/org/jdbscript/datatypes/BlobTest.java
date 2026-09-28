@@ -1,7 +1,7 @@
 package org.jdbscript.datatypes;
 
-import org.jdbscript.IDbSchema;
-import org.jdbscript.IDbSchema.IDBRecord;
+import org.jdbscript.IDBSchema;
+import org.jdbscript.IDBSchema.IDBRecord;
 import org.jdbscript.IJDBEngine;
 import org.jdbscript.JdbAbstractTest;
 import org.testng.annotations.BeforeMethod;
@@ -9,8 +9,6 @@ import org.testng.annotations.Test;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
-
-import static org.jdbscript.DbmsType.SQLITE;
 
 @Test
 public class BlobTest extends JdbAbstractTest {
@@ -20,7 +18,7 @@ public class BlobTest extends JdbAbstractTest {
     private interface IBlobTable extends IDBRecord {
         IBlobTable blob_column(byte[] data);
     }
-    private interface IBlobTestSchema extends IDbSchema {
+    private interface IBlobTestSchema extends IDBSchema {
 
         IBlobTable blob_table();
 
@@ -29,7 +27,7 @@ public class BlobTest extends JdbAbstractTest {
     private interface IInputStreamBlobTable extends IDBRecord {
         IInputStreamBlobTable blob_column(InputStream data);
     }
-    private interface IInputStreamBlobTestSchema extends IDbSchema {
+    private interface IInputStreamBlobTestSchema extends IDBSchema {
 
         IInputStreamBlobTable blob_table();
 

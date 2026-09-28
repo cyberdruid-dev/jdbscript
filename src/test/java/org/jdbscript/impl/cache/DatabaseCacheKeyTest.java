@@ -55,4 +55,15 @@ public class DatabaseCacheKeyTest extends AbstractCacheTest {
 
         assertThat(key1).isNotEqualTo(key2);
     }
+
+    @Test
+    public void keys_are_different_for_same_catalog_but_different_schema() throws SQLException {
+        // Regression test: for DBMSes where getCatalog() is non-blank (e.g. Postgres reporting the
+        // database name), the schema/search_path must still distinguish tenants sharing that
+        // catalog - otherwise CacheStrategy.GLOBAL would hand out the same cache to both.
+        DatabaseCacheKey key1 = DatabaseCacheKey.from(mockConnection("jdbc:postgresql://localhost/db", "sa", "db", "tenant1"));
+        DatabaseCacheKey key2 = DatabaseCacheKey.from(mockConnection("jdbc:postgresql://localhost/db", "sa", "db", "tenant2"));
+
+        assertThat(key1).isNotEqualTo(key2);
+    }
 }

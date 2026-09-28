@@ -5,7 +5,6 @@ import com.zaxxer.hikari.HikariDataSource;
 import org.jdbscript.errors.JDBScriptException;
 import org.jdbscript.utils.TestDataSource;
 import org.testng.Assert;
-import org.testng.SkipException;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeClass;
@@ -26,7 +25,7 @@ public class SchemaValidationTest extends JdbAbstractTest {
     private TestDataSource cleanDataSource;
     private HikariDataSource hikariDataSource;
 
-    private interface ITestSchema extends IDbSchema {
+    private interface ITestSchema extends IDBSchema {
         ITableRecord table1();
         ITableRecord table2();
 
@@ -102,7 +101,7 @@ public class SchemaValidationTest extends JdbAbstractTest {
     }
 
     @Override
-    protected <T extends IDbSchema> JDBEngine<T> createEngine(Class<T> schemaClass) {
+    protected <T extends IDBSchema> JDBEngine<T> createEngine(Class<T> schemaClass) {
         return JDBEngine.builder(schemaClass)
                 .dataSource(() -> cleanDataSource)
                 .executor(testConfiguration.getScriptExecutor())
@@ -117,6 +116,30 @@ public class SchemaValidationTest extends JdbAbstractTest {
         JDBEngine<ITestSchema> engine = createEngine(ITestSchema.class);
 
         assertThatThrownBy(() -> engine.insertDB(db -> {}))
+                .isInstanceOf(JDBScriptException.class)
+                .hasMessageContaining("Table 'TABLE2' defined in interface ITestSchema but missing from DB");
+    }
+
+    @Test
+    public void should_fail_when_table_is_missing_in_db__via_assertDBHas() {
+        executeUpdate("CREATE TABLE table1 (id INT)");
+        // table2 is missing
+
+        JDBEngine<ITestSchema> engine = createEngine(ITestSchema.class);
+
+        assertThatThrownBy(() -> engine.assertDBHas(db -> {}))
+                .isInstanceOf(JDBScriptException.class)
+                .hasMessageContaining("Table 'TABLE2' defined in interface ITestSchema but missing from DB");
+    }
+
+    @Test
+    public void should_fail_when_table_is_missing_in_db__via_assertDBHasNot() {
+        executeUpdate("CREATE TABLE table1 (id INT)");
+        // table2 is missing
+
+        JDBEngine<ITestSchema> engine = createEngine(ITestSchema.class);
+
+        assertThatThrownBy(() -> engine.assertDBHasNot(db -> {}))
                 .isInstanceOf(JDBScriptException.class)
                 .hasMessageContaining("Table 'TABLE2' defined in interface ITestSchema but missing from DB");
     }
@@ -220,5 +243,25 @@ public class SchemaValidationTest extends JdbAbstractTest {
 
         assertThatCode(() -> engine.insertDB(db -> {}))
                 .doesNotThrowAnyException();
+    }
+
+    @Test
+    public void should_reject_null_unmappedTableStrategy_at_build_time() {
+        JDBEngine.Builder<ITestSchema> builder = JDBEngine.builder(ITestSchema.class)
+                .dataSource(() -> cleanDataSource)
+                .executor(testConfiguration.getScriptExecutor());
+
+        assertThatThrownBy(() -> builder.unmappedTableStrategy(null))
+                .isInstanceOf(JDBScriptException.class);
+    }
+
+    @Test
+    public void should_reject_null_cacheStrategy_at_build_time() {
+        JDBEngine.Builder<ITestSchema> builder = JDBEngine.builder(ITestSchema.class)
+                .dataSource(() -> cleanDataSource)
+                .executor(testConfiguration.getScriptExecutor());
+
+        assertThatThrownBy(() -> builder.cacheStrategy(null))
+                .isInstanceOf(JDBScriptException.class);
     }
 }

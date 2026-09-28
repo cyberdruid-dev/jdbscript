@@ -12,7 +12,7 @@ import static org.mockito.Mockito.mock;
 @Test
 public class JDBEngineBuilderTest {
 
-    private interface ITestSchema extends IDbSchema {
+    private interface ITestSchema extends IDBSchema {
     }
 
     @Test

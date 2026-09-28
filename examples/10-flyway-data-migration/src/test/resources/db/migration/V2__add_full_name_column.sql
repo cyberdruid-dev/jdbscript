@@ -1,0 +1,1 @@
+ALTER TABLE person ADD COLUMN full_name VARCHAR(200);

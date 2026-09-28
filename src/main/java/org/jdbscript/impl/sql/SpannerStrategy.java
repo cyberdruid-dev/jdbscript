@@ -5,14 +5,14 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.concurrent.ThreadLocalRandom;
-import org.jdbscript.impl.JDbScript;
-import org.jdbscript.impl.JDbRecord;
+import org.jdbscript.impl.JDBScript;
+import org.jdbscript.impl.JDBRecord;
 
 class SpannerStrategy extends DefaultSqlExecutorStrategy {
 
     @Override
-    public void beforeInsert(Connection cnn, JDbScript dbScript) throws SQLException {
-        for (JDbRecord record : dbScript.getRecords()) {
+    public void beforeInsert(Connection cnn, JDBScript dbScript) throws SQLException {
+        for (JDBRecord record : dbScript.getRecords()) {
             String tableName = record.getTableName();
             String pkName = "generated_int_id_table".equalsIgnoreCase(tableName) ? "generated_id_column" : "id";
             if (!record.getColumns().containsKey(pkName)) {

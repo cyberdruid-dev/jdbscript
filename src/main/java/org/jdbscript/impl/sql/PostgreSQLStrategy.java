@@ -3,8 +3,6 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 class PostgreSQLStrategy extends  DefaultSqlExecutorStrategy{
     @Override
@@ -26,15 +24,9 @@ class PostgreSQLStrategy extends  DefaultSqlExecutorStrategy{
         return super.getColumnValue(rs, columnIndex, expectedType);
     }
 
-    public void resetPostgreSequences(Connection cnn) throws SQLException {
+    private void resetPostgreSequences(Connection cnn) throws SQLException {
             try (Statement stmt = cnn.createStatement()) {
-                int majorVersion = getMajorVersion(stmt);
-                List<String> seqNames;
-                if(majorVersion >= 16) {
-                    seqNames = getSequences16(stmt, cnn);
-                } else {
-                    seqNames = getSequences12(stmt, cnn);
-                }
+                List<String> seqNames = getSequences(stmt);
                 String sql = "SELECT setval('%s', 10000, true);";
                 for (String seqName : seqNames) {
                     stmt.executeQuery(String.format(sql, seqName));
@@ -42,40 +34,22 @@ class PostgreSQLStrategy extends  DefaultSqlExecutorStrategy{
             }
     }
 
-    private int getMajorVersion(Statement stmt) throws SQLException {
-        try(ResultSet rs = stmt.executeQuery("SELECT version();")){
-            rs.next();
-            String version = rs.getString(1);
-            Matcher m = Pattern.compile("(PostgreSQL|CockroachDB CCL)\\sv?(\\d+)\\.").matcher(version);
-            if(!m.find()) {
-                throw new RuntimeException("Can not detect PostgreSQL version from versin string '"+version+"'");
+    // information_schema.sequences deliberately excludes sequences "owned" by a table column
+    // (i.e. SERIAL/GENERATED ... AS IDENTITY - see its pg_depend deptype='i' check) - exactly the
+    // kind of sequence this needs to reset, so every one of them was silently skipped. pg_class
+    // has no such exclusion and works on every supported Postgres/CockroachDB version, so there's
+    // no need to branch on version at all.
+    private List<String> getSequences(Statement stmt) throws SQLException {
+        List<String> result = new ArrayList<>();
+        String sql = """
+                            SELECT c.relname FROM pg_class c
+                            JOIN pg_namespace n ON n.oid = c.relnamespace
+                            WHERE c.relkind = 'S' AND n.nspname NOT IN ('pg_catalog', 'information_schema');
+                        """;
+        try (ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                result.add(rs.getString(1));
             }
-            return Integer.parseInt(m.group(2));
-        }
-    }
-
-    private List<String> getSequences12(Statement stmt, Connection cnn) throws SQLException {
-        List<String> result = new ArrayList<>();
-        String sql = String.format(""" 
-                            SELECT sequence_name FROM information_schema.sequences
-                            WHERE sequence_catalog ='%s';
-                        """, cnn.getCatalog());
-        ResultSet rs = stmt.executeQuery(sql);
-        while (rs.next()) {
-            result.add(rs.getString(1));
-        }
-        return result;
-    }
-
-
-    private List<String> getSequences16(Statement stmt, Connection cnn) throws SQLException {
-        List<String> result = new ArrayList<>();
-        String sql = String.format(""" 
-                            SELECT sequencename FROM pg_sequences
-                        """, cnn.getCatalog());
-        ResultSet rs = stmt.executeQuery(sql);
-        while (rs.next()) {
-            result.add(rs.getString(1));
         }
         return result;
     }

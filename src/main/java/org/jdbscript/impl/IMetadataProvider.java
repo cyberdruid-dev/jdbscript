@@ -1,6 +1,6 @@
 package org.jdbscript.impl;
  
-import org.jdbscript.DbmsType;
+import org.jdbscript.DBMSType;
 
 import java.util.Collection;
 import java.util.Comparator;
@@ -14,7 +14,7 @@ public interface IMetadataProvider {
      * Returns the detected DBMS type.
      * @return the DBMS type
      */
-    DbmsType getDbmsType();
+    DBMSType getDbmsType();
 
     /**
      * Returns a list of all table names discovered in the database.

@@ -1,13 +1,12 @@
 package org.jdbscript.impl.cache;
 
-import org.jdbscript.DbmsType;
+import org.jdbscript.DBMSType;
 import org.jdbscript.impl.sql.SqlConnectionProvider;
 import org.jdbscript.impl.sql.SqlMetadataProvider;
 import org.testng.annotations.Test;
 
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
-import java.sql.SQLException;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -39,20 +38,20 @@ public class DbmsTypeCachingTest {
         provider.setCache(cache);
 
         // First call should trigger detection
-        DbmsType type1 = provider.getDbmsType();
-        assertThat(type1).isEqualTo(DbmsType.H2);
+        DBMSType type1 = provider.getDbmsType();
+        assertThat(type1).isEqualTo(DBMSType.H2);
         assertThat(connectionCalls.get()).isEqualTo(1);
 
         // Second call should use instance-local field
-        DbmsType type2 = provider.getDbmsType();
-        assertThat(type2).isEqualTo(DbmsType.H2);
+        DBMSType type2 = provider.getDbmsType();
+        assertThat(type2).isEqualTo(DBMSType.H2);
         assertThat(connectionCalls.get()).isEqualTo(1);
 
         // New provider with SAME cache should use cached value
         SqlMetadataProvider provider2 = new SqlMetadataProvider(connectionProvider);
         provider2.setCache(cache);
-        DbmsType type3 = provider2.getDbmsType();
-        assertThat(type3).isEqualTo(DbmsType.H2);
+        DBMSType type3 = provider2.getDbmsType();
+        assertThat(type3).isEqualTo(DBMSType.H2);
         assertThat(connectionCalls.get()).isEqualTo(1);
     }
 }

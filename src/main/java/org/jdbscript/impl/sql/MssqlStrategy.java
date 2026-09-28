@@ -1,6 +1,6 @@
 package org.jdbscript.impl.sql;
 
-import org.jdbscript.impl.JDbScript;
+import org.jdbscript.impl.JDBScript;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,7 +49,7 @@ class MssqlStrategy extends DefaultSqlExecutorStrategy {
     }
 
     @Override
-    public void beforeInsert(Connection cnn, JDbScript dbScript) throws SQLException {
+    public void beforeInsert(Connection cnn, JDBScript dbScript) throws SQLException {
         this.identityInsertOn = new HashSet<>();
         Set<String> seen = new HashSet<>();
         //TODO: find a way to lookup tables that require it.

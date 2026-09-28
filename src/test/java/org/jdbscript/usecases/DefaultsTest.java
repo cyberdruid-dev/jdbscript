@@ -1,7 +1,7 @@
 package org.jdbscript.usecases;
 
-import org.jdbscript.IDbSchema;
-import org.jdbscript.IDbSchema.IDBRecord;
+import org.jdbscript.IDBSchema;
+import org.jdbscript.IDBSchema.IDBRecord;
 import org.jdbscript.JDBEngine;
 import org.jdbscript.JdbAbstractTest;
 import org.testng.annotations.BeforeMethod;
@@ -20,7 +20,7 @@ public class DefaultsTest extends JdbAbstractTest {
             str_column_1("default value");
         }
     }
-    private interface IDefaultsTestSchema extends IDbSchema {
+    private interface IDefaultsTestSchema extends IDBSchema {
 
         ITableWithDefaultsRecord table_with_defaults();
 

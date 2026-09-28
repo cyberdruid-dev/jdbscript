@@ -1,8 +1,5 @@
 package org.jdbscript.impl.sql;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.InputStream;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -15,7 +12,6 @@ import java.util.List;
 import java.util.UUID;
 
 class HsqldbStrategy extends DefaultSqlExecutorStrategy {
-    private static final Logger log = LoggerFactory.getLogger(HsqldbStrategy.class);
 
     @Override
     public void afterInsert(Connection cnn) throws SQLException {
@@ -55,7 +51,12 @@ class HsqldbStrategy extends DefaultSqlExecutorStrategy {
                 try {
                     stmt.executeUpdate(String.format("ALTER SEQUENCE %s RESTART WITH 10000", seqName));
                 } catch (SQLException e) {
-                    log.error(e.getMessage(), e);
+                    // Must surface loudly rather than being swallowed: an auto-generated ID from
+                    // this sequence could now collide with a manually-inserted one.
+                    throw new SQLException(
+                            "Failed to reset HSQLDB sequence '" + seqName + "' to a safe value after "
+                                    + "insert; auto-generated IDs from this sequence may now collide "
+                                    + "with manually-inserted ones: " + e.getMessage(), e);
                 }
             }
         }
@@ -63,13 +64,21 @@ class HsqldbStrategy extends DefaultSqlExecutorStrategy {
 
     private List<String> getSequences(Statement stmt) throws SQLException {
         List<String> result = new ArrayList<>();
+        // An empty database (zero sequences) still queries INFORMATION_SCHEMA.SYSTEM_SEQUENCES
+        // successfully, returning zero rows - so this query failing at all means the view itself is
+        // unavailable, not "no sequences". If the schema actually uses sequences, they'd go silently
+        // unreset - that must surface loudly, not be treated as nothing to do.
         String sql = "SELECT SEQUENCE_NAME FROM INFORMATION_SCHEMA.SYSTEM_SEQUENCES WHERE SEQUENCE_SCHEMA = 'PUBLIC'";
         try (ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {
                 result.add(rs.getString("SEQUENCE_NAME"));
             }
         } catch (SQLException e) {
-            log.debug("Failed to query HSQLDB sequences: {}", e.getMessage());
+            throw new SQLException(
+                    "Could not query INFORMATION_SCHEMA.SYSTEM_SEQUENCES to discover HSQLDB sequences "
+                            + "to reset after insert; if this schema uses sequences, their "
+                            + "auto-generated IDs may now collide with manually-inserted ones: "
+                            + e.getMessage(), e);
         }
         return result;
     }

@@ -1,10 +1,11 @@
 package org.jdbscript.impl.sql;
 
-import org.jdbscript.DbmsType;
+import org.jdbscript.DBMSType;
+import org.jdbscript.JDBFeatureSet;
 import org.jdbscript.impl.IMetadataProvider;
 import org.jdbscript.IScriptExecutor;
-import org.jdbscript.impl.JDbRecord;
-import org.jdbscript.impl.JDbScript;
+import org.jdbscript.impl.JDBRecord;
+import org.jdbscript.impl.JDBScript;
 import org.jdbscript.impl.TypedNull;
 import org.jdbscript.impl.cache.IJDBCache;
 import org.jdbscript.impl.cache.NoCache;
@@ -28,11 +29,12 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static org.jdbscript.DbmsType.UNKNOWN;
+import static org.jdbscript.DBMSType.UNKNOWN;
 import static org.jdbscript.errors.Checks.checkIsNull;
 import static org.jdbscript.errors.Checks.checkNotNull;
-import static org.jdbscript.errors.JdbsErrors.DATASOURCE_ALREADY_SET;
-import static org.jdbscript.errors.JdbsErrors.DATASOURCE_IS_NOT_CONFIGURED;
+import static org.jdbscript.errors.JDBErrors.DATASOURCE_ALREADY_SET;
+import static org.jdbscript.errors.JDBErrors.DATASOURCE_IS_NOT_CONFIGURED;
+import static org.jdbscript.errors.JDBErrors.EMPTY_ASSERTION_RECORD;
 
 public class SqlScriptExecutor implements IScriptExecutor {
     private static final Logger log = LoggerFactory.getLogger(SqlScriptExecutor.class);
@@ -41,13 +43,13 @@ public class SqlScriptExecutor implements IScriptExecutor {
     private ISqlExecutorStrategy strategy;
     private SqlMetadataProvider metadataProvider;
     private IJDBCache cache = new NoCache();
+    private JDBFeatureSet features = JDBFeatureSet.empty();
     private final Map<String, String> insertSqlCache = new ConcurrentHashMap<>();
-    private final Map<String, String> selectSqlCache = new ConcurrentHashMap<>();
- 
+
     public SqlScriptExecutor() {
     }
 
-    public void setDbmsType(DbmsType dbmsType) {
+    public void setDbmsType(DBMSType dbmsType) {
         this.strategy = SqlExecutorStrategyFactory.getStrategy(dbmsType);
         if (this.connectionProvider != null) {
             this.connectionProvider.setStrategy(this.strategy);
@@ -55,11 +57,20 @@ public class SqlScriptExecutor implements IScriptExecutor {
         if (this.metadataProvider != null) {
             this.metadataProvider.setStrategy(this.strategy);
         }
+        this.strategy.setFeatures(this.features);
+    }
+
+    @Override
+    public void setFeatures(JDBFeatureSet features) {
+        this.features = features != null ? features : JDBFeatureSet.empty();
+        if (this.strategy != null) {
+            this.strategy.setFeatures(this.features);
+        }
     }
 
     private ISqlExecutorStrategy getStrategy() {
         if (strategy == null) {
-            DbmsType dbmsType = getMetadataProvider() != null ? getMetadataProvider().getDbmsType() : UNKNOWN;
+            DBMSType dbmsType = getMetadataProvider() != null ? getMetadataProvider().getDbmsType() : UNKNOWN;
             setDbmsType(dbmsType);
         }
         return strategy;
@@ -78,7 +89,7 @@ public class SqlScriptExecutor implements IScriptExecutor {
     }
 
     @Override
-    public void insert(JDbScript dbScript) {
+    public void insert(JDBScript dbScript) {
         withPreparedStatements((cnn, stmtProvider) -> {
             getStrategy().beforeInsert(cnn, dbScript);
             for (var record : dbScript.getRecords()) {
@@ -150,54 +161,52 @@ public class SqlScriptExecutor implements IScriptExecutor {
     }
 
     @Override
-    public void assertRowsExist(JDbScript script) {
+    public void assertRowsExist(JDBScript script) {
         withPreparedStatements((cnn, stmtProvider) -> {
-            for (JDbRecord record : script.getRecords()) {
-                List<String> columns = getSortedColumns(record);
-                String sqlKey = record.getTableName() + ":" + String.join(",", columns);
-                String sql = selectSqlCache.computeIfAbsent(sqlKey, k -> createSelectAssertSql(record, columns));
-                PreparedStatement stmt = stmtProvider.get(sql);
-                for (int i = 0; i < columns.size(); i++) {
-                    Object value = record.getColumns().get(columns.get(i));
-                    setColumnValue(stmt, i + 1, value);
-                }
-                try (ResultSet rs = stmt.executeQuery()) {
-                    if (!rs.next()) {
-                        throw new RuntimeException("Fail to count rows in DB. Unexpectedly empty resultset.");
-                    }
-                    long count = rs.getLong(1);
-                    if (count == 0) {
-                        throw new AssertionFailedError("Expected row to exist.");
-                    }
+            for (JDBRecord record : script.getRecords()) {
+                if (countMatchingRows(record, stmtProvider) == 0) {
+                    throw new AssertionFailedError("Expected row to exist.");
                 }
             }
         });
-
     }
 
     @Override
-    public void assertRowsNotExist(JDbScript script) {
+    public void assertRowsNotExist(JDBScript script) {
         withPreparedStatements((cnn, stmtProvider) -> {
-            for (JDbRecord record : script.getRecords()) {
-                List<String> columns = getSortedColumns(record);
-                String sqlKey = record.getTableName() + ":" + String.join(",", columns);
-                String sql = selectSqlCache.computeIfAbsent(sqlKey, k -> createSelectAssertSql(record, columns));
-                PreparedStatement stmt = stmtProvider.get(sql);
-                for (int i = 0; i < columns.size(); i++) {
-                    Object value = record.getColumns().get(columns.get(i));
-                    setColumnValue(stmt, i + 1, value);
-                }
-                try (ResultSet rs = stmt.executeQuery()) {
-                    if (!rs.next()) {
-                        throw new RuntimeException("Fail to count rows in DB. Unexpectedly empty resultset.");
-                    }
-                    long count = rs.getLong(1);
-                    if (count > 0) {
-                        throw new AssertionFailedError("Expected row to NOT exist.");
-                    }
+            for (JDBRecord record : script.getRecords()) {
+                if (countMatchingRows(record, stmtProvider) > 0) {
+                    throw new AssertionFailedError("Expected row to NOT exist.");
                 }
             }
         });
+    }
+
+    private long countMatchingRows(JDBRecord record, PreparedStatementProvider stmtProvider) throws SQLException {
+        // Not cached: the SQL shape now depends on which columns are null for this specific record
+        // (see createSelectAssertSql), and building it is cheap string concatenation, not a JDBC
+        // round trip - the thing actually worth caching, the PreparedStatement, is already handled
+        // by stmtProvider.get(sql), keyed on this exact SQL text.
+        List<String> columns = getSortedColumns(record);
+        if (columns.isEmpty()) {
+            throw EMPTY_ASSERTION_RECORD.get(record.getTableName());
+        }
+        String sql = createSelectAssertSql(record, columns);
+        PreparedStatement stmt = stmtProvider.get(sql);
+        int paramIndex = 1;
+        for (String column : columns) {
+            Object value = record.getColumns().get(column);
+            if (!isNullValue(value)) {
+                setColumnValue(stmt, paramIndex++, value);
+            }
+            // A null column is expressed as a literal "IS NULL" in the SQL - nothing to bind.
+        }
+        try (ResultSet rs = stmt.executeQuery()) {
+            if (!rs.next()) {
+                throw new RuntimeException("Fail to count rows in DB. Unexpectedly empty resultset.");
+            }
+            return rs.getLong(1);
+        }
     }
 
     @Override
@@ -208,22 +217,40 @@ public class SqlScriptExecutor implements IScriptExecutor {
         }
     }
 
-    private List<String> getSortedColumns(JDbRecord record) {
+    private List<String> getSortedColumns(JDBRecord record) {
         List<String> columns = new ArrayList<>(record.getColumns().keySet());
         Collections.sort(columns);
         return columns;
     }
 
-    private String createSelectAssertSql(JDbRecord record, List<String> columns) {
-        String sql = "SELECT count(*) FROM " + record.getTableName();
-        sql += " WHERE "+columns.get(0)+" = ?";
-        for(int i= 1; i< columns.size(); i++){
-            sql +=" AND "+columns.get(i)+" = ?";
+    /**
+     * {@code col = ?} never matches a bound NULL (SQL's {@code = NULL} is UNKNOWN, not TRUE), so an
+     * asserted record with a null column would otherwise never be found. Building this per-record,
+     * aware of which columns are actually null, avoids that without needing a NULL-safe operator:
+     * a null column becomes a literal {@code col IS NULL} (no parameter), a non-null one stays a
+     * plain, fully-typed {@code col = ?}. (An earlier version bound the same value twice via
+     * {@code (col = ? OR (? IS NULL AND col IS NULL))} - portable everywhere we could test offline,
+     * but PostgreSQL's extended query protocol can't infer a type for the bare {@code ? IS NULL}
+     * parameter, since nothing else pins it to a concrete type, and rejects it at prepare time.)
+     */
+    private String createSelectAssertSql(JDBRecord record, List<String> columns) {
+        StringBuilder sql = new StringBuilder("SELECT count(*) FROM ").append(record.getTableName()).append(" WHERE ");
+        for (int i = 0; i < columns.size(); i++) {
+            if (i > 0) {
+                sql.append(" AND ");
+            }
+            String column = columns.get(i);
+            Object value = record.getColumns().get(column);
+            sql.append(column).append(isNullValue(value) ? " IS NULL" : " = ?");
         }
-        return sql;
+        return sql.toString();
     }
 
-    private String createInsertSql(JDbRecord record, List<String> columns) {
+    private boolean isNullValue(Object value) {
+        return value == null || value instanceof TypedNull;
+    }
+
+    private String createInsertSql(JDBRecord record, List<String> columns) {
         String sql = "INSERT INTO " + record.getTableName();
         sql += " ( "+ String.join(",", columns) + " )";
         sql += " VALUES ";

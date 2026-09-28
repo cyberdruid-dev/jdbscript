@@ -8,9 +8,9 @@ import java.lang.reflect.Method;
 
 class TableRecordHandler implements InvocationHandler {
     private static final Logger log = LoggerFactory.getLogger(TableRecordHandler.class);
-    private final JDbRecord record;
+    private final JDBRecord record;
 
-    TableRecordHandler(JDbRecord record) {
+    TableRecordHandler(JDBRecord record) {
         this.record = record;
     }
 

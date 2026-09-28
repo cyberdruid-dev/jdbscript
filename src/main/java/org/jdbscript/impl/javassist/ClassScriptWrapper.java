@@ -1,9 +1,9 @@
 package org.jdbscript.impl.javassist;
 
-import org.jdbscript.IDbSchema;
+import org.jdbscript.IDBSchema;
 import org.jdbscript.errors.JDBScriptException;
-import org.jdbscript.errors.JdbsErrors;
-import org.jdbscript.impl.JDbScript;
+import org.jdbscript.errors.JDBErrors;
+import org.jdbscript.impl.JDBScript;
 import javassist.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,7 +17,7 @@ import java.util.Optional;
 import static org.jdbscript.errors.Checks.checkThat;
 import static java.lang.reflect.Modifier.isStatic;
 
-public class ClassScriptWrapper<T extends IDbSchema> {
+public class ClassScriptWrapper<T extends IDBSchema> {
     protected static final Logger log = LoggerFactory.getLogger(ClassScriptWrapper.class);
     private final static String IMPLEMENTATION_SUFFIX = "_jdbscript";
 
@@ -68,7 +68,7 @@ public class ClassScriptWrapper<T extends IDbSchema> {
         } catch (JDBScriptException e) {
             throw e;
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Fail to wrap script class {}. message: {}", scriptClass.getName(), e.getMessage());
             throw new RuntimeException(e);
         }
 
@@ -91,12 +91,12 @@ public class ClassScriptWrapper<T extends IDbSchema> {
 
     private void checkRequirements(CtClass cc) throws NotFoundException {
         if(cc.getDeclaringClass() != null) {
-            checkThat(isStatic(cc.getModifiers()), JdbsErrors.INNER_CLASS_SHOULD_BE_STATIC);
+            checkThat(isStatic(cc.getModifiers()), JDBErrors.INNER_CLASS_SHOULD_BE_STATIC);
         }
 
         for (CtConstructor constructor : cc.getDeclaredConstructors()) {
             if (constructor.getParameterTypes().length > 0) {
-                throw JdbsErrors.SCRIPT_CONSTRUCTOR_HAS_PARAMETERS.get(cc.getName());
+                throw JDBErrors.SCRIPT_CONSTRUCTOR_HAS_PARAMETERS.get(cc.getName());
             }
         }
     }
@@ -147,14 +147,14 @@ public class ClassScriptWrapper<T extends IDbSchema> {
 
     private List<Method> findDBRecordMethods() {
         return Arrays.stream(scriptClass.getMethods())
-                .filter(m-> IDbSchema.IDBRecord.class.isAssignableFrom(m.getReturnType()))
+                .filter(m-> IDBSchema.IDBRecord.class.isAssignableFrom(m.getReturnType()))
                 .toList();
     }
 
-    public JDbScript getDbScript(T scriptProxy){
+    public JDBScript getDbScript(T scriptProxy){
         try {
             Method m = newClass.getMethod("applyScript", schemaClass);
-            return (JDbScript) m.invoke(null, scriptProxy);
+            return (JDBScript) m.invoke(null, scriptProxy);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

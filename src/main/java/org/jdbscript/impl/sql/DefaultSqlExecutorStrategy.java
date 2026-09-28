@@ -1,6 +1,8 @@
 package org.jdbscript.impl.sql;
 
-import org.jdbscript.impl.JDbScript;
+import org.jdbscript.JDBFeature;
+import org.jdbscript.JDBFeatureSet;
+import org.jdbscript.impl.JDBScript;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
@@ -16,13 +18,21 @@ import java.util.UUID;
 
 class DefaultSqlExecutorStrategy implements ISqlExecutorStrategy {
 
+
+    private JDBFeatureSet features = JDBFeatureSet.empty();
+
+    @Override
+    public void setFeatures(JDBFeatureSet features) {
+        this.features = features != null ? features : JDBFeatureSet.empty();
+    }
+
     @Override
     public void afterInsert(Connection cnn) throws SQLException {
 
     }
 
     @Override
-    public void beforeInsert(Connection cnn, JDbScript dbScript) throws SQLException {
+    public void beforeInsert(Connection cnn, JDBScript dbScript) throws SQLException {
     }
 
     @Override
@@ -119,7 +129,8 @@ class DefaultSqlExecutorStrategy implements ISqlExecutorStrategy {
         if ("blob".equals(expectedType)) {
             return rs.getBytes(columnIndex);
         } else if ("boolean".equals(expectedType)) {
-            return rs.getBoolean(columnIndex);
+            boolean value = rs.getBoolean(columnIndex);
+            return rs.wasNull() ? null : value;
         } else if ("UUID".equals(expectedType)) {
             String columnValue = rs.getString(columnIndex);
             return columnValue == null ? null : UUID.fromString(columnValue);
@@ -145,5 +156,10 @@ class DefaultSqlExecutorStrategy implements ISqlExecutorStrategy {
             case Types.TIMESTAMP -> rs.getTimestamp(columnIndex);
             default -> rs.getObject(columnIndex);
         };
+    }
+
+    protected JDBFeature getOrDefaultFeature(JDBFeature.Group featureGroup, JDBFeature defaultValue) {
+        JDBFeature result = features.getOrDefault(featureGroup, defaultValue);
+        return result;
     }
 }

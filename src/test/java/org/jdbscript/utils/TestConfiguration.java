@@ -1,6 +1,6 @@
 package org.jdbscript.utils;
 
-import org.jdbscript.DbmsType;
+import org.jdbscript.DBMSType;
 import org.jdbscript.IScriptExecutor;
 import org.jdbscript.errors.JDBScriptException;
 import org.jdbscript.impl.sql.SqlScriptExecutor;
@@ -28,7 +28,7 @@ public class TestConfiguration {
     private DataSource dataSource;
     private String executorType;
     private String jdbcSchemaName;
-    private DbmsType expectedDbmsType;
+    private DBMSType expectedDbmsType;
 
     public TestConfiguration() {
         TimeZone.setDefault(UTC);// to not play with timezones .....
@@ -47,11 +47,19 @@ public class TestConfiguration {
     }
 
 
-    public DbmsType getDbmsType() {
+    public DBMSType getDbmsType() {
         return dsFactory.getDbmsType();
     }
 
-    public DbmsType getExpectedDbmsType() {
+    /**
+     * Re-runs the standing schema setup on an existing datasource - for tests that deliberately
+     * wipe the shared schema (migration tests) and need to restore it for whatever runs next.
+     */
+    public void reinitStandingSchema(DataSource dataSource) {
+        TestSchemaInitStrategyFactory.getStrategy(getDbmsType()).initSchema(dataSource);
+    }
+
+    public DBMSType getExpectedDbmsType() {
         return expectedDbmsType;
     }
 
@@ -83,7 +91,7 @@ public class TestConfiguration {
         this.executorType = System.getProperty(PROPERTY_SCRIPT_EXECUTOR);
         String dbmsTypeStr = System.getProperty(PROPERTY_DBMS_TYPE);
         if (dbmsTypeStr != null && !dbmsTypeStr.isBlank()) {
-            this.expectedDbmsType = DbmsType.valueOf(dbmsTypeStr.toUpperCase());
+            this.expectedDbmsType = DBMSType.valueOf(dbmsTypeStr.toUpperCase());
         }
         log.debug("jdbcUrl={}", jdbcUrl);
         log.debug("jdbcUser={}", jdbcUser);

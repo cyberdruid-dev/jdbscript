@@ -1,14 +1,10 @@
 package org.jdbscript.usecases;
 
-import org.jdbscript.IDbSchema;
-import org.jdbscript.IDbSchema.IDBRecord;
-import org.jdbscript.IJDBEngine;
-import org.jdbscript.IScriptExecutor;
-import org.jdbscript.JDBEngine;
-import org.jdbscript.JdbAbstractTest;
+import org.jdbscript.*;
+import org.jdbscript.IDBSchema.IDBRecord;
 import org.jdbscript.impl.IMetadataProvider;
-import org.jdbscript.impl.JDbRecord;
-import org.jdbscript.impl.JDbScript;
+import org.jdbscript.impl.JDBRecord;
+import org.jdbscript.impl.JDBScript;
 import org.jdbscript.impl.sql.SqlScriptExecutor;
 import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
@@ -40,7 +36,7 @@ public class InsertOrderTest extends JdbAbstractTest {
         IOrderItemRecord quantity(int value);
     }
 
-    private interface ITestSchema extends IDbSchema {
+    private interface ITestSchema extends IDBSchema {
         ICustomerRecord customers();
         IOrderRecord orders();
         IOrderItemRecord order_items();
@@ -95,18 +91,18 @@ public class InsertOrderTest extends JdbAbstractTest {
     public void test_row_order_preservation() {
         // Multiple rows for the same table should maintain their relative order
         // We use a mock executor to verify the script order without DB interference
-        List<JDbRecord> capturedRecords = new ArrayList<>();
+        List<JDBRecord> capturedRecords = new ArrayList<>();
         IScriptExecutor mockExecutor = new SqlScriptExecutor() {
             @Override
-            public void insert(JDbScript dbScript) {
+            public void insert(JDBScript dbScript) {
                 capturedRecords.addAll(dbScript.getRecords());
             }
             @Override
             public IMetadataProvider getMetadataProvider() {
                 return new IMetadataProvider() {
                     @Override
-                    public org.jdbscript.DbmsType getDbmsType() {
-                        return org.jdbscript.DbmsType.H2;
+                    public DBMSType getDbmsType() {
+                        return DBMSType.H2;
                     }
                     @Override public List<String> getAllTables() { return List.of("customers", "orders", "order_items"); }
                     @Override public List<String> getSortedTables() { return List.of("customers", "orders", "order_items"); }

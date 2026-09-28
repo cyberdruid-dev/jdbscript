@@ -1,0 +1,41 @@
+# jdbscript Examples
+
+Runnable, self-contained example projects showing how a consumer project uses `jdbscript` as a
+normal dependency — copy any module as a starting point.
+
+Each example is its own Maven module with its own tests. This directory is **not** part of the
+`jdbscript` reactor build on purpose: it depends on `jdbscript` the way a real project would
+(resolved from your local/remote Maven repository), not by reaching into the library's internal
+source.
+
+## Running the examples
+
+```sh
+# from the repo root — builds jdbscript and installs it to your local repo
+mvn install -DskipTests -Dgpg.skip=true
+
+# then, from this directory
+cd examples
+mvn test
+```
+
+## Modules
+
+| # | Module | Demonstrates |
+|---|--------|---------------|
+| 01 | [`01-quickstart`](01-quickstart) | Schema interfaces, `resetDB`/`insertDB` to arrange DB state, then calling a real `src/main` class (the system under test) and asserting on **its** return value — the pattern most jdbscript tests actually follow. Plain JUnit 5. |
+| 02 | [`02-class-scripts-and-include`](02-class-scripts-and-include) | A reusable base dataset as a class-based script, run directly and composed with test-specific rows via `db.include(...)`. |
+| 03 | [`03-recordtools-defaults`](03-recordtools-defaults) | Auto-generated IDs and templated column values via `defaults(RecordTools)`, and how they interact with columns you set explicitly. |
+| 04 | [`04-scripting-power`](04-scripting-power) | A script is just Java: generating 100+ rows with a for loop, and why seeding your randomness (`new Random(42)`) matters for reproducibility. |
+| 05 | [`05-custom-converters`](05-custom-converters) | Teaching jdbscript a domain value type via `IJDBTypeConverter`, registered alongside the built-in converters with `.converter(...)`. |
+| 06 | [`06-insert-power`](06-insert-power) | `insertDB` used to interleave arrange and act within a single test — simulating a sequence of events over time, not just one static snapshot. |
+| 07 | [`07-testcontainers`](07-testcontainers) | 01-quickstart's exact schema and seeding code, run against a real PostgreSQL instance started by Testcontainers instead of in-memory H2. Requires Docker. |
+| 08 | [`08-springboot`](08-springboot) | jdbscript dropped into a `@SpringBootTest`, using the `DataSource` bean spring-boot-starter-jdbc already auto-configured — no jdbscript-specific Spring integration exists or is needed. |
+| 09 | [`09-liquibase-data-migration`](09-liquibase-data-migration) | Testing what a Liquibase changeset does to *existing rows*, not just that it applies cleanly: `JDBMigrationEngine` seeds data in the pre-migration shape, runs the changelog up to a tag via `LiquibaseMigrator`, applies the changeset under test, then asserts the post-migration shape. |
+| 10 | [`10-flyway-data-migration`](10-flyway-data-migration) | Testing what a Flyway migration does to *existing rows*, not just that it applies cleanly: `JDBMigrationEngine` seeds data in the pre-migration shape, runs migrations up to a version via `FlywayMigrator`, applies the migration under test, then asserts the post-migration shape - no separate tagging convention needed, since Flyway migrations are already individually versioned. |
+
+See the main [README](../README.md) for the full feature list in prose form.
+
+Note: a test like `09-liquibase-data-migration` replays the changelog from scratch to reach the
+pre-migration state, so it's naturally slower than the other examples here. That's an accepted
+cost of testing data migrations this way, not something jdbscript tries to hide or work around.

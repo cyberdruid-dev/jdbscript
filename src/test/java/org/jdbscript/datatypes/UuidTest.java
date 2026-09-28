@@ -1,7 +1,7 @@
 package org.jdbscript.datatypes;
 
-import org.jdbscript.IDbSchema;
-import org.jdbscript.IDbSchema.IDBRecord;
+import org.jdbscript.IDBSchema;
+import org.jdbscript.IDBSchema.IDBRecord;
 import org.jdbscript.IJDBEngine;
 import org.jdbscript.JdbAbstractTest;
 import org.testng.annotations.BeforeMethod;
@@ -20,7 +20,7 @@ public class UuidTest extends JdbAbstractTest {
     private interface IUuidTable extends IDBRecord {
         IUuidTable uuid_column(UUID value);
     }
-    private interface IUuidTestSchema extends IDbSchema {
+    private interface IUuidTestSchema extends IDBSchema {
 
         IUuidTable uuid_table();
 

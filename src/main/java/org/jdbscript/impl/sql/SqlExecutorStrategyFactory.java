@@ -1,9 +1,9 @@
 package org.jdbscript.impl.sql;
 
-import org.jdbscript.DbmsType;
+import org.jdbscript.DBMSType;
 
 public class SqlExecutorStrategyFactory {
-    public static ISqlExecutorStrategy getStrategy(DbmsType dbmsType) {
+    public static ISqlExecutorStrategy getStrategy(DBMSType dbmsType) {
         if (dbmsType == null) {
             return new DefaultSqlExecutorStrategy();
         }

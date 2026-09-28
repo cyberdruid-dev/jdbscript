@@ -11,6 +11,11 @@ public interface IJDBCache {
     /**
      * Returns the cached value for the given key, or computes and stores it
      * using the mapping function if absent.
+     * <p>
+     * Implementations must support {@code computeFunction} itself calling {@code getOrCompute}
+     * again on this same cache (e.g. resolving one cached value while computing another), from the
+     * same thread. A naive implementation backed directly by {@link java.util.concurrent.ConcurrentHashMap#computeIfAbsent}
+     * would throw {@code IllegalStateException: Recursive update} in that case.
      */
     <V, K extends IJDBCacheKey<V>> V getOrCompute(K key, Function<K, V> computeFunction);
 

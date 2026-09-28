@@ -1,6 +1,6 @@
 package org.jdbscript.impl.sql;
 
-import org.jdbscript.DbmsType;
+import org.jdbscript.DBMSType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -12,13 +12,19 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static org.jdbscript.errors.Checks.checkNotNull;
-import static org.jdbscript.errors.JdbsErrors.DATASOURCE_IS_NULL;
+import static org.jdbscript.errors.JDBErrors.DATASOURCE_IS_NULL;
 
 public class SqlConnectionProvider {
     private static final Logger log = LoggerFactory.getLogger(SqlConnectionProvider.class);
 
     private final DataSource dataSource;
     private ISqlExecutorStrategy strategy;
+    // Reused instead of a plain ThreadLocal<Connection> so that a nested withConnection() call on
+    // the same thread (e.g. a metadata lookup triggered while an insert's connection is still open)
+    // reuses that connection instead of acquiring a second one from the same DataSource/pool, which
+    // can exhaust/deadlock a pool sized to 1. onConnection()/commit() still run exactly once, for
+    // the outermost caller only.
+    private final ReentrantResource<Connection> connectionResource = new ReentrantResource<>(this::acquireConnection);
 
     @FunctionalInterface
     public interface JdbcConnectionConsumer {
@@ -32,23 +38,40 @@ public class SqlConnectionProvider {
 
     }
 
+    private Connection acquireConnection() {
+        try {
+            return dataSource.getConnection();
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     public void setStrategy(ISqlExecutorStrategy strategy) {
         this.strategy = strategy;
     }
 
     private ISqlExecutorStrategy getStrategy(Connection cnn) throws SQLException {
         if (strategy == null) {
-            return SqlExecutorStrategyFactory.getStrategy(DbmsType.getType(cnn.getMetaData()));
+            strategy = SqlExecutorStrategyFactory.getStrategy(DBMSType.getType(cnn.getMetaData()));
         }
         return strategy;
     }
 
     public void withConnection(JdbcConnectionConsumer consumer) {
-        try(Connection cnn = dataSource.getConnection()) {
-            ISqlExecutorStrategy currentStrategy = getStrategy(cnn);
-            currentStrategy.onConnection(cnn);
-            consumer.accept(cnn);
-            currentStrategy.commit(cnn);
+        IReentrantResourceCallback<Connection> lifecycle = new IReentrantResourceCallback<>() {
+            @Override
+            public void afterOpen(Connection cnn) throws SQLException {
+                getStrategy(cnn).onConnection(cnn);
+            }
+
+            @Override
+            public void beforeClose(Connection cnn) throws SQLException {
+                getStrategy(cnn).commit(cnn);
+            }
+        };
+
+        try {
+            connectionResource.run(consumer::accept, lifecycle);
         } catch (RuntimeException e) {
             throw e;
         } catch (Exception e) {

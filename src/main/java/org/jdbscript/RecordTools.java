@@ -1,6 +1,6 @@
 package org.jdbscript;
 
-import org.jdbscript.impl.JDbRecord;
+import org.jdbscript.impl.JDBRecord;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -9,14 +9,14 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Default implementation of {@link IDbRecordTools} providing in-memory sequence generation
+ * Default implementation of {@link IDBRecordTools} providing in-memory sequence generation
  * and regex-based string template replacement for record defaults.
  */
-public class RecordTools implements IDbRecordTools{
+public class RecordTools implements IDBRecordTools {
     private final static Pattern TEMPLATE_PATTERN = Pattern.compile("\\$\\{(\\w+)\\}");
 
     private final Map<String, AtomicLong> counters = new HashMap<>();
-    private JDbRecord record;
+    private JDBRecord record;
 
     /**
      * Creates a new instance of {@code RecordTools}.
@@ -25,7 +25,7 @@ public class RecordTools implements IDbRecordTools{
     }
 
     @Override
-    public void setRecord(JDbRecord record) {
+    public void setRecord(JDBRecord record) {
         this.record = record;
     }
 

@@ -1,6 +1,5 @@
 package org.jdbscript;
 
-import org.jdbscript.impl.conversion.IJDBTypeConverter;
 import org.jdbscript.utils.TestConfiguration;
 import org.jdbscript.utils.TestDataSource;
 import org.slf4j.Logger;
@@ -9,11 +8,11 @@ import org.testng.Assert;
 import org.testng.SkipException;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.AfterMethod;
+import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
 
 import java.sql.*;
 import java.text.DateFormat;
-import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -32,6 +31,32 @@ public class JdbAbstractTest {
     protected static final TestConfiguration testConfiguration = new TestConfiguration();
     protected final TestDataSource dataSource = new TestDataSource(testConfiguration.getDataSource());
 
+    /**
+     * Defensive backstop: a test that deliberately wipes the shared standing schema (migration
+     * tests) is expected to restore it itself once done (see {@code MigrationTestBase}'s
+     * {@code @AfterGroups} hook). This just protects against ordering surprises or a partial
+     * {@code -Dtest=...} run that never triggers that hook - cheap (once per class, not per
+     * method), and a no-op in the common case where nothing wiped the schema.
+     */
+    @BeforeClass
+    public void ensureStandingSchemaExists() throws SQLException {
+        if (!tableExists("table_1")) {
+            testConfiguration.reinitStandingSchema(dataSource);
+        }
+    }
+
+    private boolean tableExists(String tableName) throws SQLException {
+        try (Connection cnn = dataSource.getConnection();
+             ResultSet rs = cnn.getMetaData().getTables(null, null, "%", null)) {
+            while (rs.next()) {
+                if (rs.getString("TABLE_NAME").equalsIgnoreCase(tableName)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     @BeforeMethod
     public void resetOpenConnectionTracking() {
         dataSource.resetOpenConnectionTracking();
@@ -46,16 +71,21 @@ public class JdbAbstractTest {
     public void afterClassClass() {
     }
 
-    protected <T extends IDbSchema> JDBEngine<T> createEngine(Class<T> schemaClass) {
-        return createEngine(schemaClass, null);
+    protected <T extends IDBSchema> JDBEngine<T> createEngine(Class<T> schemaClass) {
+        return engineBuilder(schemaClass).build();
     }
 
-    protected <T extends IDbSchema> JDBEngine<T> createEngine(Class<T> schemaClass, List<IJDBTypeConverter> converters) {
+    protected <T extends IDBSchema> JDBEngine.Builder<T> engineBuilder(Class<T> schemaClass) {
         return JDBEngine.builder(schemaClass)
                 .dataSource(()->dataSource)
-                .converters(converters == null ? null : converters.toArray(new IJDBTypeConverter[0]))
                 .executor(testConfiguration.getScriptExecutor())
-                .build();
+                .cacheStrategy(CacheStrategy.GLOBAL)
+                // DB2_ID_OWNED_SEQUENCE_ERROR is the default, and these generic tests don't care to
+                // exercise it - it's DB2-only and only bites schemas with an identity column
+                // (see GENERATED_INT_ID_TABLE), so pick the fully-correct behavior here rather than
+                // making every generic test fail on the db2 profile. Db2FeatureTest exercises all
+                // three DB2_ID_OWNED_SEQUENCE_* alternatives directly, against a live DB2.
+                .feature(JDBFeature.DB2_ID_OWNED_SEQUENCE_RESTART_WITH);
     }
 
 
@@ -119,7 +149,7 @@ public class JdbAbstractTest {
     }
 
     protected void assertTableValues(ExpectedTable expectedTable) {
-        DbmsType dbmsType = testConfiguration.getDbmsType();
+        DBMSType dbmsType = testConfiguration.getDbmsType();
         org.jdbscript.impl.sql.ISqlExecutorStrategy strategy = org.jdbscript.impl.sql.SqlExecutorStrategyFactory.getStrategy(dbmsType);
         String tableName = expectedTable.tableName;
         String sql = "SELECT * FROM "+tableName;
@@ -211,12 +241,24 @@ public class JdbAbstractTest {
         }
     }
 
-    protected void skipFor(String featureName, DbmsType type) {
+    protected void skipFor(String featureName, DBMSType type) {
         skipFor(featureName, type, null, null);
     }
 
-    protected void skipFor(String featureName, DbmsType type, Class<?> scriptExecutorClass, String reason) {
-        DbmsType dbmsType = testConfiguration.getDbmsType();
+    /**
+     * Inverse of {@link #skipFor}: skips unless the current profile is exactly {@code type} - for
+     * a test that only makes sense against one specific DBMS (e.g. a DBMS-specific
+     * {@link JDBFeature} group) rather than one that applies everywhere except a few.
+     */
+    protected void skipUnless(String featureName, DBMSType type) {
+        DBMSType dbmsType = testConfiguration.getDbmsType();
+        if (dbmsType != type) {
+            throw new SkipException("%s only supported on %s.".formatted(featureName, type));
+        }
+    }
+
+    protected void skipFor(String featureName, DBMSType type, Class<?> scriptExecutorClass, String reason) {
+        DBMSType dbmsType = testConfiguration.getDbmsType();
         Class<? extends IScriptExecutor> currentExecutorClass = testConfiguration.getScriptExecutor().getClass();
         if(dbmsType == type
                 && (scriptExecutorClass == null || scriptExecutorClass.isAssignableFrom(currentExecutorClass))

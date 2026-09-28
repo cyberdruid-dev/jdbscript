@@ -1,7 +1,7 @@
 package org.jdbscript.usecases;
 
-import org.jdbscript.IDbSchema;
-import org.jdbscript.IDbSchema.IDBRecord;
+import org.jdbscript.IDBSchema;
+import org.jdbscript.IDBSchema.IDBRecord;
 import org.jdbscript.JDBEngine;
 import org.jdbscript.JdbAbstractTest;
 import org.testng.annotations.BeforeMethod;
@@ -36,7 +36,7 @@ public class DefaultMethodsTest extends JdbAbstractTest {
         }
     }
 
-    public interface IDefaultMethodsSchema extends IDbSchema {
+    public interface IDefaultMethodsSchema extends IDBSchema {
         IDefaultMethodsRecord table_with_defaults();
 
         default IDefaultMethodsRecord table_with_both(Integer i, String s) {

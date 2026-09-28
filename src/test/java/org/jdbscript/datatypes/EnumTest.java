@@ -1,14 +1,12 @@
 package org.jdbscript.datatypes;
 
-import org.jdbscript.IDbSchema;
-import org.jdbscript.IDbSchema.IDBRecord;
+import org.jdbscript.IDBSchema;
+import org.jdbscript.IDBSchema.IDBRecord;
 import org.jdbscript.IJDBEngine;
 import org.jdbscript.JdbAbstractTest;
 import org.jdbscript.impl.conversion.EnumOrdinalConverter;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-
-import java.util.List;
 
 @Test
 public class EnumTest extends JdbAbstractTest {
@@ -26,7 +24,7 @@ public class EnumTest extends JdbAbstractTest {
     private interface IVarcharTable extends IDBRecord {
         IVarcharTable varchar_column(TestEnum value);
     }
-    private interface IEnumTestSchema extends IDbSchema {
+    private interface IEnumTestSchema extends IDBSchema {
 
         IVarcharTable varchar_table();
 
@@ -35,7 +33,7 @@ public class EnumTest extends JdbAbstractTest {
     private interface IIntTable extends IDBRecord {
         IIntTable int_column(TestEnum value);
     }
-    private interface IOrdinalEnumTestSchema extends IDbSchema {
+    private interface IOrdinalEnumTestSchema extends IDBSchema {
 
         IIntTable int_table();
 
@@ -56,9 +54,10 @@ public class EnumTest extends JdbAbstractTest {
     }
 
     private final IJDBEngine<IEnumTestSchema> engine = createEngine(IEnumTestSchema.class);
-    private final IJDBEngine<IOrdinalEnumTestSchema> ordinalEngine = createEngine(IOrdinalEnumTestSchema.class,
-            List.of(new EnumOrdinalConverter())
-            );
+    private final IJDBEngine<IOrdinalEnumTestSchema> ordinalEngine = engineBuilder(IOrdinalEnumTestSchema.class)
+            .disableDefaultConverters()
+            .converter(new EnumOrdinalConverter())
+            .build();
 
     public void test_insert_enum_as_int() {
         TestEnum value1 = TestEnum.VALUE_1001;

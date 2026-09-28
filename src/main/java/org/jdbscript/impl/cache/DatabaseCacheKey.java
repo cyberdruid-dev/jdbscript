@@ -7,7 +7,7 @@ import java.sql.SQLException;
 import static org.jdbscript.impl.Utils.isBlank;
 import static org.jdbscript.impl.Utils.nullToEmpty;
 
-record DatabaseCacheKey(String jdbcUrl, String username, String schema) {
+record DatabaseCacheKey(String jdbcUrl, String username, String catalog, String schema) {
 
     public static DatabaseCacheKey from(Connection connection) throws SQLException {
         DatabaseMetaData metaData = connection.getMetaData();
@@ -15,12 +15,13 @@ record DatabaseCacheKey(String jdbcUrl, String username, String schema) {
         String url = nullToEmpty(metaData.getURL());
         url = sanitizeUrl(url);
         String userName = nullToEmpty(metaData.getUserName());
-        String schema = nullToEmpty(safeGetCatalog(connection));
-        if(isBlank(schema)) {
-            schema = nullToEmpty(safeGetSchema(connection));
-        }
+        // Capture both: some DBMSes only distinguish tenants by catalog (MySQL, SQL Server), others
+        // only by schema (Oracle, Postgres search_path) - using one as a fallback for the other
+        // (instead of both) let same-catalog/different-schema connections collide onto one cache key.
+        String catalog = nullToEmpty(safeGetCatalog(connection));
+        String schema = nullToEmpty(safeGetSchema(connection));
 
-        return new DatabaseCacheKey(url, userName, schema);
+        return new DatabaseCacheKey(url, userName, catalog, schema);
     }
 
     private static String safeGetCatalog(Connection connection) {

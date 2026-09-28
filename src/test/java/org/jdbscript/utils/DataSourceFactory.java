@@ -1,28 +1,14 @@
 package org.jdbscript.utils;
 
-import org.jdbscript.DbmsType;
+import org.jdbscript.DBMSType;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
-import liquibase.Liquibase;
-import liquibase.database.Database;
-import liquibase.database.DatabaseFactory;
-import liquibase.database.jvm.JdbcConnection;
-import liquibase.exception.DatabaseException;
-import liquibase.resource.ClassLoaderResourceAccessor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.sql.DataSource;
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
-import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Scanner;
 
 class DataSourceFactory {
     private static final Logger log = LoggerFactory.getLogger(DataSourceFactory.class);
@@ -30,7 +16,7 @@ class DataSourceFactory {
     private String jdbcUrl;
     private String jdbcUser;
     private String jdbcPassword;
-    private DbmsType dbmsType;
+    private DBMSType dbmsType;
 
     public void setJdbcUrl(String jdbcUrl) {
         this.jdbcUrl = jdbcUrl;
@@ -47,17 +33,17 @@ class DataSourceFactory {
     public DataSource createDataSource() {
         HikariDataSource newDataSource = newHikariPool();
         logSchema(newDataSource);
-        runLiquibase(newDataSource);
+        TestSchemaInitStrategyFactory.getStrategy(getDbmsType()).initSchema(newDataSource);
         return newDataSource;
     }
 
-    public DbmsType getDbmsType() {
+    public DBMSType getDbmsType() {
         if(this.dbmsType == null) {
-            DbmsType type = DbmsType.getTypeFromUrl(jdbcUrl);
-            if (type == DbmsType.POSTGRESQL) {
+            DBMSType type = DBMSType.getTypeFromUrl(jdbcUrl);
+            if (type == DBMSType.POSTGRESQL) {
                 // CockroachDB often uses PostgreSQL JDBC URL. Try to refine detection if possible.
                 try (Connection connection = java.sql.DriverManager.getConnection(jdbcUrl, jdbcUser, jdbcPassword)) {
-                    this.dbmsType = DbmsType.getType(connection.getMetaData());
+                    this.dbmsType = DBMSType.getType(connection.getMetaData());
                 } catch (SQLException e) {
                     log.warn("Failed to refine DBMS type detection via connection, falling back to URL-based detection: {}", e.getMessage());
                     this.dbmsType = type;
@@ -66,7 +52,7 @@ class DataSourceFactory {
                 this.dbmsType = type;
             }
 
-            if(this.dbmsType == DbmsType.UNKNOWN) {
+            if(this.dbmsType == DBMSType.UNKNOWN) {
                 throw new UnsupportedOperationException("Unknown dbms type for JDBC URL: " + jdbcUrl);
             }
         }
@@ -91,82 +77,4 @@ class DataSourceFactory {
         }
     }
 
-    private void runLiquibase(DataSource newDataSource) {
-        if (getDbmsType() == DbmsType.DUCKDB) {
-            log.info("Skipping Liquibase for DuckDB as it is not fully supported yet. Running manual initialization.");
-            runDuckdbInit(newDataSource);
-            return;
-        }
-        log.debug("runLiquibase()");
-        try(Connection connection = newDataSource.getConnection()) {
-            Database database = findDatabase(connection);
-            if ("cloudspanner".equals(database.getShortName())) {
-                dropAllSpanner(connection);
-            }
-            Liquibase liquibase = new Liquibase("db/changelog.yaml",
-                    new ClassLoaderResourceAccessor(),
-                    database);
-            liquibase.clearCheckSums();
-            liquibase.update("");
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private void dropAllSpanner(Connection connection) throws SQLException {
-        log.debug("dropAllSpanner()");
-        connection.setAutoCommit(true);
-        for (int i = 0; i < 5; i++) {
-            List<String> tables = new ArrayList<>();
-            try(ResultSet rs = connection.getMetaData().getTables(null, null, "%", new String[]{"TABLE"})) {
-                while(rs.next()) {
-                    tables.add(rs.getString("TABLE_NAME"));
-                }
-            }
-            if (tables.isEmpty() || (tables.size() <= 2 && tables.stream().allMatch(t -> t.startsWith("DATABASECHANGELOG")))) {
-                break;
-            }
-            try(Statement stmt = connection.createStatement()) {
-                for (String table : tables) {
-                    if (table.startsWith("DATABASECHANGELOG")) continue;
-                    try {
-                        stmt.execute("DROP TABLE " + table);
-                        log.debug("Dropped table: {}", table);
-                    } catch (Exception e) {
-                        // Ignore and try in next pass
-                    }
-                }
-            }
-        }
-        try(Statement stmt = connection.createStatement()) {
-            try { stmt.execute("DROP TABLE DATABASECHANGELOGLOCK"); } catch (Exception e) {}
-            try { stmt.execute("DROP TABLE DATABASECHANGELOG"); } catch (Exception e) {}
-        }
-    }
-
-    private void runDuckdbInit(DataSource dataSource) {
-        try (Connection connection = dataSource.getConnection();
-             Statement stmt = connection.createStatement()) {
-            InputStream is = getClass().getClassLoader().getResourceAsStream("db/duckdb-schema.sql");
-            if (is == null) {
-                throw new IOException("Could not find db/duckdb-schema.sql");
-            }
-            String sql = new String(is.readAllBytes(), StandardCharsets.UTF_8);
-            int count = 0;
-            for (String part : sql.split(";")) {
-                String trimmed = part.trim();
-                if (!trimmed.isEmpty()) {
-                    stmt.execute(trimmed);
-                    count++;
-                }
-            }
-            log.info("Initialized DuckDB schema with {} statements.", count);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to initialize DuckDB schema", e);
-        }
-    }
-
-    private Database findDatabase(Connection connection) throws DatabaseException {
-        return DatabaseFactory.getInstance().findCorrectDatabaseImplementation(new JdbcConnection(connection));
-    }
 }

@@ -23,6 +23,17 @@ class DuckdbStrategy extends DefaultSqlExecutorStrategy {
                 while (rs.next()) {
                     seqNames.add(rs.getString(1));
                 }
+            } catch (SQLException e) {
+                // A database with zero sequences still queries pg_catalog.pg_sequences
+                // successfully, returning zero rows - so this query failing at all means the view
+                // itself is unavailable (e.g. an older duckdb_jdbc driver), not "no sequences". If
+                // the schema actually uses sequences, they'd go silently unreset - that must
+                // surface loudly, not be treated as nothing to do.
+                throw new SQLException(
+                        "Could not query pg_catalog.pg_sequences to discover DuckDB sequences to "
+                                + "reset after insert; if this schema uses sequences, their "
+                                + "auto-generated IDs may now collide with manually-inserted ones: "
+                                + e.getMessage(), e);
             }
             for (String seqName : seqNames) {
                 // DuckDB sequences don't advance automatically on manual inserts.
@@ -30,10 +41,13 @@ class DuckdbStrategy extends DefaultSqlExecutorStrategy {
                 // We use range() to call nextval multiple times as ALTER SEQUENCE RESTART is not yet fully supported in JDBC.
                 try (var rs = stmt.executeQuery("SELECT nextval('" + seqName + "') FROM range(1, 10000)")) {
                     // Just execute and close
+                } catch (SQLException e) {
+                    throw new SQLException(
+                            "Failed to reset DuckDB sequence '" + seqName + "' to a safe value after "
+                                    + "insert; auto-generated IDs from this sequence may now collide "
+                                    + "with manually-inserted ones: " + e.getMessage(), e);
                 }
             }
-        } catch (SQLException e) {
-            // Ignore if pg_sequences does not exist or other issues
         }
     }
 

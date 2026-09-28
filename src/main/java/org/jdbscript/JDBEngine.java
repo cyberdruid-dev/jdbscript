@@ -1,6 +1,7 @@
 package org.jdbscript;
 
-import org.jdbscript.errors.JdbsErrors;
+import org.jdbscript.errors.JDBErrors;
+import org.jdbscript.errors.JDBScriptException;
 import org.jdbscript.impl.*;
 import org.jdbscript.impl.cache.IJDBCache;
 import org.jdbscript.impl.cache.JDBCacheManager;
@@ -12,28 +13,29 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.sql.DataSource;
+import java.lang.reflect.Method;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 
+import static java.util.stream.Collectors.toSet;
 import static org.jdbscript.errors.Checks.checkIsNull;
 import static org.jdbscript.errors.Checks.checkNotNull;
-import static org.jdbscript.errors.JdbsErrors.*;
+import static org.jdbscript.errors.JDBErrors.*;
 
 /**
  * Standard implementation of {@link IJDBEngine} providing fluent database seeding,
  * script execution, and table cleanup for a specified schema interface.
  *
- * @param <T> the schema interface type extending {@link IDbSchema}
+ * @param <T> the schema interface type extending {@link IDBSchema}
  */
-public class JDBEngine<T extends IDbSchema> implements IJDBEngine<T>{
+public class JDBEngine<T extends IDBSchema> implements IJDBEngine<T>{
     private static final Logger log = LoggerFactory.getLogger(JDBEngine.class);
 
     private final JDBTypeConverter converter = new JDBTypeConverter();
     private final Class<T> dbSchemaClass;
     private final Supplier<DataSource> dataSourceSupplier;
-    private final List<String> cleanupOrder;
+    private final List<String> tableDependencyOrder;
     private final CacheStrategy cacheStrategy;
     private DataSource dataSource;
     private final IScriptExecutor executor;
@@ -42,18 +44,38 @@ public class JDBEngine<T extends IDbSchema> implements IJDBEngine<T>{
     private final ValidationStrategy unmappedTableStrategy;
     private final Set<String> suppressedTables;
     private final boolean suppressDefaultUnmappedTables;
+    private final JDBFeatureSet features;
+    private final List<ThrowingRunnable> dataChangeListeners;
 
     private JDBEngine(Builder<T> builder) {
         this.dbSchemaClass = checkNotNull(builder.dbSchemaClass, DB_SCHEMA_IS_NULL);
         this.dataSourceSupplier = checkNotNull(builder.dataSourceSupplier, DATASOURCE_SUPPLIER_IS_NULL);
-        this.cleanupOrder = builder.cleanupOrder != null ? List.copyOf(builder.cleanupOrder) : null;
+        this.tableDependencyOrder = builder.tableDependencyOrder != null ? List.copyOf(builder.tableDependencyOrder) : null;
         this.cacheStrategy = builder.cacheStrategy;
         this.executor = builder.executor != null? builder.executor : new SqlScriptExecutor();
         this.unmappedTableStrategy = builder.unmappedTableStrategy;
         this.suppressedTables = Set.copyOf(builder.suppressedTables);
         this.suppressDefaultUnmappedTables = builder.suppressDefaultUnmappedTables;
-        if (builder.converters != null) {
-            this.converter.setConverters(builder.converters);
+        this.features = JDBFeatureSet.copyOf(builder.features);
+        this.dataChangeListeners = List.copyOf(builder.dataChangeListeners);
+        if (builder.disableDefaultConverters) {
+            this.converter.setConverters(List.of());
+        }
+        for (IJDBTypeConverter converter : builder.additionalConverters) {
+            this.converter.addConverter(converter);
+        }
+    }
+
+    private void validateTableDependencyOrderCoversSchema() {
+        Set<String> ordered = tableDependencyOrder.stream()
+                .map(String::toUpperCase)
+                .collect(toSet());
+        List<String> missing = SchemaValidator.findRecordMethods(dbSchemaClass).stream()
+                .map(Method::getName)
+                .filter(name -> !ordered.contains(name.toUpperCase()))
+                .toList();
+        if (!missing.isEmpty()) {
+            throw TABLE_MISSING_FROM_DEPENDENCY_ORDER.get(String.join(", ", missing));
         }
     }
 
@@ -64,47 +86,67 @@ public class JDBEngine<T extends IDbSchema> implements IJDBEngine<T>{
      * @param <T>           the schema interface type
      * @return a new builder instance
      */
-    public static <T extends IDbSchema> Builder<T> builder(Class<T> dbSchemaClass) {
+    public static <T extends IDBSchema> Builder<T> builder(Class<T> dbSchemaClass) {
         return new Builder<>(dbSchemaClass);
     }
 
     private static Supplier<DataSource> toSupplier(DataSource dataSource) {
-        checkNotNull(dataSource, JdbsErrors.DATASOURCE_IS_NULL);
+        checkNotNull(dataSource, JDBErrors.DATASOURCE_IS_NULL);
         return ()->dataSource;
     }
 
     @Override
     public void resetDB(Class<? extends T> scriptClass) {
-        cleanupDB();
-        insertDB(scriptClass);
+        cleanupDBInternal();
+        insertDBInternal(scriptClass);
+        notifyDataChange();
     }
 
     @Override
     public void insertDB(Class<? extends T> scriptClass) {
         log.debug("insertDB({})", scriptClass.getName());
-        insertDB(db->{
-            db.include(scriptClass);
-        });
+        insertDBInternal(scriptClass);
+        notifyDataChange();
     }
 
     @Override
     public void resetDB(Consumer<T> db) {
         log.debug("resetDb(consumer={})", db);
-        cleanupDB();
-        insertDB(db);
+        cleanupDBInternal();
+        insertDBInternal(db);
+        notifyDataChange();
     }
 
     @Override
     public void insertDB(Consumer<T> db) {
         log.debug("insertDB(consumer={})", db);
+        insertDBInternal(db);
+        notifyDataChange();
+    }
+
+    private void insertDBInternal(Class<? extends T> scriptClass) {
+        insertDBInternal(db -> db.include(scriptClass));
+    }
+
+    private void insertDBInternal(Consumer<T> db) {
         validateSchema();
         ScriptHandler<T> handler = new ScriptHandler(dbSchemaClass);
         db.accept(handler.getProxy());
         handler.applyDefaults();
-        JDbScript script = handler.getDbScript();
+        JDBScript script = handler.getDbScript();
         converter.convertTypes(script);
         sortScript(script);
         getExecutor().insert(script);
+    }
+
+    private void notifyDataChange() {
+        for (ThrowingRunnable listener : dataChangeListeners) {
+            try {
+                listener.run();
+            } catch (Exception e) {
+                throw new JDBScriptException("onDataChange listener threw an exception.", e);
+            }
+        }
     }
 
     private synchronized IJDBCache getCache() {
@@ -128,8 +170,12 @@ public class JDBEngine<T extends IDbSchema> implements IJDBEngine<T>{
 
     private synchronized void ensureInitialized() {
         if (schemaValidator == null) {
+            if (tableDependencyOrder != null) {
+                validateTableDependencyOrderCoversSchema();
+            }
             this.executor.setDataSource(getDataSource());
             this.executor.setCache(getCache());
+            this.executor.setFeatures(features);
             this.schemaValidator = new SchemaValidator(dbSchemaClass, executor.getMetadataProvider(),
                     unmappedTableStrategy, suppressedTables, suppressDefaultUnmappedTables);
         }
@@ -144,61 +190,63 @@ public class JDBEngine<T extends IDbSchema> implements IJDBEngine<T>{
 
     @Override
     public void cleanupDB() {
-        getTableNames();
-        getExecutor().cleanupTables(getTableNames());
+        cleanupDBInternal();
+        notifyDataChange();
+    }
+
+    private void cleanupDBInternal() {
+        getExecutor().cleanupTables(getTableNamesCleanupOrder());
     }
 
     @Override
     public void assertDBHasNot(Consumer<T> dbAsserts) {
         log.debug("assertDBHasNot(consumer={})", dbAsserts);
+        validateSchema();
         ScriptHandler<T> handler = new ScriptHandler(dbSchemaClass);
         dbAsserts.accept(handler.getProxy());
-        JDbScript script = handler.getDbScript();
+        JDBScript script = handler.getDbScript();
         converter.convertTypes(script);
         getExecutor().assertRowsNotExist(script);
     }
 
     private IMetadataProvider getMetadataProvider() {
-        return getExecutor().getMetadataProvider();
+        IMetadataProvider provider = getExecutor().getMetadataProvider();
+        if (tableDependencyOrder != null) {
+            return new TableDependencyOrderMetadataProvider(provider, tableDependencyOrder);
+        }
+        return provider;
     }
 
     @Override
     public void assertDBHas(Consumer<T> dbAsserts) {
         log.debug("assertDBHas(consumer={})", dbAsserts);
+        validateSchema();
         ScriptHandler<T> handler = new ScriptHandler(dbSchemaClass);
         dbAsserts.accept(handler.getProxy());
-        JDbScript script = handler.getDbScript();
+        JDBScript script = handler.getDbScript();
         converter.convertTypes(script);
         getExecutor().assertRowsExist(script);
     }
 
-    private void sortScript(JDbScript script) {
-        List<JDbRecord> records = script.getRecords();
+    private void sortScript(JDBScript script) {
+        List<JDBRecord> records = script.getRecords();
         if (records.isEmpty()) {
             return;
         }
 
-        records.sort(Comparator.comparing(JDbRecord::getTableName, getMetadataProvider().getParentChildTableComparator()));
+        records.sort(Comparator.comparing(JDBRecord::getTableName, getMetadataProvider().getParentChildTableComparator()));
     }
 
-    private List<String> getTableNames() {
-        if (cleanupOrder != null) {
-            return cleanupOrder;
-        }
+    private List<String> getTableNamesCleanupOrder() {
         Set<String> interfaceTables = SchemaValidator.findRecordMethods(dbSchemaClass).stream()
                 .map(m -> m.getName().toUpperCase())
-                .collect(Collectors.toSet());
+                .collect(toSet());
 
-        List<String> sorted = new ArrayList<>(getExecutor().getMetadataProvider().getSortedTables());
+        List<String> sorted = new ArrayList<>(getMetadataProvider().getSortedTables());
         Collections.reverse(sorted);
 
         return sorted.stream()
                 .filter(t -> interfaceTables.contains(t.toUpperCase()))
-                .map(t -> {
-                    // Try to restore original casing from interface if possible, 
-                    // or just return the DB name. The DB name is fine.
-                    return t;
-                })
                 .toList();
     }
 
@@ -212,16 +260,19 @@ public class JDBEngine<T extends IDbSchema> implements IJDBEngine<T>{
      *
      * @param <T> the schema interface type
      */
-    public static class Builder<T extends IDbSchema> {
+    public static class Builder<T extends IDBSchema> {
         private final Class<T> dbSchemaClass;
         private Supplier<DataSource> dataSourceSupplier;
         private IScriptExecutor executor;
-        private Collection<IJDBTypeConverter> converters;
-        private List<String> cleanupOrder;
+        private final List<IJDBTypeConverter> additionalConverters = new ArrayList<>();
+        private boolean disableDefaultConverters = false;
+        private List<String> tableDependencyOrder;
         private CacheStrategy cacheStrategy = CacheStrategy.INSTANCE;
         private ValidationStrategy unmappedTableStrategy = ValidationStrategy.LOG_WARN;
         private final Set<String> suppressedTables = new HashSet<>();
         private boolean suppressDefaultUnmappedTables = true;
+        private final JDBFeatureSet features = JDBFeatureSet.empty();
+        private final List<ThrowingRunnable> dataChangeListeners = new ArrayList<>();
 
         private Builder(Class<T> dbSchemaClass) {
             this.dbSchemaClass = dbSchemaClass;
@@ -246,19 +297,52 @@ public class JDBEngine<T extends IDbSchema> implements IJDBEngine<T>{
             return this;
         }
 
-        public Builder<T> converters(IJDBTypeConverter... converters) {
-            this.converters = converters == null ? null : Arrays.asList(converters);
+        /**
+         * Registers a custom type converter, in addition to the built-in defaults (Enums, Dates,
+         * Instants) and any other converter already registered this way. Order matters: the first
+         * registered converter whose {@code canConvert} matches a value wins, so a converter added
+         * here only gets a chance to run for types not already handled by an earlier one - to have
+         * it take priority over a default, call {@link #disableDefaultConverters()} first.
+         * <p>
+         * This method is cumulative: call it once per converter to register several.
+         *
+         * @param converter the converter to register; must not be null
+         * @return this builder
+         */
+        public Builder<T> converter(IJDBTypeConverter converter) {
+            this.additionalConverters.add(checkNotNull(converter, CONVERTER_IS_NULL));
             return this;
         }
 
         /**
-         * Configures the order in which tables should be cleaned up.
+         * Disables the built-in default converters (Enums, Dates, Instants), so that only
+         * converters explicitly registered via {@link #converter(IJDBTypeConverter)} apply.
          *
-         * @param tableNames list of table names in cleanup order
          * @return this builder
          */
-        public Builder<T> cleanupOrder(List<String> tableNames) {
-            this.cleanupOrder = tableNames;
+        public Builder<T> disableDefaultConverters() {
+            this.disableDefaultConverters = true;
+            return this;
+        }
+
+        /**
+         * Overrides automatic FK-based dependency detection with a fixed, explicit table order -
+         * an escape hatch for when auto-detection can't be relied on (missing FK metadata, views,
+         * cyclic dependencies). Tables are listed parent-to-child: records are inserted in exactly
+         * this order, and {@link JDBEngine#cleanupDB()} cleans them up in the exact reverse.
+         * <p>
+         * Every table exposed by the schema interface must be present in {@code tableNames}
+         * (case-insensitively); this is validated on first use of the engine (not eagerly at
+         * build time, to keep the engine lazy), and fails every operation - insert, cleanup, or
+         * assert - the same way. Extra entries not declared by the schema interface are ignored.
+         * This replaces auto-detection for ordering only - schema-vs-DB validation
+         * (missing/unmapped tables) is unaffected and still runs against the real database.
+         *
+         * @param tableNames every schema-interface table, parent-to-child
+         * @return this builder
+         */
+        public Builder<T> tableDependencyOrder(List<String> tableNames) {
+            this.tableDependencyOrder = tableNames;
             return this;
         }
 
@@ -270,7 +354,7 @@ public class JDBEngine<T extends IDbSchema> implements IJDBEngine<T>{
          * @return this builder
          */
         public Builder<T> cacheStrategy(CacheStrategy cacheStrategy) {
-            this.cacheStrategy = cacheStrategy;
+            this.cacheStrategy = checkNotNull(cacheStrategy, CACHE_STRATEGY_IS_NULL);
             return this;
         }
 
@@ -282,7 +366,7 @@ public class JDBEngine<T extends IDbSchema> implements IJDBEngine<T>{
          * @return this builder
          */
         public Builder<T> unmappedTableStrategy(ValidationStrategy strategy) {
-            this.unmappedTableStrategy = strategy;
+            this.unmappedTableStrategy = checkNotNull(strategy, UNMAPPED_TABLE_STRATEGY_IS_NULL);
             return this;
         }
 
@@ -311,6 +395,38 @@ public class JDBEngine<T extends IDbSchema> implements IJDBEngine<T>{
          */
         public Builder<T> suppressDefaultUnmappedTables(boolean suppress) {
             this.suppressDefaultUnmappedTables = suppress;
+            return this;
+        }
+
+        /**
+         * Enables a narrow, DBMS-specific behavior switch (see {@link JDBFeature}). Cumulative
+         * across groups, but within the same group a later call replaces an earlier one rather
+         * than adding to it.
+         *
+         * @param feature the feature to enable
+         * @return this builder
+         */
+        public Builder<T> feature(JDBFeature feature) {
+            this.features.add(feature);
+            return this;
+        }
+
+        /**
+         * Registers a callback invoked once after each successful data-changing call -
+         * {@link JDBEngine#resetDB}, {@link JDBEngine#insertDB} (either overload), or
+         * {@link JDBEngine#cleanupDB} - e.g. to invalidate an application-level cache. Not invoked
+         * by {@code assertDBHas}/{@code assertDBHasNot}, which don't mutate the database, nor when
+         * the triggering call itself fails. Any exception the callback throws is wrapped in a
+         * {@link JDBScriptException} and propagated to the caller of that data-changing call.
+         * <p>
+         * This method is cumulative: call it once per callback to register several; all run in
+         * registration order.
+         *
+         * @param callback invoked after a successful data-changing operation; must not be null
+         * @return this builder
+         */
+        public Builder<T> onDataChange(ThrowingRunnable callback) {
+            this.dataChangeListeners.add(checkNotNull(callback, DATA_CHANGE_LISTENER_IS_NULL));
             return this;
         }
 

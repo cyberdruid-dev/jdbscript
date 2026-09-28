@@ -15,7 +15,7 @@ import java.util.Date;
 
 class SqliteStrategy extends DefaultSqlExecutorStrategy {
     private final DateFormat LOCAL_DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd");
-    private final DateFormat TIMESTAMP_FORMAT = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss");
+    private final DateFormat TIMESTAMP_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
     @Override
     public void setInputStream(PreparedStatement stmt, int columnIndex, InputStream value) throws SQLException {
         if (value == null) {

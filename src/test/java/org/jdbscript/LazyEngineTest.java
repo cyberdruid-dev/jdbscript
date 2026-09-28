@@ -4,7 +4,6 @@ import org.jdbscript.utils.CountingSupplier;
 import org.testng.annotations.Test;
 
 import javax.sql.DataSource;
-import java.util.function.Supplier;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -12,7 +11,7 @@ import static org.mockito.Mockito.mock;
 @Test
 public class LazyEngineTest {
 
-    private interface ITestSchema extends IDbSchema {
+    private interface ITestSchema extends IDBSchema {
     }
 
     @Test

@@ -1,6 +1,6 @@
 package org.jdbscript.impl.sql;
 
-import org.jdbscript.DbmsType;
+import org.jdbscript.DBMSType;
 import org.jdbscript.impl.IMetadataProvider;
 import org.jdbscript.impl.cache.IJDBCache;
 import org.jdbscript.impl.cache.IJDBCache.IJDBCacheKey;
@@ -22,16 +22,16 @@ public class SqlMetadataProvider implements IMetadataProvider {
 
     private final SqlConnectionProvider connectionProvider;
     private IJDBCache cache = new NoCache();
-    private DbmsType dbmsType;
+    private DBMSType dbmsType;
     private ISqlExecutorStrategy strategy;
 
-    private record DbmsTypeKey() implements IJDBCacheKey<DbmsType> {}
+    private record DBMSTypeKey() implements IJDBCacheKey<DBMSType> {}
     private record TableDependencyKey(String tableName) implements IJDBCacheKey<Set<String>> {}
-    private static final DbmsTypeKey DBMS_TYPE_KEY = new DbmsTypeKey();
-
-
-    private List<String> allTables;
-    private List<String> globalSortedTables;
+    private record AllTablesKey() implements IJDBCacheKey<List<String>> {}
+    private record SortedTablesKey() implements IJDBCacheKey<List<String>> {}
+    private static final DBMSTypeKey DBMS_TYPE_KEY = new DBMSTypeKey();
+    private static final AllTablesKey ALL_TABLES_KEY = new AllTablesKey();
+    private static final SortedTablesKey SORTED_TABLES_KEY = new SortedTablesKey();
 
     public SqlMetadataProvider(SqlConnectionProvider connectionProvider) {
         this.connectionProvider = connectionProvider;
@@ -47,19 +47,19 @@ public class SqlMetadataProvider implements IMetadataProvider {
 
     private ISqlExecutorStrategy getStrategy() {
         if (strategy == null) {
-            DbmsType type = getDbmsType();
+            DBMSType type = getDbmsType();
             this.strategy = SqlExecutorStrategyFactory.getStrategy(type);
         }
         return strategy;
     }
 
     @Override
-    public DbmsType getDbmsType() {
+    public DBMSType getDbmsType() {
         if (dbmsType == null) {
             dbmsType = cache.getOrCompute(DBMS_TYPE_KEY, k -> {
-                final DbmsType[] detected = new DbmsType[1];
+                final DBMSType[] detected = new DBMSType[1];
                 withConnection(cnn -> {
-                    detected[0] = DbmsType.getType(cnn.getMetaData());
+                    detected[0] = DBMSType.getType(cnn.getMetaData());
                 });
                 return detected[0];
             });
@@ -69,19 +69,16 @@ public class SqlMetadataProvider implements IMetadataProvider {
 
     @Override
     public List<String> getAllTables() {
-        ensureInitialized();
-        return allTables;
+        return cache.getOrCompute(ALL_TABLES_KEY, k -> fetchAllTables());
     }
 
     @Override
     public List<String> getSortedTables() {
-        ensureInitialized();
-        return globalSortedTables;
+        return cache.getOrCompute(SORTED_TABLES_KEY, k -> sortTablesByDependencies(getAllTables()));
     }
 
     @Override
     public Comparator<String> getParentChildTableComparator() {
-        ensureInitialized();
         List<String> sorted = getSortedTables();
         return (t1, t2) -> {
             int i1 = findIndex(sorted, t1);
@@ -102,24 +99,20 @@ public class SqlMetadataProvider implements IMetadataProvider {
         return -1;
     }
 
-    private void ensureInitialized() {
-        if (allTables == null) {
-            withConnection(cnn -> {
-                DatabaseMetaData metaData = cnn.getMetaData();
-                String searchCatalog = getStrategy().getSearchCatalog(cnn);
-                String searchSchema = getStrategy().getSearchSchema(cnn);
-
-                List<String> tables = new ArrayList<>();
-                String[] types = getStrategy().getTableTypes();
-                try (ResultSet rs = metaData.getTables(searchCatalog, searchSchema, "%", types)) {
-                    while (rs.next()) {
-                        tables.add(rs.getString("TABLE_NAME"));
-                    }
+    private List<String> fetchAllTables() {
+        List<String> tables = new ArrayList<>();
+        withConnection(cnn -> {
+            DatabaseMetaData metaData = cnn.getMetaData();
+            String searchCatalog = getStrategy().getSearchCatalog(cnn);
+            String searchSchema = getStrategy().getSearchSchema(cnn);
+            String[] types = getStrategy().getTableTypes();
+            try (ResultSet rs = metaData.getTables(searchCatalog, searchSchema, "%", types)) {
+                while (rs.next()) {
+                    tables.add(rs.getString("TABLE_NAME"));
                 }
-                allTables = tables;
-                globalSortedTables = sortTablesByDependencies(allTables);
-            });
-        }
+            }
+        });
+        return tables;
     }
 
     @Override
