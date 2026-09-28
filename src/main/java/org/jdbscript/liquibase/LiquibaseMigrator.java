@@ -98,12 +98,10 @@ public class LiquibaseMigrator implements MigrationRunner {
     }
 
     private void resetSpanner(DataSource dataSource) {
-        // Spanner forbids DDL while a read/write transaction is open, but dropAll() opens one
-        // itself (to acquire the changelog lock) before issuing its DROP TABLE statements,
-        // failing with "DDL-statements are not allowed inside a read/write transaction." Drop
-        // tables directly in autocommit mode instead - Spanner also has no SQLite-style pragma to
-        // disable FK enforcement, so this retries over several passes, dropping whatever is
-        // FK-free each time, until nothing (non-changelog) is left.
+        // dropAll() opens a transaction to acquire its changelog lock, then fails issuing DDL
+        // inside it - Spanner forbids DDL in an open transaction. Drop tables directly in
+        // autocommit mode instead, retrying since Spanner has no SQLite-style pragma to disable FK
+        // enforcement.
         try (Connection connection = dataSource.getConnection()) {
             connection.setAutoCommit(true);
             for (int i = 0; i < 5; i++) {

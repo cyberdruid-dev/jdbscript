@@ -312,7 +312,7 @@ public class Db2StrategyTest {
         strategy.setFeatures(JDBFeatureSet.of(JDBFeature.DB2_ID_OWNED_SEQUENCE_RESTART_WITH));
         List<String> executed = new ArrayList<>();
         Connection cnn = failingConnection(
-                sql -> sequenceResultSet(List.of(SeqRow.identityOwned("SQL123", "GENERATED_INT_ID_TABLE", "GENERATED_ID_COLUMN"))),
+                identityOwnedSequenceQueryHandler("GENERATED_INT_ID_TABLE", "GENERATED_ID_COLUMN", 0),
                 recording(executed));
 
         strategy.afterInsert(cnn);
@@ -322,11 +322,25 @@ public class Db2StrategyTest {
     }
 
     @Test
+    public void afterInsert_with_RESTART_WITH_feature_should_not_rewind_a_sequence_already_past_the_safe_floor() throws SQLException {
+        Db2Strategy strategy = new Db2Strategy();
+        strategy.setFeatures(JDBFeatureSet.of(JDBFeature.DB2_ID_OWNED_SEQUENCE_RESTART_WITH));
+        List<String> executed = new ArrayList<>();
+        Connection cnn = failingConnection(
+                identityOwnedSequenceQueryHandler("GENERATED_INT_ID_TABLE", "GENERATED_ID_COLUMN", 10001),
+                recording(executed));
+
+        strategy.afterInsert(cnn);
+
+        assertThat(executed).isEmpty();
+    }
+
+    @Test
     public void afterInsert_with_RESTART_WITH_feature_should_fail_clearly_when_the_alter_table_itself_fails() {
         Db2Strategy strategy = new Db2Strategy();
         strategy.setFeatures(JDBFeatureSet.of(JDBFeature.DB2_ID_OWNED_SEQUENCE_RESTART_WITH));
         Connection cnn = failingConnection(
-                sql -> sequenceResultSet(List.of(SeqRow.identityOwned("SQL123", "GENERATED_INT_ID_TABLE", "GENERATED_ID_COLUMN"))),
+                identityOwnedSequenceQueryHandler("GENERATED_INT_ID_TABLE", "GENERATED_ID_COLUMN", 0),
                 sql -> {
                     throw new SQLException("some low-level driver error");
                 });
@@ -336,6 +350,12 @@ public class Db2StrategyTest {
                 .hasMessageContaining("GENERATED_INT_ID_TABLE")
                 .hasMessageContaining("GENERATED_ID_COLUMN")
                 .hasMessageContaining("some low-level driver error");
+    }
+
+    private static QueryHandler identityOwnedSequenceQueryHandler(String tableName, String columnName, long currentMaxValue) {
+        return sql -> sql.contains("SYSCAT.SEQUENCES")
+                ? sequenceResultSet(List.of(SeqRow.identityOwned("SQL123", tableName, columnName)))
+                : maxValueResultSet(currentMaxValue);
     }
 
     @Test
@@ -426,6 +446,25 @@ public class Db2StrategyTest {
                                 case "COLNAME" -> row.columnName();
                                 default -> throw new IllegalArgumentException("Unexpected column: " + args[0]);
                             };
+                        case "close":
+                            return null;
+                    }
+                    return null;
+                }
+        );
+    }
+
+    private static ResultSet maxValueResultSet(long value) {
+        AtomicInteger index = new AtomicInteger(-1);
+        return (ResultSet) Proxy.newProxyInstance(
+                ResultSet.class.getClassLoader(),
+                new Class<?>[]{ResultSet.class},
+                (proxy, method, args) -> {
+                    switch (method.getName()) {
+                        case "next":
+                            return index.incrementAndGet() == 0;
+                        case "getLong":
+                            return value;
                         case "close":
                             return null;
                     }

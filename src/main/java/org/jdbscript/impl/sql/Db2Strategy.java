@@ -160,8 +160,13 @@ class Db2Strategy extends DefaultSqlExecutorStrategy {
             }
             case DB2_ID_OWNED_SEQUENCE_RESTART_WITH -> {
                 try {
-                    stmt.executeUpdate(String.format("ALTER TABLE %s ALTER COLUMN %s RESTART WITH 10000",
-                            seq.tableName(), seq.columnName()));
+                    // Advance-only: RESTART WITH would otherwise rewind a sequence that's already
+                    // past 10000, handing out a value it gave out once already.
+                    long currentMax = getCurrentIdentityValue(stmt, seq);
+                    if (currentMax < 10000) {
+                        stmt.executeUpdate(String.format("ALTER TABLE %s ALTER COLUMN %s RESTART WITH 10000",
+                                seq.tableName(), seq.columnName()));
+                    }
                 } catch (SQLException e) {
                     throw new SQLException(
                             "Failed to reset identity column '" + seq.tableName() + "." + seq.columnName()
@@ -178,6 +183,14 @@ class Db2Strategy extends DefaultSqlExecutorStrategy {
                             + "alone, or .feature(JDBFeature.DB2_ID_OWNED_SEQUENCE_RESTART_WITH) to "
                             + "reset it via ALTER TABLE.");
             default -> throw new IllegalStateException("Unexpected feature: " + feature);
+        }
+    }
+
+    private long getCurrentIdentityValue(Statement stmt, SequenceInfo seq) throws SQLException {
+        try (ResultSet rs = stmt.executeQuery(
+                String.format("SELECT COALESCE(MAX(%s), 0) FROM %s", seq.columnName(), seq.tableName()))) {
+            rs.next();
+            return rs.getLong(1);
         }
     }
 

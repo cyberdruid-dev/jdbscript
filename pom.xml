@@ -496,9 +496,8 @@
             <version>7.1.0</version>
             <scope>test</scope>
         </dependency>
-        <!-- Used unconditionally by internal plumbing tests (e.g. ConnectionReentrancyTest) that
-             need some trivial embedded DB regardless of which DBMS profile is under test; the h2
-             profile additionally uses this same dependency when H2 itself is the DBMS under test. -->
+        <!-- Unconditional (unlike every other driver here) - needed by internal plumbing tests
+             like ConnectionReentrancyTest regardless of which DBMS profile is under test. -->
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>

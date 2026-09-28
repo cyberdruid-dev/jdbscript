@@ -17,8 +17,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Cloud Spanner's emulator doesn't reliably roll back DDL between test runs, so leftover tables
- * (including Liquibase's own tracking tables) are force-dropped before the shared changelog runs.
+ * Spanner forbids DDL inside an open transaction, which is exactly what Liquibase's own dropAll()
+ * needs to acquire its changelog lock - so tables are dropped directly instead, before the shared
+ * changelog runs.
  */
 class SpannerSchemaInitStrategy implements ITestSchemaInitStrategy {
     private static final Logger log = LoggerFactory.getLogger(SpannerSchemaInitStrategy.class);
