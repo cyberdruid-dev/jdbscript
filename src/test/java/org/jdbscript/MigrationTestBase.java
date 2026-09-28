@@ -23,7 +23,14 @@ import java.sql.ResultSet;
  */
 public abstract class MigrationTestBase extends JdbAbstractTest {
 
+    protected static final String FLYWAY_LOCATION = "classpath:db/flyway-migration";
+    private static final String FLYWAY_LOCATION_SPANNER = "classpath:db/flyway-migration-spanner";
+
     protected abstract MigrationRunner createMigrator();
+
+    protected static String flywayLocation() {
+        return testConfiguration.getDbmsType() == DBMSType.SPANNER ? FLYWAY_LOCATION_SPANNER : FLYWAY_LOCATION;
+    }
 
     @BeforeMethod
     public void resetMigrationSchema() {

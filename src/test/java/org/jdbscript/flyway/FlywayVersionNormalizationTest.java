@@ -10,11 +10,9 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 @Test(groups = "migration")
 public class FlywayVersionNormalizationTest extends MigrationTestBase {
 
-    private static final String LOCATION = "classpath:db/flyway-migration";
-
     @Override
     protected MigrationRunner createMigrator() {
-        return new FlywayMigrator(LOCATION);
+        return new FlywayMigrator(flywayLocation());
     }
 
     @Test

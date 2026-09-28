@@ -7,11 +7,9 @@ import org.testng.annotations.Test;
 @Test(groups = "migration")
 public class FlywayMigratorTest extends MigrationRunnerContractTest {
 
-    private static final String LOCATION = "classpath:db/flyway-migration";
-
     @Override
     protected MigrationRunner createMigrator() {
-        return new FlywayMigrator(LOCATION);
+        return new FlywayMigrator(flywayLocation());
     }
 
     @Override

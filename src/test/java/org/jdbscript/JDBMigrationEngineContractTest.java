@@ -29,6 +29,16 @@ public abstract class JDBMigrationEngineContractTest extends MigrationTestBase {
 
     protected abstract String markerAfterOrderTable();
 
+    /**
+     * Used only by the isolated-H2-DataSource test below - that DataSource is always H2 regardless
+     * of the active profile, so (unlike {@link #createMigrator()}) this must never resolve to
+     * DBMS-specific migration scripts (e.g. Spanner's). Defaults to {@link #createMigrator()},
+     * which is already connection-adaptive rather than profile-based for tools like Liquibase.
+     */
+    protected MigrationRunner createMigratorForIsolatedDatabase() {
+        return createMigrator();
+    }
+
     private interface IPersonBeforeSchema extends IDBSchema {
         IPersonBeforeRecord migration_person();
 
@@ -197,7 +207,7 @@ public abstract class JDBMigrationEngineContractTest extends MigrationTestBase {
                     .builder(ICustomerOnlySchema.class, ICustomerAndOrderSchema.class)
                     .dataSource(isolatedDataSource)
                     .executor(() -> testConfiguration.getScriptExecutor())
-                    .migrator(createMigrator())
+                    .migrator(createMigratorForIsolatedDatabase())
                     .beforeEngine(b -> b.cacheStrategy(CacheStrategy.GLOBAL))
                     .afterEngine(b -> b.cacheStrategy(CacheStrategy.GLOBAL))
                     .build();

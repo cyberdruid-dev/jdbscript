@@ -6,11 +6,14 @@ import org.testng.annotations.Test;
 @Test(groups = "migration")
 public class JDBMigrationEngineFlywayTest extends JDBMigrationEngineContractTest {
 
-    private static final String LOCATION = "classpath:db/flyway-migration";
-
     @Override
     protected MigrationRunner createMigrator() {
-        return new FlywayMigrator(LOCATION);
+        return new FlywayMigrator(flywayLocation());
+    }
+
+    @Override
+    protected MigrationRunner createMigratorForIsolatedDatabase() {
+        return new FlywayMigrator(FLYWAY_LOCATION);
     }
 
     @Override
