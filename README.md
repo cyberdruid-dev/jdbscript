@@ -4,7 +4,7 @@
 
 [![Maven Central](https://img.shields.io/maven-central/v/org.jdbscript/jdbscript.svg)](https://central.sonatype.com/artifact/org.jdbscript/jdbscript)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![JDK](https://img.shields.io/badge/JDK-17%2B-green.svg)]()
+![JDK](https://img.shields.io/badge/JDK-17%2B-green.svg)
 
 ---
 
@@ -26,9 +26,9 @@ Instead of writing verbose raw SQL scripts or maintaining fragile XML/JSON datas
 - **Cleanups & Resets**: Easily wipe tables (`cleanupDB`) and reset state before or between tests. Tables are automatically deleted in the correct order based on foreign key dependencies.
 - **Database Assertions**: Verify that specific records exist or do not exist in the database using the same fluent API.
 - **Metadata Caching**: Built-in caching for database metadata (FKs, columns) to speed up test execution.
-- **Multi-DBMS Compatibility**: Built-in support for PostgreSQL, MySQL, MariaDB, Oracle, Microsoft SQL Server, H2, HSQLDB, IBM DB2, CockroachDB, SQLite, and DuckDB.
+- **Multi-DBMS Compatibility**: Built-in support for PostgreSQL, MySQL, MariaDB, Oracle, Microsoft SQL Server, H2, HSQLDB, IBM DB2, CockroachDB, SQLite, DuckDB, and Google Cloud Spanner.
 - **Automatic Type Conversion**: Seamless handling of Java Enums, UUIDs, Dates, Timestamps, and binary data.
-- **Sequence Management**: Automatically resets database sequences to a high value (e.g., 10000+) after insertion to prevent primary key conflicts with manually assigned IDs (supported for PostgreSQL, Oracle, DB2, and HSQLDB).
+- **Sequence Management**: Cleanup restarts sequences and identity columns at exactly 10000, so manually assigned low IDs (1, 2, ...) never collide with generated ones (supported for PostgreSQL, CockroachDB, Oracle, DB2, HSQLDB, and DuckDB).
 
 ---
 
@@ -162,8 +162,10 @@ For common test scenarios (e.g. standard reference data, base user sets), define
 public abstract class BaseUsersFixture implements IAppSchema {{
     users().id(1L).username("admin").email("admin@example.com").active(true);
     users().id(2L).username("guest").email("guest@example.com").active(true);
-}};
+}}
 ```
+
+The rows go in an instance initializer (the inner pair of braces). The class is `abstract` because it doesn't implement the schema's table methods; a nested class must also be `static`, and only a no-arg constructor is allowed.
 
 Execute them directly:
 
@@ -229,7 +231,7 @@ Purge all records from tables associated with the schema:
 engine.cleanupDB();
 ```
 
-JDBScript automatically detects foreign key dependencies and deletes records in the correct order to avoid constraint violations. If a circular dependency **between two or more tables** is detected, an exception will be thrown. A table referencing itself (e.g. an `employees` table with a `manager_id` column pointing back to `employees`) is not treated as a cycle. See [Manual Table Order Override](#manual-table-order-override) for an escape hatch when auto-detection can't determine the right order at all.
+JDBScript automatically detects foreign key dependencies and deletes records in the correct order to avoid constraint violations. Cleanup also restarts sequences and identity columns at 10000 (see [Key Features](#key-features) for supported databases), so the IDs a test gets from the database are predictable. If a circular dependency **between two or more tables** is detected, an exception will be thrown. A table referencing itself (e.g. an `employees` table with a `manager_id` column pointing back to `employees`) is not treated as a cycle. See [Manual Table Order Override](#manual-table-order-override) for an escape hatch when auto-detection can't determine the right order at all.
 
 ---
 
@@ -278,7 +280,7 @@ To improve performance across multiple tests, JDBScript supports different metad
 
 ## Schema Validation
 
-When `JDBEngine` is initialized, it validates that all tables defined in your Java interface exist in the database. You can also configure how it handles tables that exist in the database but are *not* defined in your interface:
+On first use (the first `insertDB`/`resetDB`/`cleanupDB`/assert call, not at `.build()` time), `JDBEngine` validates that all tables defined in your Java interface exist in the database. You can also configure how it handles tables that exist in the database but are *not* defined in your interface:
 
 - `unmappedTableStrategy(ValidationStrategy.LOG_WARN)`: Log a warning (default).
 - `unmappedTableStrategy(ValidationStrategy.LOG_ERROR)`: Log an error.
@@ -312,23 +314,24 @@ IJDBEngine<IAppSchema> engine = JDBEngine.builder(IAppSchema.class)
 
 ---
 
-### 🧪 Supported Databases & Compatibility Matrix
+## Supported Databases
 
-`jdbscript` is continuously validated against 17+ database engines via automated integration test suites:
+Every release is tested in CI against each database below, and on JDK 17, 21, and 25. Test counts differ because database-specific tests are skipped where they don't apply:
 
-| Database Engine | Tested Versions                       | Compatibility Status |
-| :--- |:--------------------------------------| :---: |
-| **PostgreSQL** | `9.x`, `12.x`, `16.x`, `17.x`, `18.x`| ![Passed](https://img.shields.io/badge/197%2F197-passing-success?style=flat-square) |
-| **MySQL** | `5.x`, `8.x`, `9.x`                   | ![Passed](https://img.shields.io/badge/197%2F197-passing-success?style=flat-square) |
-| **MariaDB** | `10.x`, `11.x`, `12.x`                | ![Passed](https://img.shields.io/badge/197%2F197-passing-success?style=flat-square) |
-| **Oracle** | `Oracle Free 23c`                     | ![Passed](https://img.shields.io/badge/197%2F197-passing-success?style=flat-square) |
-| **Microsoft SQL Server**| `2022`                                | ![Passed](https://img.shields.io/badge/197%2F197-passing-success?style=flat-square) |
-| **IBM DB2** | Latest                                | ![Passed](https://img.shields.io/badge/197%2F197-passing-success?style=flat-square) |
-| **CockroachDB** | Latest                                | ![Passed](https://img.shields.io/badge/197%2F197-passing-success?style=flat-square) |
-| **H2** | `2.4.x`                               | ![Passed](https://img.shields.io/badge/197%2F197-passing-success?style=flat-square) |
-| **HSQLDB** | `2.7.x`                            | ![Passed](https://img.shields.io/badge/197%2F197-passing-success?style=flat-square) |
-| **SQLite** | Standard JDBC                         | ![Passed](https://img.shields.io/badge/197%2F197-passing-success?style=flat-square) |
-| **DuckDB** | Latest                                | ![Passed](https://img.shields.io/badge/197%2F197-passing-success?style=flat-square) |
+| Database | Tested Versions | Tests |
+| :--- | :--- | :---: |
+| **PostgreSQL** | `9.x`, `12.x`, `16.x`, `17.x`, `18.x` | ![Passed](https://img.shields.io/badge/294-passing-success?style=flat-square) |
+| **MySQL** | `5.x`, `8.x`, `9.x` | ![Passed](https://img.shields.io/badge/291-passing-success?style=flat-square) |
+| **MariaDB** | `10.x`, `11.x`, `12.x` | ![Passed](https://img.shields.io/badge/291-passing-success?style=flat-square) |
+| **Oracle** | `Oracle Free 23c` | ![Passed](https://img.shields.io/badge/293-passing-success?style=flat-square) |
+| **Microsoft SQL Server** | `2022` | ![Passed](https://img.shields.io/badge/291-passing-success?style=flat-square) |
+| **IBM DB2** | Latest | ![Passed](https://img.shields.io/badge/296-passing-success?style=flat-square) |
+| **CockroachDB** | Latest | ![Passed](https://img.shields.io/badge/294-passing-success?style=flat-square) |
+| **Google Cloud Spanner** | Emulator | ![Passed](https://img.shields.io/badge/288-passing-success?style=flat-square) |
+| **H2** | `2.4.x` | ![Passed](https://img.shields.io/badge/291-passing-success?style=flat-square) |
+| **HSQLDB** | `2.7.x` | ![Passed](https://img.shields.io/badge/293-passing-success?style=flat-square) |
+| **SQLite** | `3.53.x` | ![Passed](https://img.shields.io/badge/291-passing-success?style=flat-square) |
+| **DuckDB** | `1.2.x` | ![Passed](https://img.shields.io/badge/253-passing-success?style=flat-square) |
 
 ---
 
