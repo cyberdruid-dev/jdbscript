@@ -35,7 +35,8 @@ class PostgreSQLStrategy extends  DefaultSqlExecutorStrategy{
                     // staleness only ever under-reports: once it reads past the floor, skip entirely
                     // rather than force it to a possibly-too-low computed value.
                     if (!isPastSafeFloor(stmt, seqName)) {
-                        stmt.executeQuery(String.format("SELECT setval('%s', 10000, true);", seqName));
+                        try (ResultSet rs = stmt.executeQuery(String.format("SELECT setval('%s', 10000, true);", seqName))) {
+                        }
                     }
                 }
             }
@@ -55,7 +56,7 @@ class PostgreSQLStrategy extends  DefaultSqlExecutorStrategy{
     private List<String> getSequences(Statement stmt) throws SQLException {
         List<String> result = new ArrayList<>();
         String sql = """
-                            SELECT c.relname FROM pg_class c
+                            SELECT quote_ident(n.nspname) || '.' || quote_ident(c.relname) FROM pg_class c
                             JOIN pg_namespace n ON n.oid = c.relnamespace
                             WHERE c.relkind = 'S' AND n.nspname NOT IN ('pg_catalog', 'information_schema');
                         """;

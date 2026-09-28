@@ -267,14 +267,15 @@ public class JdbAbstractTest {
     }
 
     /**
-     * Inverse of {@link #skipFor}: skips unless the current profile is exactly {@code type} - for
-     * a test that only makes sense against one specific DBMS (e.g. a DBMS-specific
-     * {@link JDBFeature} group) rather than one that applies everywhere except a few.
+     * Inverse of {@link #skipFor}: skips unless the current profile is one of {@code types} - for a
+     * test that only makes sense against a specific DBMS or small family of them (e.g. a
+     * DBMS-specific {@link JDBFeature} group, or code one DBMS strategy inherits unchanged from
+     * another) rather than one that applies everywhere except a few.
      */
-    protected void skipUnless(String featureName, DBMSType type) {
+    protected void skipUnless(String featureName, DBMSType... types) {
         DBMSType dbmsType = testConfiguration.getDbmsType();
-        if (dbmsType != type) {
-            throw new SkipException("%s only supported on %s.".formatted(featureName, type));
+        if (Arrays.stream(types).noneMatch(t -> t == dbmsType)) {
+            throw new SkipException("%s only supported on %s.".formatted(featureName, Arrays.toString(types)));
         }
     }
 
