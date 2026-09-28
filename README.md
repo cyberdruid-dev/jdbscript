@@ -14,6 +14,19 @@
 
 Instead of writing verbose raw SQL scripts or maintaining fragile DbUnit-style XML/JSON datasets, JDBScript lets you model your database tables and columns using standard Java interfaces. You can define test fixtures fluently with full IDE auto-completion, compile-time safety, dynamic defaults, and cross-DBMS compatibility.
 
+## Contents
+
+- [Key Features](#key-features)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Usage Examples](#usage-examples)
+- [Database Assertions](#database-assertions)
+- [Migration Testing](#migration-testing)
+- [Supported Databases](#supported-databases)
+- [Known Limitations](#known-limitations)
+- [Why not DbUnit?](#why-not-dbunit)
+- [Roadmap & Contributing](#roadmap--contributing)
+
 ---
 
 ## Key Features

@@ -88,6 +88,7 @@
   * [ ] Google BigQuery?
 
 #### Naming, Design Questions & Housekeeping
+* [ ] CI: add JDK 27 to the JDK Check matrix once `eclipse-temurin:27-jdk-jammy` is published
 * [ ] `skill/jdbscript/SKILL.md`: describe migration testing (`JDBMigrationEngine`, Liquibase/Flyway)
 * [ ] What exceptions should be thrown, as a general policy? (open design question)
 * [ ] Ensure tests pass with `autocommit=true|false`
