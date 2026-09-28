@@ -9,41 +9,15 @@
 
 ## Open
 
-#### Pre-Release Review Fixes (see `review.md`)
-* [ ] MSSQL: wrap the insert loop's `afterInsert()` call in a `finally` so `IDENTITY_INSERT` gets
-  turned back OFF even when a record in the batch fails
-  (`impl/sql/SqlScriptExecutor.java:108`)
-* [x] Oracle/HSQLDB/DB2 sequence-reset rewind bugs: fixed by redesign, not by patching each guard -
-  sequence reset now runs once at cleanup time (`cleanupDB()`), after rows are deleted, so an
-  unconditional reset is always safe (see `plan.md`). Verified live against every supported DBMS
-  (full suite green on `h2`/`hsqldb`/`sqlite`/`duckdb`/`oracle-free`/`db2`/`postgres17`/
-  `cockroachdb`/`mssql2022`/`mysql8`/`mariadb12`).
-  Three more pre-existing, previously-invisible bugs the new live test caught in the same pass:
-  HSQLDB never reset an identity column's own counter (`GENERATED ... AS IDENTITY`);
   Postgres/CockroachDB's `setval(...,10000,true)` was off by one (should be `false`); and moving
   reset to every `cleanupDB()` call exposed DB2's identity-owned-sequence scan as schema-wide,
   which now needs `resetSequences(Connection, List<String> tableNames)` to scope identity-owned/
   identity-column handling (DB2/Oracle/HSQLDB) to the tables actually being cleaned.
-* [ ] Postgres: `getSequences()` schema-scoping - investigated, **not applied**: scoping to
-  `current_schema()` breaks `PostgresSequenceSchemaQualificationTest`, which proves a table's
-  owning sequence can legitimately live in a different schema. Needs a real `pg_depend`-based
-  dependency query instead of a schema-name filter (`impl/sql/PostgreSQLStrategy.java:56`, see
-  `review.md` #5)
-* [ ] Liquibase: add the same null-context-classloader fallback `FlywayMigrator` has, instead of
-  the bare `new ClassLoaderResourceAccessor()` (`liquibase/LiquibaseMigrator.java:149`)
-* [ ] `RecordTools.strValue`: make an explicitly-null column substitute as the string `"null"`
-  instead of the `TypedNull` sentinel's default `toString()` (`RecordTools.java:48`)
-* [ ] `InstanceCache.getOrCompute`: avoid holding the cache-wide lock across blocking JDBC I/O
-  (per-key locking, or compute-then-publish) (`impl/cache/InstanceCache.java:19`)
-* [ ] `SqlScriptExecutor.getStrategy()` / `SqlConnectionProvider.getStrategy(Connection)`:
-  synchronize the lazy `strategy` init, matching the pattern already used in `JDBEngine`
-  (`impl/sql/SqlScriptExecutor.java:72`)
-* [ ] Switch `insert()` to JDBC batching (`addBatch`/`executeBatch`) instead of one
-  `stmt.execute()` per record (`impl/sql/SqlScriptExecutor.java:106`)
-* [ ] Extract the copy-pasted `InvocationHandler` Object-method dispatch logic shared by
-  `TableRecordHandler.java:19-35` and `ScriptHandler.java:37-51,161-179` into one helper
-* [ ] Trim redundant comments restating the code: `DefaultSqlExecutorStrategy.java:91`,
-  `DuckdbStrategy.java:100`, `DBMSType.java:64`
+
+#### Performance (v1.2.5)
+* [ ] Reduce round trips during cleanup (especially on Oracle)
+* [ ] Batch inserts
+* [ ] Fix the table-order comparator's fallback for tables missing from metadata (not transitive)
 
 #### Schema & Column Validation
 * [ ] Validate an `IDBRecord` interface's declared column methods against the DB table's actual

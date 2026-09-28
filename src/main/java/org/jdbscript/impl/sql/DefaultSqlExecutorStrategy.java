@@ -88,7 +88,6 @@ class DefaultSqlExecutorStrategy implements ISqlExecutorStrategy {
         DatabaseMetaData metaData = cnn.getMetaData();
         collectImportedKeys(allDeps, metaData, catalog, schema, tableName);
 
-        // If nothing found, try upper case
         if (allDeps.isEmpty()) {
             String upperTableName = tableName.toUpperCase();
             if (!upperTableName.equals(tableName)) {

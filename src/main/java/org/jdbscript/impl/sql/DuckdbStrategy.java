@@ -99,7 +99,6 @@ class DuckdbStrategy extends DefaultSqlExecutorStrategy {
 
     @Override
     public void commit(Connection cnn) throws SQLException {
-        // Do nothing for DuckDB
     }
 
     @Override

@@ -61,7 +61,6 @@ public enum DBMSType {
                 }
 
                 // CockroachDB often identifies itself as PostgreSQL for compatibility.
-                // We check the version string to be sure.
                 try {
                     Connection cnn = metaData.getConnection();
                     if (cnn != null) {
