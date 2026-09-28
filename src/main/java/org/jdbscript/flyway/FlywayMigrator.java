@@ -73,7 +73,9 @@ public class FlywayMigrator implements MigrationRunner {
         }
         boolean resolvable;
         if (parsed.isClassPath()) {
-            resolvable = Thread.currentThread().getContextClassLoader().getResource(parsed.getPath()) != null;
+            ClassLoader contextClassLoader = Thread.currentThread().getContextClassLoader();
+            ClassLoader loader = contextClassLoader != null ? contextClassLoader : FlywayMigrator.class.getClassLoader();
+            resolvable = loader != null && loader.getResource(parsed.getPath()) != null;
         } else if (parsed.isFileSystem()) {
             resolvable = Files.isDirectory(Paths.get(parsed.getPath()));
         } else {

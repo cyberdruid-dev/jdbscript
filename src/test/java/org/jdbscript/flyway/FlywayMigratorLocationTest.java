@@ -5,6 +5,7 @@ import com.zaxxer.hikari.HikariDataSource;
 import org.jdbscript.errors.JDBScriptException;
 import org.testng.annotations.Test;
 
+import java.lang.reflect.Method;
 import java.net.URL;
 import java.nio.file.Paths;
 
@@ -45,6 +46,25 @@ public class FlywayMigratorLocationTest {
 
             assertThatCode(() -> migrator.migrate(dataSource))
                     .doesNotThrowAnyException();
+        }
+    }
+
+    @Test
+    public void checkLocationResolvable_should_not_throw_when_the_thread_has_no_context_classloader() throws Exception {
+        // Exercises just the pre-check, not the full migrate() call: Flyway's own internals (deeper
+        // in load()) have this exact same null-context-classloader dependency, which is Flyway's
+        // problem, not jdbscript's - out of scope here.
+        FlywayMigrator migrator = new FlywayMigrator("classpath:db/flyway-migration");
+        Method checkLocationResolvable = FlywayMigrator.class.getDeclaredMethod("checkLocationResolvable", String.class);
+        checkLocationResolvable.setAccessible(true);
+
+        ClassLoader originalContext = Thread.currentThread().getContextClassLoader();
+        Thread.currentThread().setContextClassLoader(null);
+        try {
+            assertThatCode(() -> checkLocationResolvable.invoke(migrator, "classpath:db/flyway-migration"))
+                    .doesNotThrowAnyException();
+        } finally {
+            Thread.currentThread().setContextClassLoader(originalContext);
         }
     }
 
