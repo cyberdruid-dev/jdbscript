@@ -44,8 +44,8 @@ public class RecordTools implements IDBRecordTools {
         String result = template;
         Matcher m = TEMPLATE_PATTERN.matcher(result);
         return m.replaceAll((match)->{
-            String key = m.group(1);
-            return record.getColumns().get(key)+"";
+            String key = match.group(1);
+            return Matcher.quoteReplacement(record.getColumns().get(key)+"");
         });
     }
 

@@ -101,4 +101,28 @@ public class RecordToolsTest {
         assertThat(result).describedAs("strValue('%s')", template)
                 .isEqualTo(expectedResult);
     }
+
+    @Test
+    public void strValue_should_substitute_a_value_containing_a_dollar_sign(){
+        String template = "price: ${amount}";
+        this.record.setColumnValue("amount", "$5.00");
+        String expectedResult = "price: $5.00";
+
+        String result = tools.strValue(template);
+
+        assertThat(result).describedAs("strValue('%s')", template)
+                .isEqualTo(expectedResult);
+    }
+
+    @Test
+    public void strValue_should_substitute_a_value_containing_a_backslash(){
+        String template = "path: ${p}";
+        this.record.setColumnValue("p", "C:\\Users\\test");
+        String expectedResult = "path: C:\\Users\\test";
+
+        String result = tools.strValue(template);
+
+        assertThat(result).describedAs("strValue('%s')", template)
+                .isEqualTo(expectedResult);
+    }
 }
