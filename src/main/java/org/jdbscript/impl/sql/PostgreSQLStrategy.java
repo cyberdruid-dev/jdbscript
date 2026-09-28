@@ -27,15 +27,24 @@ class PostgreSQLStrategy extends  DefaultSqlExecutorStrategy{
     private void resetPostgreSequences(Connection cnn) throws SQLException {
             try (Statement stmt = cnn.createStatement()) {
                 List<String> seqNames = getSequences(stmt);
-                // GREATEST() makes this advance-only: setval() alone would rewind a sequence
-                // that's already past 10000, handing out a value it gave out once already.
-                // Selecting last_value from the sequence relation itself (rather than the
-                // pg_sequences catalog view, added only in PG10+) works on every Postgres version.
-                String sql = "SELECT setval('%1$s', GREATEST((SELECT last_value FROM %1$s), 10000), true);";
                 for (String seqName : seqNames) {
-                    stmt.executeQuery(String.format(sql, seqName));
+                    // CockroachDB's last_value read lags what nextval() already handed out (even on
+                    // the same connection, right after a commit), so it can't be trusted for an
+                    // exact GREATEST(...) target - a stale value there would rewind the sequence
+                    // below one already in use. It's still trustworthy for this weaker check, since
+                    // staleness only ever under-reports: once it reads past the floor, skip entirely
+                    // rather than force it to a possibly-too-low computed value.
+                    if (!isPastSafeFloor(stmt, seqName)) {
+                        stmt.executeQuery(String.format("SELECT setval('%s', 10000, true);", seqName));
+                    }
                 }
             }
+    }
+
+    private boolean isPastSafeFloor(Statement stmt, String seqName) throws SQLException {
+        try (ResultSet rs = stmt.executeQuery("SELECT last_value FROM " + seqName)) {
+            return rs.next() && rs.getLong(1) >= 10000;
+        }
     }
 
     // information_schema.sequences deliberately excludes sequences "owned" by a table column

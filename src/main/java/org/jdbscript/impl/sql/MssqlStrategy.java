@@ -15,7 +15,6 @@ class MssqlStrategy extends DefaultSqlExecutorStrategy {
     private record IdentityColumnKey(String tableName) implements IJDBCacheKey<String> {}
 
     private IJDBCache cache = new NoCache();
-    // MSSQL allows only one table's IDENTITY_INSERT ON per session, hence a single field, not a Set.
     private String identityInsertOnTable;
 
     @Override
