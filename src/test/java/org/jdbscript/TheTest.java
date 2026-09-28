@@ -12,8 +12,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class TheTest extends JdbAbstractTest {
 
     private abstract static class SomeDBScript implements ITestDBSchema {{
-        table_1().str_column_1("Hello");
-        table_1().str_column_1("Good Bye");
+        table_1().id(1).str_column_1("Hello");
+        table_1().id(2).str_column_1("Good Bye");
     }};
 
     private final JDBEngine<ITestDBSchema> engine = JDBEngine.builder(ITestDBSchema.class)
@@ -29,8 +29,8 @@ public class TheTest extends JdbAbstractTest {
     @Test
     public void testInlineScript() throws SQLException {
         engine.resetDB((db)->{
-            db.table_1().str_column_1("Hello").str_column_2("Good Bye");
-            db.table_2().int_column_1(10);
+            db.table_1().id(1).str_column_1("Hello").str_column_2("Good Bye");
+            db.table_2().id(1).int_column_1(10);
         });
 
 

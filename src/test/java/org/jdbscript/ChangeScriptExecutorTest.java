@@ -16,6 +16,7 @@ public class ChangeScriptExecutorTest extends JdbAbstractTest {
     private final static String TABLE_NAME_1 = "table_1";
 
     private interface ITable1Record extends IDBRecord {
+        ITable1Record id(int value);
         ITable1Record str_column_1(String value);
     }
     private interface ITestSchema extends IDBSchema {
@@ -63,7 +64,7 @@ public class ChangeScriptExecutorTest extends JdbAbstractTest {
                 .build();
 
         engine.resetDB((db)->{
-            db.table_1().str_column_1("Hello");
+            db.table_1().id(1).str_column_1("Hello");
         });
 
         assertThat(myScriptExecutorUsed)

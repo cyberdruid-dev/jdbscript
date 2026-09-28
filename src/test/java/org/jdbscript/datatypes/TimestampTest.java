@@ -19,6 +19,7 @@ public class TimestampTest extends JdbAbstractTest {
     private final static String TABLE_NAME = "timestamp_table";
 
     private interface ITimestampTable extends IDBRecord {
+        ITimestampTable id(int value);
         ITimestampTable timestamp_column(Date value);
     }
     private interface ITimestampTestSchema extends IDBSchema {
@@ -28,6 +29,7 @@ public class TimestampTest extends JdbAbstractTest {
     }
 
     private interface IInstantTable extends IDBRecord {
+        IInstantTable id(int value);
         IInstantTable timestamp_column(Instant value);
     }
     private interface IInstantTestSchema extends IDBSchema {
@@ -48,7 +50,7 @@ public class TimestampTest extends JdbAbstractTest {
     @Test(dataProvider = "timestamps")
     public void test_insert_date(Date timestamp) {
         engine.resetDB((db)->{
-            db.timestamp_table().timestamp_column(timestamp);
+            db.timestamp_table().id(1).timestamp_column(timestamp);
         });
 
         assertTableValues(table(TABLE_NAME,
@@ -60,7 +62,7 @@ public class TimestampTest extends JdbAbstractTest {
     @Test(dataProvider = "instants")
     public void timestamp_field_should_accept_Instant(Instant timestamp) {
         instantEngine.resetDB((db)->{
-            db.timestamp_table().timestamp_column(timestamp);
+            db.timestamp_table().id(1).timestamp_column(timestamp);
         });
 
         assertTableValues(table(TABLE_NAME,
@@ -73,8 +75,8 @@ public class TimestampTest extends JdbAbstractTest {
     public void date_field_should_accept_null() {
         Date timestamp = timestamp(2000,0,1, 0, 0, 0);
         engine.resetDB((db)->{
-            db.timestamp_table().timestamp_column(timestamp);
-            db.timestamp_table().timestamp_column(null);
+            db.timestamp_table().id(1).timestamp_column(timestamp);
+            db.timestamp_table().id(2).timestamp_column(null);
         });
 
         assertTableValues(table(TABLE_NAME,

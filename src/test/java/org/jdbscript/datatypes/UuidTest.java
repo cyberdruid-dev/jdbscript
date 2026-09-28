@@ -18,6 +18,7 @@ public class UuidTest extends JdbAbstractTest {
     public final static UUID uuid2 = UUID.fromString("00000021-0022-0023-0024-000000000025");
 
     private interface IUuidTable extends IDBRecord {
+        IUuidTable id(int value);
         IUuidTable uuid_column(UUID value);
     }
     private interface IUuidTestSchema extends IDBSchema {
@@ -27,8 +28,8 @@ public class UuidTest extends JdbAbstractTest {
     }
 
     private static abstract class UuidClassScript implements IUuidTestSchema {{
-        uuid_table().uuid_column(uuid1);
-        uuid_table().uuid_column(uuid2);
+        uuid_table().id(1).uuid_column(uuid1);
+        uuid_table().id(2).uuid_column(uuid2);
     }};
 
 
@@ -41,8 +42,8 @@ public class UuidTest extends JdbAbstractTest {
 
     public void test_insert_uuid() {
         engine.resetDB((db)->{
-            db.uuid_table().uuid_column(uuid1);
-            db.uuid_table().uuid_column(uuid2);
+            db.uuid_table().id(1).uuid_column(uuid1);
+            db.uuid_table().id(2).uuid_column(uuid2);
         });
 
         assertTableValues(table(UUID_TABLE,
@@ -66,8 +67,8 @@ public class UuidTest extends JdbAbstractTest {
     @Test(dependsOnMethods = "test_insert_uuid")
     public void uuid_field_should_accept_null() {
         engine.resetDB((db)->{
-            db.uuid_table().uuid_column(uuid1);
-            db.uuid_table().uuid_column(null);
+            db.uuid_table().id(1).uuid_column(uuid1);
+            db.uuid_table().id(2).uuid_column(null);
         });
 
         assertTableValues(table(UUID_TABLE,

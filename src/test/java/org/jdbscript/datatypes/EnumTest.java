@@ -22,6 +22,7 @@ public class EnumTest extends JdbAbstractTest {
     }
 
     private interface IVarcharTable extends IDBRecord {
+        IVarcharTable id(int value);
         IVarcharTable varchar_column(TestEnum value);
     }
     private interface IEnumTestSchema extends IDBSchema {
@@ -31,6 +32,7 @@ public class EnumTest extends JdbAbstractTest {
     }
 
     private interface IIntTable extends IDBRecord {
+        IIntTable id(int value);
         IIntTable int_column(TestEnum value);
     }
     private interface IOrdinalEnumTestSchema extends IDBSchema {
@@ -40,11 +42,11 @@ public class EnumTest extends JdbAbstractTest {
     }
 
     private static abstract class OrdinalEnumClassScript implements IOrdinalEnumTestSchema {{
-        int_table().int_column(TestEnum.VALUE_1003);
+        int_table().id(1).int_column(TestEnum.VALUE_1003);
     }};
 
     private static abstract class StringEnumClassScript implements IEnumTestSchema {{
-        varchar_table().varchar_column(TestEnum.VALUE_1003);
+        varchar_table().id(1).varchar_column(TestEnum.VALUE_1003);
     }};
 
 
@@ -63,8 +65,8 @@ public class EnumTest extends JdbAbstractTest {
         TestEnum value1 = TestEnum.VALUE_1001;
         TestEnum value2 = TestEnum.VALUE_1003;
         ordinalEngine.resetDB((db)->{
-            db.int_table().int_column(value1);
-            db.int_table().int_column(value2);
+            db.int_table().id(1).int_column(value1);
+            db.int_table().id(2).int_column(value2);
         });
 
         assertTableValues(table(INT_TABLE,
@@ -100,8 +102,8 @@ public class EnumTest extends JdbAbstractTest {
         TestEnum value1 = TestEnum.VALUE_1001;
         TestEnum value2 = TestEnum.VALUE_1003;
         engine.resetDB((db)->{
-            db.varchar_table().varchar_column(value1);
-            db.varchar_table().varchar_column(value2);
+            db.varchar_table().id(1).varchar_column(value1);
+            db.varchar_table().id(2).varchar_column(value2);
         });
 
         assertTableValues(table(VARCHAR_TABLE,
@@ -115,8 +117,8 @@ public class EnumTest extends JdbAbstractTest {
     public void blob_field_should_accept_null() {
         TestEnum value1 = TestEnum.VALUE_1001;
         engine.resetDB((db)->{
-            db.varchar_table().varchar_column(value1);
-            db.varchar_table().varchar_column(null);
+            db.varchar_table().id(1).varchar_column(value1);
+            db.varchar_table().id(2).varchar_column(null);
         });
 
         assertTableValues(table(VARCHAR_TABLE,

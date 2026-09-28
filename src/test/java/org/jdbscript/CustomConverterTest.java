@@ -10,6 +10,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 public class CustomConverterTest extends JdbAbstractTest {
 
     private interface ITable1 extends IDBSchema.IDBRecord {
+        ITable1 id(int value);
         ITable1 str_column_1(Object value);
     }
 
@@ -51,7 +52,7 @@ public class CustomConverterTest extends JdbAbstractTest {
                 .build();
 
         engine.resetDB(db -> {
-            db.table_1().str_column_1("hello");
+            db.table_1().id(1).str_column_1("hello");
         });
 
         assertTableValues(table("table_1",
@@ -72,7 +73,7 @@ public class CustomConverterTest extends JdbAbstractTest {
                 .build();
 
         engine.resetDB(db -> {
-            db.table_1().str_column_1(TestEnum.VAL1);
+            db.table_1().id(1).str_column_1(TestEnum.VAL1);
         });
 
         assertTableValues(table("table_1",
@@ -94,7 +95,7 @@ public class CustomConverterTest extends JdbAbstractTest {
                 .build();
 
         engine.resetDB(db -> {
-            db.table_1().str_column_1(TestEnum.VAL1);
+            db.table_1().id(1).str_column_1(TestEnum.VAL1);
         });
 
         assertTableValues(table("table_1",
@@ -114,7 +115,7 @@ public class CustomConverterTest extends JdbAbstractTest {
                 .build();
 
         engineWithEnum.resetDB(db -> {
-            db.table_1().str_column_1(TestEnum.VAL1);
+            db.table_1().id(1).str_column_1(TestEnum.VAL1);
         });
 
         assertTableValues(table("table_1",

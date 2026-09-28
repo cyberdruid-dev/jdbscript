@@ -4,6 +4,7 @@ import org.jdbscript.IDBSchema;
 import org.jdbscript.IDBSchema.IDBRecord;
 import org.jdbscript.JDBEngine;
 import org.jdbscript.JdbAbstractTest;
+import org.jdbscript.RecordTools;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
@@ -13,9 +14,11 @@ public class DefaultsTest extends JdbAbstractTest {
     private final static String TABLE_NAME = "table_with_defaults";
 
     public interface ITableWithDefaultsRecord extends IDBRecord {
+        ITableWithDefaultsRecord id(int value);
         ITableWithDefaultsRecord int_column_1(Integer value);
         ITableWithDefaultsRecord str_column_1(String value);
-        default void defaults() {
+        default void defaults(RecordTools tools) {
+            id(tools.nextIntId("id", 1));
             int_column_1(10);
             str_column_1("default value");
         }

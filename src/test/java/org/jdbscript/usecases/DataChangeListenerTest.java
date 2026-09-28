@@ -24,6 +24,7 @@ public class DataChangeListenerTest extends JdbAbstractTest {
     private static final String TABLE_NAME = "table_1";
 
     private interface ITable1Record extends IDBRecord {
+        ITable1Record id(int value);
         ITable1Record str_column_1(String value);
     }
 
@@ -32,7 +33,7 @@ public class DataChangeListenerTest extends JdbAbstractTest {
     }
 
     private static abstract class SomeScript implements ITestSchema {{
-        table_1().str_column_1("from class script");
+        table_1().id(1).str_column_1("from class script");
     }}
 
     public static abstract class ScriptWithParamConstructor implements ITestSchema {
@@ -64,7 +65,7 @@ public class DataChangeListenerTest extends JdbAbstractTest {
                 .onDataChange(count::incrementAndGet)
                 .build();
 
-        engine.insertDB(db -> db.table_1().str_column_1("hello"));
+        engine.insertDB(db -> db.table_1().id(1).str_column_1("hello"));
 
         assertThat(count).hasValue(1);
     }
@@ -88,7 +89,7 @@ public class DataChangeListenerTest extends JdbAbstractTest {
                 .onDataChange(count::incrementAndGet)
                 .build();
 
-        engine.resetDB(db -> db.table_1().str_column_1("hello"));
+        engine.resetDB(db -> db.table_1().id(1).str_column_1("hello"));
 
         assertThat(count).hasValue(1);
     }
@@ -113,7 +114,7 @@ public class DataChangeListenerTest extends JdbAbstractTest {
                 .onDataChange(() -> invocations.add("second"))
                 .build();
 
-        engine.insertDB(db -> db.table_1().str_column_1("hello"));
+        engine.insertDB(db -> db.table_1().id(1).str_column_1("hello"));
 
         assertThat(invocations).containsExactly("first", "second");
     }
@@ -122,13 +123,13 @@ public class DataChangeListenerTest extends JdbAbstractTest {
     public void test_no_listeners_registered_does_not_throw() {
         IJDBEngine<ITestSchema> engine = createEngine(ITestSchema.class);
 
-        assertThatCode(() -> engine.insertDB(db -> db.table_1().str_column_1("hello")))
+        assertThatCode(() -> engine.insertDB(db -> db.table_1().id(1).str_column_1("hello")))
                 .doesNotThrowAnyException();
     }
 
     @Test
     public void test_assertDBHas_and_assertDBHasNot_do_not_fire_listener() {
-        executeUpdate("INSERT INTO " + TABLE_NAME + " (str_column_1) VALUES ('seeded')");
+        executeUpdate("INSERT INTO " + TABLE_NAME + " (id, str_column_1) VALUES (1, 'seeded')");
         AtomicInteger count = new AtomicInteger();
         IJDBEngine<ITestSchema> engine = engineBuilder(ITestSchema.class)
                 .onDataChange(count::incrementAndGet)
@@ -160,7 +161,7 @@ public class DataChangeListenerTest extends JdbAbstractTest {
                 .onDataChange(() -> { throw cause; })
                 .build();
 
-        assertThatThrownBy(() -> engine.insertDB(db -> db.table_1().str_column_1("hello")))
+        assertThatThrownBy(() -> engine.insertDB(db -> db.table_1().id(1).str_column_1("hello")))
                 .isInstanceOf(JDBScriptException.class)
                 .hasCause(cause);
 
@@ -177,7 +178,7 @@ public class DataChangeListenerTest extends JdbAbstractTest {
                 .onDataChange(() -> { throw cause; })
                 .build();
 
-        assertThatThrownBy(() -> engine.insertDB(db -> db.table_1().str_column_1("hello")))
+        assertThatThrownBy(() -> engine.insertDB(db -> db.table_1().id(1).str_column_1("hello")))
                 .isInstanceOf(JDBScriptException.class)
                 .hasCause(cause);
     }

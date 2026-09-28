@@ -16,6 +16,7 @@ public class DateTest extends JdbAbstractTest {
     private final static String TABLE_NAME = "date_table";
 
     private interface IDateTable extends IDBRecord {
+        IDateTable id(int value);
         IDateTable date_column(Date value);
     }
     private interface IDateTestSchema extends IDBSchema {
@@ -25,6 +26,7 @@ public class DateTest extends JdbAbstractTest {
     }
 
     private interface ISqlDateTable extends IDBRecord {
+        ISqlDateTable id(int value);
         ISqlDateTable date_column(java.sql.Date value);
     }
     private interface ISqlDateTestSchema extends IDBSchema {
@@ -33,6 +35,7 @@ public class DateTest extends JdbAbstractTest {
 
     }
     private interface ILocalDateTable extends IDBRecord {
+        ILocalDateTable id(int value);
         ILocalDateTable date_column(LocalDate value);
     }
     private interface ILocalDateTestSchema extends IDBSchema {
@@ -54,7 +57,7 @@ public class DateTest extends JdbAbstractTest {
     @Test(dataProvider = "dates")
     public void test_insert_date(Date date) {
         engine.resetDB((db)->{
-            db.date_table().date_column(date);
+            db.date_table().id(1).date_column(date);
         });
 
         assertTableValues(table(TABLE_NAME,
@@ -66,7 +69,7 @@ public class DateTest extends JdbAbstractTest {
     @Test(dataProvider = "sqlDates")
     public void date_columns_should_accept_java_sql_Date(java.sql.Date date) {
         sqlDateEngine.resetDB((db)->{
-            db.date_table().date_column(date);
+            db.date_table().id(1).date_column(date);
         });
 
         assertTableValues(table(TABLE_NAME,
@@ -78,7 +81,7 @@ public class DateTest extends JdbAbstractTest {
     @Test(dataProvider = "localDates")
     public void date_columns_should_accept_LocalDate(LocalDate date) {
         localDateEngine.resetDB((db)->{
-            db.date_table().date_column(date);
+            db.date_table().id(1).date_column(date);
         });
 
         assertTableValues(table(TABLE_NAME,
@@ -91,8 +94,8 @@ public class DateTest extends JdbAbstractTest {
     public void date_field_should_accept_null() {
         Date date1 = date(2000,0,1);
         engine.resetDB((db)->{
-            db.date_table().date_column(date1);
-            db.date_table().date_column(null);
+            db.date_table().id(1).date_column(date1);
+            db.date_table().id(2).date_column(null);
         });
 
         assertTableValues(table(TABLE_NAME,

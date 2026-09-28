@@ -20,6 +20,7 @@ public class DbAssertionsTest extends JdbAbstractTest {
 
 
     private interface ITableForAssertions extends IDBRecord {
+        ITableForAssertions id(int value);
         ITableForAssertions str_column_1(String value);
         ITableForAssertions str_column_2(String value);
         ITableForAssertions int_column_1(Integer value);
@@ -46,14 +47,14 @@ public class DbAssertionsTest extends JdbAbstractTest {
     }
 
     public static abstract class AssertionsDataset implements IAssertionTestSchema {{
-        table_for_assertions().str_column_1("str11").str_column_2("str21")
+        table_for_assertions().id(1).str_column_1("str11").str_column_2("str21")
                 .boolean_column_1(true).int_column_1(101).date_column_1(date1);
-        table_for_assertions().str_column_1("str12").str_column_2("str22")
+        table_for_assertions().id(2).str_column_1("str12").str_column_2("str22")
                 .boolean_column_1(false).int_column_1(102).date_column_1(date2);
     }};
 
     public static abstract class AssertionsDatasetWithNull implements IAssertionTestSchema {{
-        table_for_assertions().str_column_1("str13").str_column_2(null)
+        table_for_assertions().id(1).str_column_1("str13").str_column_2(null)
                 .boolean_column_1(true).int_column_1(103).date_column_1(date1);
     }};
 

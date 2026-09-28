@@ -1,5 +1,6 @@
 package org.jdbscript.usecases;
 
+import org.jdbscript.DBMSType;
 import org.jdbscript.IDBSchema;
 import org.jdbscript.IDBSchema.IDBRecord;
 import org.jdbscript.JDBEngine;
@@ -39,6 +40,7 @@ public class MixedIdentityInsertTest extends JdbAbstractTest {
 
     @Test
     public void mixed_explicit_and_implicit_ids_in_same_script_should_both_work(){
+        skipFor("Native auto-increment", DBMSType.SPANNER);
         engine.insertDB((db)->{
             db.table_1().str_column_1("no-id-1");
             db.table_1().id(999999L).str_column_1("with-id");

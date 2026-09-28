@@ -11,9 +11,11 @@ public class TemplateDefaultsTest extends JdbAbstractTest {
     private final static String TABLE_NAME = "table_with_defaults";
 
     public interface ITableWithDefaultsRecord extends IDBRecord {
+        ITableWithDefaultsRecord id(int value);
         ITableWithDefaultsRecord int_column_1(Integer value);
         ITableWithDefaultsRecord str_column_1(String value);
         default void defaults(RecordTools tools) {
+            id(tools.nextIntId("id", 1));
             int_column_1(10);
             str_column_1(tools.strValue("value=${int_column_1}"));
         }

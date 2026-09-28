@@ -15,6 +15,7 @@ public class OneTableSimpleTest extends JdbAbstractTest {
     private final static String TABLE_NAME_1 = "table_1";
 
     private interface ITable1Record extends IDBRecord {
+        ITable1Record id(int value);
         ITable1Record str_column_1(String value);
         ITable1Record str_column_2(String value);
     }
@@ -34,7 +35,7 @@ public class OneTableSimpleTest extends JdbAbstractTest {
     @Test
     public void testResetOneColumn() {
         engine.resetDB((db)->{
-            db.table_1().str_column_1("Hello");
+            db.table_1().id(1).str_column_1("Hello");
         });
 
         assertTableValues(table(TABLE_NAME_1,
@@ -46,7 +47,7 @@ public class OneTableSimpleTest extends JdbAbstractTest {
     @Test
     public void testInsertOneColumn() {
         engine.insertDB((db)->{
-            db.table_1().str_column_1("Hello");
+            db.table_1().id(1).str_column_1("Hello");
         });
 
         assertTableValues(table(TABLE_NAME_1,
@@ -58,8 +59,8 @@ public class OneTableSimpleTest extends JdbAbstractTest {
     @Test
     public void testInsertMultipleColumns() {
         engine.insertDB((db)->{
-            db.table_1().str_column_1("Hello").str_column_2("Goodbye");
-            db.table_1().str_column_1("Next Hello").str_column_2("New Goodbye");
+            db.table_1().id(1).str_column_1("Hello").str_column_2("Goodbye");
+            db.table_1().id(2).str_column_1("Next Hello").str_column_2("New Goodbye");
         });
 
         assertTableValues(table(TABLE_NAME_1,
@@ -71,9 +72,9 @@ public class OneTableSimpleTest extends JdbAbstractTest {
 
     @Test
     public void insert_should_not_remove_existing_records() {
-        executeUpdate("INSERT INTO %s (str_column_1) VALUES ('Before Hello')", TABLE_NAME_1);
+        executeUpdate("INSERT INTO %s (id, str_column_1) VALUES (1, 'Before Hello')", TABLE_NAME_1);
         engine.insertDB((db)->{
-            db.table_1().str_column_1("Hello");
+            db.table_1().id(2).str_column_1("Hello");
         });
 
         assertTableValues(table(TABLE_NAME_1,
@@ -85,9 +86,9 @@ public class OneTableSimpleTest extends JdbAbstractTest {
 
     @Test
     public void reset_should_remove_existing_records() {
-        executeUpdate("INSERT INTO %s (str_column_1) VALUES ('Before Hello')", TABLE_NAME_1);
+        executeUpdate("INSERT INTO %s (id, str_column_1) VALUES (1, 'Before Hello')", TABLE_NAME_1);
         engine.resetDB((db)->{
-            db.table_1().str_column_1("Hello");
+            db.table_1().id(2).str_column_1("Hello");
         });
 
         assertTableValues(table(TABLE_NAME_1,
@@ -99,7 +100,7 @@ public class OneTableSimpleTest extends JdbAbstractTest {
 
     @Test
     public void cleanupDB_should_remove_all_records() {
-        executeUpdate("INSERT INTO %s (str_column_1) VALUES ('Before Hello')", TABLE_NAME_1);
+        executeUpdate("INSERT INTO %s (id, str_column_1) VALUES (1, 'Before Hello')", TABLE_NAME_1);
         engine.cleanupDB();
 
         assertTableEmpty(TABLE_NAME_1);

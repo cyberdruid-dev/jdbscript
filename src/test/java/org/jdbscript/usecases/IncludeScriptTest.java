@@ -15,6 +15,7 @@ public class IncludeScriptTest extends JdbAbstractTest {
     private final static String TABLE_NAME_1 = "table_1";
 
     private interface ITable1Record extends IDBRecord {
+        ITable1Record id(int value);
         ITable1Record str_column_1(String value);
         ITable1Record str_column_2(String value);
     }
@@ -25,13 +26,13 @@ public class IncludeScriptTest extends JdbAbstractTest {
     }
 
     private final Consumer<ITestSchema> includedScript = (db)-> {
-        db.table_1().str_column_1("one").str_column_2("two");
-        db.table_1().str_column_1("three").str_column_2("four");
+        db.table_1().id(2).str_column_1("one").str_column_2("two");
+        db.table_1().id(3).str_column_1("three").str_column_2("four");
     };
 
     private static abstract class IncludedScriptClass implements ITestSchema {{
-        table_1().str_column_1("class one").str_column_2("class two");
-        table_1().str_column_1("class three").str_column_2("class four");
+        table_1().id(2).str_column_1("class one").str_column_2("class two");
+        table_1().id(3).str_column_1("class three").str_column_2("class four");
     }};
 
     @BeforeMethod
@@ -44,9 +45,9 @@ public class IncludeScriptTest extends JdbAbstractTest {
     @Test
     public void included_script_should_be_added_to_result() {
         engine.resetDB((db)->{
-            db.table_1().str_column_1("before one").str_column_2("before two");
+            db.table_1().id(1).str_column_1("before one").str_column_2("before two");
             db.include(includedScript);
-            db.table_1().str_column_1("after three").str_column_2("after four");
+            db.table_1().id(4).str_column_1("after three").str_column_2("after four");
         });
 
         assertTableValues(table(TABLE_NAME_1,
@@ -61,9 +62,9 @@ public class IncludeScriptTest extends JdbAbstractTest {
     @Test
     public void included_class_script_should_be_added_to_result() {
         engine.resetDB((db)->{
-            db.table_1().str_column_1("before one").str_column_2("before two");
+            db.table_1().id(1).str_column_1("before one").str_column_2("before two");
             db.include(IncludedScriptClass.class);
-            db.table_1().str_column_1("after three").str_column_2("after four");
+            db.table_1().id(4).str_column_1("after three").str_column_2("after four");
         });
 
         assertTableValues(table(TABLE_NAME_1,

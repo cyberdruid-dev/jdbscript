@@ -16,6 +16,7 @@ public class BlobTest extends JdbAbstractTest {
     private final static String TABLE_NAME = "blob_table";
 
     private interface IBlobTable extends IDBRecord {
+        IBlobTable id(int value);
         IBlobTable blob_column(byte[] data);
     }
     private interface IBlobTestSchema extends IDBSchema {
@@ -25,6 +26,7 @@ public class BlobTest extends JdbAbstractTest {
     }
 
     private interface IInputStreamBlobTable extends IDBRecord {
+        IInputStreamBlobTable id(int value);
         IInputStreamBlobTable blob_column(InputStream data);
     }
     private interface IInputStreamBlobTestSchema extends IDBSchema {
@@ -46,7 +48,7 @@ public class BlobTest extends JdbAbstractTest {
         byte[] data = new byte[]{1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20};
 
         engine.resetDB((db)->{
-            db.blob_table().blob_column(data);
+            db.blob_table().id(1).blob_column(data);
         });
 
         assertTableValues(table(TABLE_NAME,
@@ -60,7 +62,7 @@ public class BlobTest extends JdbAbstractTest {
         InputStream in = new ByteArrayInputStream(data);
 
         inputStreamEngine.resetDB((db)->{
-            db.blob_table().blob_column(in);
+            db.blob_table().id(1).blob_column(in);
         });
 
         assertTableValues(table(TABLE_NAME,
@@ -74,8 +76,8 @@ public class BlobTest extends JdbAbstractTest {
     public void blob_field_should_accept_null() {
         byte[] data = new byte[]{1,2,3,4,5,6,7,8,9,10};
         engine.resetDB((db)->{
-            db.blob_table().blob_column(data);
-            db.blob_table().blob_column(null);
+            db.blob_table().id(1).blob_column(data);
+            db.blob_table().id(2).blob_column(null);
         });
 
         assertTableValues(table(TABLE_NAME,

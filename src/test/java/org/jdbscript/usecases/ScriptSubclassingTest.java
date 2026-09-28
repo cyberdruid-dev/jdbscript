@@ -11,6 +11,8 @@ import org.slf4j.LoggerFactory;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 @Test
 public class ScriptSubclassingTest extends JdbAbstractTest {
     protected static final Logger log = LoggerFactory.getLogger(ScriptSubclassingTest.class);
@@ -18,6 +20,7 @@ public class ScriptSubclassingTest extends JdbAbstractTest {
     private final static String TABLE_NAME_1 = "table_1";
 
     private interface ITable1Record extends IDBRecord {
+        ITable1Record id(int value);
         ITable1Record str_column_1(String value);
         ITable1Record str_column_2(String value);
     }
@@ -29,27 +32,32 @@ public class ScriptSubclassingTest extends JdbAbstractTest {
 
     public static abstract class TestDbScriptClass implements ITestSchema {{
         log.debug("Start: {}", this.getClass());
-        table_1().str_column_1("one").str_column_2("two");
-        table_1().str_column_1("three").str_column_2("four");
+        table_1().id(1).str_column_1("one").str_column_2("two");
+        table_1().id(2).str_column_1("three").str_column_2("four");
     }};
+
+    // PrivateTestDbScriptClass is instantiated more than once per table state in
+    // multiple_calls_to_insertDB_with_same_script_class_should_insert_multiple_times below, so its
+    // id can't be a fixed literal - it'd collide with itself on the second call.
+    static final AtomicInteger privateTestDbScriptClassId = new AtomicInteger(1);
 
     private static abstract class PrivateTestDbScriptClass implements ITestSchema {{
         log.debug("Start: {}", this.getClass());
-        table_1().str_column_1("three").str_column_2("four");
+        table_1().id(privateTestDbScriptClassId.getAndIncrement()).str_column_1("three").str_column_2("four");
     }
     public PrivateTestDbScriptClass() {};
     };
 
     private static abstract class PrivateTestDbScriptClassWithPrivateConstructor implements ITestSchema {{
         log.debug("Start: {}", this.getClass());
-        table_1().str_column_1("three").str_column_2("four");
+        table_1().id(1).str_column_1("three").str_column_2("four");
     }
         private PrivateTestDbScriptClassWithPrivateConstructor() {};
     };
 
     private abstract class NonStaticPrivateTestDbScriptClassWithPrivateConstructor implements ITestSchema {{
         log.debug("Start: {}", this.getClass());
-        table_1().str_column_1("three").str_column_2("four");
+        table_1().id(1).str_column_1("three").str_column_2("four");
     }
         private NonStaticPrivateTestDbScriptClassWithPrivateConstructor() {};
     };
@@ -102,8 +110,8 @@ public class ScriptSubclassingTest extends JdbAbstractTest {
     @Test
     public void call_resetDB_should_work_with_private_classes(){
         executeUpdate("""
-            INSERT INTO %s (str_column_1,str_column_2) 
-            VALUES('old value1','old value 2')
+            INSERT INTO %s (id,str_column_1,str_column_2)
+            VALUES(999,'old value1','old value 2')
         """, TABLE_NAME_1);
 
         engine.resetDB(PrivateTestDbScriptClass.class);

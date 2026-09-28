@@ -17,6 +17,7 @@ public class DefaultMethodsTest extends JdbAbstractTest {
     private final static String TABLE_NAME = "table_with_defaults";
 
     public interface IDefaultMethodsRecord extends IDBRecord {
+        IDefaultMethodsRecord id(int value);
         IDefaultMethodsRecord int_column_1(Integer value);
         IDefaultMethodsRecord str_column_1(String value);
 
@@ -32,6 +33,7 @@ public class DefaultMethodsTest extends JdbAbstractTest {
 
         // defaults() calling other default methods
         default void defaults() {
+            id(1);
             setBoth(100, "from-defaults");
         }
     }

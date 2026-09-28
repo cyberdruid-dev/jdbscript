@@ -12,9 +12,11 @@ public class GeneratedIdTest extends JdbAbstractTest {
     private final static String TABLE_WITH_AUTO_ID = "generated_int_id_table";
 
     public interface ITableWithDefaultsRecord extends IDBRecord {
+        ITableWithDefaultsRecord id(int value);
         ITableWithDefaultsRecord int_column_1(Integer value);
         ITableWithDefaultsRecord str_column_1(String value);
         default void defaults(RecordTools tools) {
+            id(tools.nextIntId("pk_id", 1));
             int_column_1(tools.nextIntId("id", 1));
             str_column_1("value");
         }
