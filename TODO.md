@@ -88,6 +88,7 @@
   * [ ] Google BigQuery?
 
 #### Naming, Design Questions & Housekeeping
+* [ ] `skill/jdbscript/SKILL.md`: describe migration testing (`JDBMigrationEngine`, Liquibase/Flyway)
 * [ ] What exceptions should be thrown, as a general policy? (open design question)
 * [ ] Ensure tests pass with `autocommit=true|false`
 * [ ] `DBMSType` capability flags - e.g. a `HAS_SEQUENCE` marker (or a small `features`/`EnumSet`

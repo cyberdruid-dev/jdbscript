@@ -25,6 +25,7 @@ Instead of writing verbose raw SQL scripts or maintaining fragile XML/JSON datas
 - **Smart Defaults & Generators**: Define default column values, auto-incrementing IDs (`RecordTools.nextIntId`), and templated strings (`RecordTools.strValue`).
 - **Cleanups & Resets**: Easily wipe tables (`cleanupDB`) and reset state before or between tests. Tables are automatically deleted in the correct order based on foreign key dependencies.
 - **Database Assertions**: Verify that specific records exist or do not exist in the database using the same fluent API.
+- **Migration Testing**: Test what a Liquibase or Flyway migration does to existing rows: seed data in the pre-migration shape, migrate, then assert the post-migration shape (see [Migration Testing](#migration-testing)).
 - **Metadata Caching**: Built-in caching for database metadata (FKs, columns) to speed up test execution.
 - **Multi-DBMS Compatibility**: Built-in support for PostgreSQL, MySQL, MariaDB, Oracle, Microsoft SQL Server, H2, HSQLDB, IBM DB2, CockroachDB, SQLite, DuckDB, and Google Cloud Spanner.
 - **Automatic Type Conversion**: Seamless handling of Java Enums, UUIDs, Dates, Timestamps, and binary data.
@@ -127,11 +128,14 @@ The builder provides several other methods for fine-tuning the engine:
 *   **Metadata Caching**: Use `.cacheStrategy(...)` to speed up tests (see [Metadata Caching](#metadata-caching)).
 *   **Schema Validation**: Use `.unmappedTableStrategy(...)` to control validation behavior (see [Schema Validation](#schema-validation)). Standard migration tables are ignored by default.
 *   **Custom Converters**: Use `.converter(...)` to register custom type mappings (see [Custom Type Converters](#custom-type-converters)).
+*   **Data Change Callback**: Use `.onDataChange(...)` to run code after the engine changes data (see [Data Change Callback](#data-change-callback)).
 *   **Manual Table Order**: Use `.tableDependencyOrder(...)` to override auto-detected insert/cleanup order when FK auto-detection can't be relied on (see [Manual Table Order Override](#manual-table-order-override)).
 
 ---
 
 ## Usage Examples
+
+Runnable example projects (JUnit, Testcontainers, Spring Boot, Liquibase/Flyway migrations) are in [`examples/`](examples).
 
 ### Inline Scripts (Lambdas)
 
@@ -233,6 +237,19 @@ engine.cleanupDB();
 
 JDBScript automatically detects foreign key dependencies and deletes records in the correct order to avoid constraint violations. Cleanup also restarts sequences and identity columns at 10000 (see [Key Features](#key-features) for supported databases), so the IDs a test gets from the database are predictable. If a circular dependency **between two or more tables** is detected, an exception will be thrown. A table referencing itself (e.g. an `employees` table with a `manager_id` column pointing back to `employees`) is not treated as a cycle. See [Manual Table Order Override](#manual-table-order-override) for an escape hatch when auto-detection can't determine the right order at all.
 
+### Data Change Callback
+
+If the application under test caches database data, register a callback to invalidate that cache whenever the engine changes the data:
+
+```java
+IJDBEngine<IAppSchema> engine = JDBEngine.builder(IAppSchema.class)
+    .dataSource(dataSource)
+    .onDataChange(() -> appCache.clear())
+    .build();
+```
+
+It runs once after each successful `resetDB`, `insertDB`, or `cleanupDB` call. To register several callbacks, call `.onDataChange(...)` once per callback; they run in registration order. An exception thrown by a callback is wrapped in a `JDBScriptException` and rethrown from the data-changing call.
+
 ---
 
 ## Manual Table Order Override
@@ -265,6 +282,40 @@ engine.assertDBHasNot(db -> {
     db.users().username("malory");
 });
 ```
+
+---
+
+## Migration Testing
+
+Liquibase and Flyway check that a migration applies; `JDBMigrationEngine` tests what it does to data that's already there, such as a changeset that backfills a new column from existing rows. You describe the schema on both sides of the migration with two interfaces, then:
+
+```java
+JDBMigrationEngine<IBeforeSchema, IAfterSchema> migration =
+    JDBMigrationEngine.builder(IBeforeSchema.class, IAfterSchema.class)
+        .dataSource(dataSource)
+        .migrations("db/changelog.yaml")   // Liquibase changelog, or a Flyway location
+        .build();
+
+// Arrange: migrate up to the point right before the migration under test, seed old-shape rows
+migration.migrateTo("before-full-name-backfill");
+migration.before().insertDB(db -> {
+    db.person().id(1).first_name("Ada").last_name("Lovelace");
+});
+
+// Act: run just the migration under test
+migration.migrateTo("after-full-name-backfill");
+
+// Assert: check the rows in the new shape
+migration.after().assertDBHas(db -> db.person().id(1).full_name("Ada Lovelace"));
+```
+
+- **Markers**: `migrateTo(...)` takes a Liquibase tag, or a Flyway version (e.g. `"3"`). There's deliberately no "migrate everything" method: a test bounded by markers keeps testing the same migration as more are added later.
+- **Tool detection**: `.migrations(path)` picks Liquibase or Flyway, whichever is on the classpath. If both are, use `.migrator(new LiquibaseMigrator(path))` or `.migrator(new FlywayMigrator(path))` instead.
+- **Dependencies**: `liquibase-core` and `flyway-core` are optional dependencies of jdbscript, so add the one you use to your project yourself.
+- **Engines**: `before()` and `after()` are regular engines sharing the builder's settings, always with `CacheStrategy.NONE` since the schema changes between them. Use `.beforeEngine(...)`/`.afterEngine(...)` to configure one side only.
+- **Reset**: `reset()` wipes everything the migration tool manages, to start a test from a blank database. It's never called automatically.
+
+Runnable versions: [`examples/09-liquibase-data-migration`](examples/09-liquibase-data-migration) and [`examples/10-flyway-data-migration`](examples/10-flyway-data-migration).
 
 ---
 
