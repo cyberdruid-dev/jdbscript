@@ -2,6 +2,7 @@ package org.jdbscript.flyway;
 
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.FlywayException;
+import org.flywaydb.core.api.Location;
 import org.flywaydb.core.api.MigrationInfo;
 import org.flywaydb.core.api.MigrationVersion;
 import org.flywaydb.core.api.configuration.FluentConfiguration;
@@ -34,10 +35,8 @@ public class FlywayMigrator implements MigrationRunner {
         Flyway flyway = configure(dataSource).target(marker).load();
         run(flyway::migrate);
         MigrationInfo current = flyway.info().current();
-        // Flyway itself rejects a target matching no migration at all, but not one that's already
-        // behind the currently applied version (nothing pending, migrate() just no-ops) - this
-        // catches that case too. Compares parsed MigrationVersions, not raw strings: "1" and "1.0"
-        // are the same version to Flyway but format differently via toString().
+        // migrate() silently no-ops if marker is already behind the current version, so check
+        // explicitly. Compare parsed versions, not raw strings: "1" and "1.0" are equal to Flyway.
         if (current == null || !MigrationVersion.fromVersion(marker).equals(current.getVersion())) {
             throw new JDBScriptException(
                     "Flyway version '" + marker + "' not found in location '" + location + "'.");
@@ -55,31 +54,35 @@ public class FlywayMigrator implements MigrationRunner {
     }
 
     private FluentConfiguration configure(DataSource dataSource) {
-        // Flyway's own failOnMissingLocations(true) check happens deep inside migrate()/clean(),
-        // by which point it has already opened (and, at least in 12.11.0 through 13.8.0, leaked) a
-        // connection - checked directly upstream, not via Flyway's own bug tracker. Checking here,
-        // before dataSource() is ever set, means Flyway never gets a connection to leak for this
-        // case. Locations Flyway resolves some other way (not classpath:/filesystem:) are left to
-        // Flyway's own handling rather than risk this check rejecting one incorrectly.
-        if (!locationExists(location)) {
-            throw new JDBScriptException("Flyway migration failed (location '" + location + "'): "
-                    + "Unable to resolve location " + location);
-        }
+        // Check before dataSource() is set: Flyway's own missing-location check happens deep inside
+        // migrate()/clean(), after it has already opened (and, in 12.11.0-13.8.0, leaked) a connection.
+        checkLocationResolvable(location);
         return Flyway.configure()
                 .dataSource(dataSource)
                 .locations(location)
                 .failOnMissingLocations(true);
     }
 
-    private boolean locationExists(String location) {
-        if (location.startsWith("classpath:")) {
-            String path = location.substring("classpath:".length());
-            return Thread.currentThread().getContextClassLoader().getResource(path) != null;
+    private void checkLocationResolvable(String location) {
+        Location parsed;
+        try {
+            parsed = new Location(location);
+        } catch (FlywayException e) {
+            throw new JDBScriptException(
+                    "Flyway migration failed (location '" + location + "'): " + e.getMessage(), e);
         }
-        if (location.startsWith("filesystem:")) {
-            return Files.isDirectory(Paths.get(location.substring("filesystem:".length())));
+        boolean resolvable;
+        if (parsed.isClassPath()) {
+            resolvable = Thread.currentThread().getContextClassLoader().getResource(parsed.getPath()) != null;
+        } else if (parsed.isFileSystem()) {
+            resolvable = Files.isDirectory(Paths.get(parsed.getPath()));
+        } else {
+            resolvable = true;
         }
-        return true;
+        if (!resolvable) {
+            throw new JDBScriptException("Flyway migration failed (location '" + location + "'): "
+                    + "Unable to resolve location " + location);
+        }
     }
 
     private void run(Runnable action) {
