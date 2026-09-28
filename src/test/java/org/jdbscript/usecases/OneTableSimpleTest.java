@@ -72,7 +72,7 @@ public class OneTableSimpleTest extends JdbAbstractTest {
 
     @Test
     public void insert_should_not_remove_existing_records() {
-        executeUpdate("INSERT INTO %s (id, str_column_1) VALUES (1, 'Before Hello')", TABLE_NAME_1);
+        insertSeedRow(TABLE_NAME_1, "INSERT INTO %s (id, str_column_1) VALUES (1, 'Before Hello')", TABLE_NAME_1);
         engine.insertDB((db)->{
             db.table_1().id(2).str_column_1("Hello");
         });
@@ -86,7 +86,7 @@ public class OneTableSimpleTest extends JdbAbstractTest {
 
     @Test
     public void reset_should_remove_existing_records() {
-        executeUpdate("INSERT INTO %s (id, str_column_1) VALUES (1, 'Before Hello')", TABLE_NAME_1);
+        insertSeedRow(TABLE_NAME_1, "INSERT INTO %s (id, str_column_1) VALUES (1, 'Before Hello')", TABLE_NAME_1);
         engine.resetDB((db)->{
             db.table_1().id(2).str_column_1("Hello");
         });
@@ -100,7 +100,7 @@ public class OneTableSimpleTest extends JdbAbstractTest {
 
     @Test
     public void cleanupDB_should_remove_all_records() {
-        executeUpdate("INSERT INTO %s (id, str_column_1) VALUES (1, 'Before Hello')", TABLE_NAME_1);
+        insertSeedRow(TABLE_NAME_1, "INSERT INTO %s (id, str_column_1) VALUES (1, 'Before Hello')", TABLE_NAME_1);
         engine.cleanupDB();
 
         assertTableEmpty(TABLE_NAME_1);

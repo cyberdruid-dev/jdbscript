@@ -55,15 +55,6 @@ class MssqlStrategy extends DefaultSqlExecutorStrategy {
     }
 
     @Override
-    public void setUUID(PreparedStatement stmt, int columnIndex, UUID uuid) throws SQLException {
-        if(uuid == null) {
-            stmt.setNull(columnIndex, Types.BLOB);
-        } else {
-            super.setUUID(stmt, columnIndex, uuid);
-        }
-    }
-
-    @Override
     public void setInputStream(PreparedStatement stmt, int columnIndex, InputStream value) throws SQLException {
         if(value == null ) {
             stmt.setNull(columnIndex, Types.BLOB);

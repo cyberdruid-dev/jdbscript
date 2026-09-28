@@ -102,6 +102,27 @@ public class JdbAbstractTest {
         }
     }
 
+    // IDENTITY_INSERT is scoped to the connection it's set on, so it and the insert must share one
+    // connection - not two separate executeUpdate() calls, each of which pulls its own from the pool.
+    protected void insertSeedRow(String tableName, String sql, Object... replacements) {
+        sql = sql.formatted(replacements);
+        boolean toggleIdentityInsert = testConfiguration.getDbmsType() == DBMSType.MSSQL;
+        try (Connection cnn = dataSource.getConnection(); Statement stmt = cnn.createStatement()) {
+            if (toggleIdentityInsert) {
+                stmt.execute("SET IDENTITY_INSERT " + tableName + " ON");
+            }
+            stmt.execute(sql);
+            if (toggleIdentityInsert) {
+                stmt.execute("SET IDENTITY_INSERT " + tableName + " OFF");
+            }
+            if (!cnn.getAutoCommit()) {
+                cnn.commit();
+            }
+        } catch (Exception e) {
+            Assert.fail("Fail to insertSeedRow('%s')".formatted(sql), e);
+        }
+    }
+
     protected void cleanupTables(String... tables) {
         for (String table : tables) {
             executeUpdate("DELETE FROM "+table+" WHERE 1=1");

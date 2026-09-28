@@ -109,10 +109,8 @@ public class ScriptSubclassingTest extends JdbAbstractTest {
 
     @Test
     public void call_resetDB_should_work_with_private_classes(){
-        executeUpdate("""
-            INSERT INTO %s (id,str_column_1,str_column_2)
-            VALUES(999,'old value1','old value 2')
-        """, TABLE_NAME_1);
+        insertSeedRow(TABLE_NAME_1,
+                "INSERT INTO %s (id,str_column_1,str_column_2) VALUES(999,'old value1','old value 2')", TABLE_NAME_1);
 
         engine.resetDB(PrivateTestDbScriptClass.class);
 

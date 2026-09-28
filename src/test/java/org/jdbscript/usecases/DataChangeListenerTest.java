@@ -129,7 +129,7 @@ public class DataChangeListenerTest extends JdbAbstractTest {
 
     @Test
     public void test_assertDBHas_and_assertDBHasNot_do_not_fire_listener() {
-        executeUpdate("INSERT INTO " + TABLE_NAME + " (id, str_column_1) VALUES (1, 'seeded')");
+        insertSeedRow(TABLE_NAME, "INSERT INTO " + TABLE_NAME + " (id, str_column_1) VALUES (1, 'seeded')");
         AtomicInteger count = new AtomicInteger();
         IJDBEngine<ITestSchema> engine = engineBuilder(ITestSchema.class)
                 .onDataChange(count::incrementAndGet)
