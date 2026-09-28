@@ -42,6 +42,7 @@
         <project.build.outputTimestamp>2026-09-05T19:57:16+00:00</project.build.outputTimestamp>
         <slf4jVersion>2.0.18</slf4jVersion>
         <logbackVersion>1.6.3</logbackVersion>
+        <flywayVersion>13.8.0</flywayVersion>
         <test.jdbc.url/>
         <test.jdbc.user/>
         <test.jdbc.password/>
@@ -376,6 +377,12 @@
                     <version>4.33.0.4</version>
                     <scope>test</scope>
                 </dependency>
+                <dependency>
+                    <groupId>org.flywaydb</groupId>
+                    <artifactId>flyway-gcp-spanner</artifactId>
+                    <version>${flywayVersion}</version>
+                    <scope>test</scope>
+                </dependency>
             </dependencies>
         </profile>
         <profile>
@@ -513,23 +520,19 @@
         <dependency>
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-core</artifactId>
-            <version>11.9.1</version>
+            <version>${flywayVersion}</version>
             <optional>true</optional>
         </dependency>
-        <!-- Flyway modularized DB-specific support out of flyway-core - these are only needed to
-             run the test suite itself against MySQL/Postgres, not part of the library's own
-             optional runtime surface (a real consumer would add whichever flyway-<db> module
-             their own target DBMS needs). -->
         <dependency>
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-mysql</artifactId>
-            <version>11.9.1</version>
+            <version>${flywayVersion}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-database-postgresql</artifactId>
-            <version>11.9.1</version>
+            <version>${flywayVersion}</version>
             <scope>test</scope>
         </dependency>
         <dependency>

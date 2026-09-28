@@ -9,6 +9,8 @@ import org.jdbscript.MigrationRunner;
 import org.jdbscript.errors.JDBScriptException;
 
 import javax.sql.DataSource;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 
 /**
  * {@link MigrationRunner} backed by Flyway. {@code marker} in {@link #migrateTo} is a Flyway
@@ -53,10 +55,31 @@ public class FlywayMigrator implements MigrationRunner {
     }
 
     private FluentConfiguration configure(DataSource dataSource) {
+        // Flyway's own failOnMissingLocations(true) check happens deep inside migrate()/clean(),
+        // by which point it has already opened (and, at least in 12.11.0 through 13.8.0, leaked) a
+        // connection - checked directly upstream, not via Flyway's own bug tracker. Checking here,
+        // before dataSource() is ever set, means Flyway never gets a connection to leak for this
+        // case. Locations Flyway resolves some other way (not classpath:/filesystem:) are left to
+        // Flyway's own handling rather than risk this check rejecting one incorrectly.
+        if (!locationExists(location)) {
+            throw new JDBScriptException("Flyway migration failed (location '" + location + "'): "
+                    + "Unable to resolve location " + location);
+        }
         return Flyway.configure()
                 .dataSource(dataSource)
                 .locations(location)
                 .failOnMissingLocations(true);
+    }
+
+    private boolean locationExists(String location) {
+        if (location.startsWith("classpath:")) {
+            String path = location.substring("classpath:".length());
+            return Thread.currentThread().getContextClassLoader().getResource(path) != null;
+        }
+        if (location.startsWith("filesystem:")) {
+            return Files.isDirectory(Paths.get(location.substring("filesystem:".length())));
+        }
+        return true;
     }
 
     private void run(Runnable action) {
