@@ -12,7 +12,7 @@
 
 **JDBScript** is a lightweight, type-safe Java library designed to make database seeding, fixture management, and test data preparation simple, robust, and maintainable.
 
-Instead of writing verbose raw SQL scripts or maintaining fragile XML/JSON datasets, JDBScript lets you model your database tables and columns using standard Java interfaces. You can define test fixtures fluently with full IDE auto-completion, compile-time safety, dynamic defaults, and cross-DBMS compatibility.
+Instead of writing verbose raw SQL scripts or maintaining fragile DbUnit-style XML/JSON datasets, JDBScript lets you model your database tables and columns using standard Java interfaces. You can define test fixtures fluently with full IDE auto-completion, compile-time safety, dynamic defaults, and cross-DBMS compatibility.
 
 ---
 
@@ -26,7 +26,7 @@ Instead of writing verbose raw SQL scripts or maintaining fragile XML/JSON datas
 - **Cleanups & Resets**: Easily wipe tables (`cleanupDB`) and reset state before or between tests. Tables are automatically deleted in the correct order based on foreign key dependencies.
 - **Database Assertions**: Verify that specific records exist or do not exist in the database using the same fluent API.
 - **Migration Testing**: Test what a Liquibase or Flyway migration does to existing rows: seed data in the pre-migration shape, migrate, then assert the post-migration shape (see [Migration Testing](#migration-testing)).
-- **Metadata Caching**: Built-in caching for database metadata (FKs, columns) to speed up test execution.
+- **Metadata Caching**: Built-in caching for database metadata (tables, foreign keys) to speed up test execution.
 - **Multi-DBMS Compatibility**: Built-in support for PostgreSQL, MySQL, MariaDB, Oracle, Microsoft SQL Server, H2, HSQLDB, IBM DB2, CockroachDB, SQLite, DuckDB, and Google Cloud Spanner.
 - **Automatic Type Conversion**: Seamless handling of Java Enums, UUIDs, Dates, Timestamps, and binary data.
 - **Sequence Management**: Cleanup restarts sequences and identity columns at exactly 10000, so manually assigned low IDs (1, 2, ...) never collide with generated ones (supported for PostgreSQL, CockroachDB, Oracle, DB2, HSQLDB, and DuckDB).
@@ -343,7 +343,7 @@ Use `suppressUnmappedTable(String...)` to ignore specific custom tables. By defa
 
 ## Custom Type Converters
 
-JDBScript comes with default converters for common types like Enums, UUIDs, and Dates. You can add your own using the `.converter(...)` builder method:
+JDBScript comes with default converters for common types like Enums, UUIDs, and Dates. You can add your own by implementing `IJDBTypeConverter` and registering it with the `.converter(...)` builder method:
 
 ```java
 IJDBEngine<IAppSchema> engine = JDBEngine.builder(IAppSchema.class)
@@ -383,6 +383,28 @@ Every release is tested in CI against each database below, and on JDK 17, 21, an
 | **HSQLDB** | `2.7.x` | ![Passed](https://img.shields.io/badge/293-passing-success?style=flat-square) |
 | **SQLite** | `3.53.x` | ![Passed](https://img.shields.io/badge/291-passing-success?style=flat-square) |
 | **DuckDB** | `1.2.x` | ![Passed](https://img.shields.io/badge/253-passing-success?style=flat-square) |
+
+---
+
+## Known Limitations
+
+- **Circular foreign keys between tables** are rejected by auto-detection; set the order yourself with [`.tableDependencyOrder(...)`](#manual-table-order-override). A table referencing itself is fine, but its rows are inserted in the order you declare them, so declare parent rows first.
+- **Cleanup deletes all rows** from every table in the schema interface. Tests that run in parallel against the same database will interfere with each other.
+
+---
+
+## Why not DbUnit?
+
+JDBScript is an alternative to [DbUnit](https://www.dbunit.org/) for preparing and checking database state in Java tests. The differences:
+
+- **Test data is Java code, not XML/CSV/YAML datasets.** It's type-checked and auto-completed by the IDE, and renaming a column is one refactoring instead of a search-and-replace across dataset files.
+- **Only the columns a test cares about.** `defaults()` fills in the rest, so a new `NOT NULL` column means one change in the record interface instead of edits across every dataset.
+- **Composable.** Scripts include other scripts, and loops or helper methods generate rows; no dataset files to copy and keep in sync.
+- **Assertions use the same API.** `assertDBHas` checks only the columns you list, with no expected-dataset files or column filters.
+- **Insert and cleanup order come from the foreign keys**, and cleanup resets sequences, with no table-order configuration.
+- **Migration testing** for Liquibase and Flyway: seed data in the old schema, migrate, assert on the new one.
+
+DbUnit remains a reasonable choice if you already maintain a large set of XML datasets, or need to export existing database content into a dataset.
 
 ---
 
