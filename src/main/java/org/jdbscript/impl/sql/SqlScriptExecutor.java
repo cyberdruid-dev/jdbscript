@@ -58,6 +58,7 @@ public class SqlScriptExecutor implements IScriptExecutor {
             this.metadataProvider.setStrategy(this.strategy);
         }
         this.strategy.setFeatures(this.features);
+        this.strategy.setCache(this.cache);
     }
 
     @Override
@@ -93,6 +94,7 @@ public class SqlScriptExecutor implements IScriptExecutor {
         withPreparedStatements((cnn, stmtProvider) -> {
             getStrategy().beforeInsert(cnn, dbScript);
             for (var record : dbScript.getRecords()) {
+                getStrategy().beforeEachInsert(cnn, record);
                 List<String> columns = getSortedColumns(record);
                 String sqlKey = record.getTableName() + ":" + String.join(",", columns);
                 String sql = insertSqlCache.computeIfAbsent(sqlKey, k -> createInsertSql(record, columns));
@@ -214,6 +216,9 @@ public class SqlScriptExecutor implements IScriptExecutor {
         this.cache = cache != null ? cache : new NoCache();
         if (this.metadataProvider != null) {
             this.metadataProvider.setCache(this.cache);
+        }
+        if (this.strategy != null) {
+            this.strategy.setCache(this.cache);
         }
     }
 

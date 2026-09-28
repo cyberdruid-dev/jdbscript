@@ -1,7 +1,9 @@
 package org.jdbscript.impl.sql;
 
 import org.jdbscript.JDBFeatureSet;
+import org.jdbscript.impl.JDBRecord;
 import org.jdbscript.impl.JDBScript;
+import org.jdbscript.impl.cache.IJDBCache;
 
 import java.io.InputStream;
 import java.sql.Connection;
@@ -15,6 +17,9 @@ public interface ISqlExecutorStrategy {
     void afterInsert(Connection cnn) throws SQLException;
 
     void beforeInsert(Connection cnn, JDBScript dbScript) throws SQLException;
+
+    default void beforeEachInsert(Connection cnn, JDBRecord record) throws SQLException {
+    }
 
     void setInputStream(PreparedStatement stmt, int i, InputStream value) throws SQLException;
 
@@ -45,5 +50,8 @@ public interface ISqlExecutorStrategy {
      * @param features the enabled features
      */
     default void setFeatures(JDBFeatureSet features) {
+    }
+
+    default void setCache(IJDBCache cache) {
     }
 }
