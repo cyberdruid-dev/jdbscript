@@ -88,7 +88,8 @@ class PersonFullNameBackfillMigrationTest {
             Class<F> beforeSchema, Class<A> afterSchema) {
         return JDBMigrationEngine.builder(beforeSchema, afterSchema)
                 .dataSource(dataSource)
-                .migrator(new FlywayMigrator(LOCATION))
+                // .migrator(new FlywayMigrator(LOCATION))
+                .migrations(LOCATION)
                 .build();
     }
 }

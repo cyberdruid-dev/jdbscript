@@ -214,6 +214,16 @@ public class JDBMigrationEngine<F extends IDBSchema, A extends IDBSchema> {
         }
 
         /**
+         * Shortcut for {@link #migrator} that auto-detects Liquibase or Flyway based on which
+         * one's classes are present on the classpath, then constructs it with {@code path} (a
+         * Liquibase changelog file, or a Flyway location - whichever is picked). Throws if both
+         * or neither are on the classpath; use {@link #migrator} directly in that case.
+         */
+        public Builder<F, A> migrations(String path) {
+            return migrator(MigrationRunnerFactory.detect(path));
+        }
+
+        /**
          * A fresh {@link IScriptExecutor} instance for each of {@link #before()}/{@link #after()}
          * - not the same shared instance, since {@code IScriptExecutor} (e.g.
          * {@code SqlScriptExecutor}) is single-use, tied to exactly one {@link JDBEngine}. See

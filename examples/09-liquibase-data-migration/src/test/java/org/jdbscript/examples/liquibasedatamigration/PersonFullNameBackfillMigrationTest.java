@@ -90,7 +90,8 @@ class PersonFullNameBackfillMigrationTest {
             Class<F> beforeSchema, Class<A> afterSchema) {
         return JDBMigrationEngine.builder(beforeSchema, afterSchema)
                 .dataSource(dataSource)
-                .migrator(new LiquibaseMigrator(CHANGELOG))
+                // .migrator(new LiquibaseMigrator(CHANGELOG))
+                .migrations(CHANGELOG)
                 .build();
     }
 }
