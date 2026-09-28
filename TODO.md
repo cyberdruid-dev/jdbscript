@@ -68,29 +68,18 @@
 * [ ] add a callback for db modification? (e.g. for app's cache reset)
 
 #### Ecosystem Integration
-* [ ] Find a way to test liqubase/flyway patches?
-  * `JDBMigrationEngine`/`LiquibaseMigrator` done (seed pre-migration shape, `migrateTo(tag)`,
-    assert post-migration shape); `FlywayMigrator` still open
-  * [ ] Auto-detect which `MigrationRunner` to use from what's on the classpath (Liquibase vs.
-    Flyway), so `.migrator(...)` doesn't need to be configured explicitly
 * [ ] Generate schema interfaces from an existing DB
 * [ ] Kotlin support? (should already work, but may be improvable)
 * [ ] Easy Spring integration - `examples/08-springboot` already proves a plain `DataSource` bean
   is enough with zero extra code; re-scope this if something beyond that is actually wanted
   (e.g. an autoconfiguration starter)
-* [ ] Future DBMS ideas: 
-  * [ ] Spanner
+* [ ] Future DBMS ideas:
   * [ ] Snowflake?
   * [ ] Google BigQuery?
 
 #### Naming, Design Questions & Housekeeping
-* [ ] Write a SKILL.md
 * [ ] What exceptions should be thrown, as a general policy? (open design question)
 * [ ] Ensure tests pass with `autocommit=true|false`
-
-#### Bugs
-* [ ] Postgres <=12 can have an IDENTITY column with a hidden sequence (Liquibase sometimes
-  generates it)
 
 ## Shipped
 Grouped summary of completed work - see git history for detail.
@@ -104,7 +93,10 @@ Grouped summary of completed work - see git history for detail.
   custom converters (`.converter(...)` / `.disableDefaultConverters()`)
 * **Assertions**: `assertDBHas` / `assertDBHasNot`
 * **Sequences**: reset-to-10000+ on cleanup, per-DBMS reset strategies, DB2 identity-owned-sequence
-  handling via `JDBFeature` / `.feature(...)`
+  handling via `JDBFeature` / `.feature(...)`; forward-only/no-rewind resets for Postgres, DB2,
+  CockroachDB (a second insert into the same auto-increment table within one test no longer
+  collides); Postgres hidden-IDENTITY-sequence detection fixed (`pg_class`, not
+  `information_schema.sequences`, which silently excludes owned sequences)
 * **Scripts**: class-based and abstract-class scripts, `include(...)` composition (from both class
   and lambda scripts), constructor-parameter guard on class scripts, reusable prepared statements
   per table
@@ -112,11 +104,21 @@ Grouped summary of completed work - see git history for detail.
   (`RecordTools.strValue`)
 * **DBMS support**: MySQL, MariaDB, Postgres, Oracle, MSSQL, H2, HSQLDB, SQLite, DuckDB, DB2,
   CockroachDB (including working around its Postgres-driver detection confusing
-  `PostgreSQLStrategy`)
+  `PostgreSQLStrategy`), Spanner (client-generated PKs, DDL-outside-transaction handling,
+  DATE/TIMESTAMP disambiguation via `ParameterMetaData`); MSSQL `IDENTITY_INSERT` now toggles
+  per-record via the cache-integrated identity-column lookup, so mixed explicit/auto-generated ids
+  in one script and interleaved multi-table scripts both work correctly
+* **Migration testing**: `JDBMigrationEngine`/`LiquibaseMigrator`/`FlywayMigrator` all working
+  (seed pre-migration shape, `migrateTo(tag)`, assert post-migration shape); auto-detects Liquibase
+  vs. Flyway from the classpath (`MigrationRunnerFactory`) so `.migrator(...)` doesn't need to be
+  set explicitly; Flyway modules added for every DBMS profile that needed one (Oracle, DB2,
+  HSQLDB, MSSQL, Spanner); Spanner gets its own Flyway migration-script set
+  (`db/flyway-migration-spanner`) since Flyway has no cross-DBMS dialect translation the way
+  Liquibase does
 * **Engine**: builder pattern (`JDBEngine.builder(...)`), lazy `DataSource` supplier,
   lazy engine construction, no leaked connections (tested)
 * **Docs**: all public interfaces/classes documented (`JDBEngine`/`IJDBEngine`, `IDBSchema`,
-  `RecordTools`/`IDBRecordTools`, `DBMSType`, `IScriptExecutor`)
+  `RecordTools`/`IDBRecordTools`, `DBMSType`, `IScriptExecutor`); `skill/jdbscript/SKILL.md`
 * **Infra**: TeamCity CI across all supported DBMS x JDK 17/21/25; inner non-static script
   classes throw an explaining exception; null-handling tested in the executor
 * **Released**: v1.1.0 published to Maven Central (2026-09-05)
