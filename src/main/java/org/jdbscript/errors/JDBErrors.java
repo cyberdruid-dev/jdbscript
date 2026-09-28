@@ -34,6 +34,12 @@ public enum JDBErrors implements Supplier<JDBScriptException> {
     FEATURE_IS_NULL(JDBScriptException.class,"feature can not be null."  ),
     /** A callback passed to Builder.onDataChange(...) cannot be null. */
     DATA_CHANGE_LISTENER_IS_NULL(JDBScriptException.class,"data change listener can not be null."  ),
+    /** JDBMigrationEngine.builder(from, to)'s pre-migration schema class cannot be null. */
+    FROM_SCHEMA_IS_NULL(JDBScriptException.class,"the pre-migration (from) schema class can not be null."  ),
+    /** JDBMigrationEngine.builder(from, to)'s post-migration schema class cannot be null. */
+    TO_SCHEMA_IS_NULL(JDBScriptException.class,"the post-migration (to) schema class can not be null."  ),
+    /** A migrator passed to JDBMigrationEngine.Builder#migrator(...) cannot be null. */
+    MIGRATOR_IS_NULL(JDBScriptException.class,"migrator can not be null."  ),
     /** Table defined in interface but missing from DB. */
     MISSING_TABLE_IN_DB(JDBScriptException.class, "Table '%s' defined in interface %s but missing from DB"),
     /** Table found in DB but missing from schema interface. */

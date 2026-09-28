@@ -27,6 +27,8 @@
         <module>06-insert-power</module>
         <module>07-testcontainers</module>
         <module>08-springboot</module>
+        <module>09-liquibase-data-migration</module>
+        <module>10-flyway-data-migration</module>
     </modules>
 
     <properties>
@@ -39,7 +41,7 @@
           (see ../pom.xml). Run `mvn install` at the repo root first so this resolves locally.
           Bump this once jdbscript is published and pin to a released version instead.
         -->
-        <jdbscript.version>1.1.0</jdbscript.version>
+        <jdbscript.version>1.2.0-SNAPSHOT</jdbscript.version>
 
         <junit.version>5.11.4</junit.version>
         <h2.version>2.4.240</h2.version>
@@ -50,6 +52,14 @@
         <!-- Used by 07-testcontainers only. -->
         <testcontainers.version>1.21.4</testcontainers.version>
         <postgresql.version>42.7.13</postgresql.version>
+
+        <!-- Used by 09-liquibase-data-migration only. Matches the parent jdbscript build's own
+             test-only liquibase-core version (see ../pom.xml). -->
+        <liquibase.version>5.0.4</liquibase.version>
+
+        <!-- Used by 10-flyway-data-migration only. Matches the parent jdbscript build's own
+             flyway-core version (see ../pom.xml). -->
+        <flyway.version>11.9.1</flyway.version>
     </properties>
 
     <dependencyManagement>
@@ -107,6 +117,22 @@
                 <groupId>org.postgresql</groupId>
                 <artifactId>postgresql</artifactId>
                 <version>${postgresql.version}</version>
+                <scope>test</scope>
+            </dependency>
+
+            <!-- Used by 09-liquibase-data-migration only. -->
+            <dependency>
+                <groupId>org.liquibase</groupId>
+                <artifactId>liquibase-core</artifactId>
+                <version>${liquibase.version}</version>
+                <scope>test</scope>
+            </dependency>
+
+            <!-- Used by 10-flyway-data-migration only. -->
+            <dependency>
+                <groupId>org.flywaydb</groupId>
+                <artifactId>flyway-core</artifactId>
+                <version>${flyway.version}</version>
                 <scope>test</scope>
             </dependency>
         </dependencies>

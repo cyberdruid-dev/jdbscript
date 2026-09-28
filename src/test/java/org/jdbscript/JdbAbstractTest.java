@@ -8,6 +8,7 @@ import org.testng.Assert;
 import org.testng.SkipException;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.AfterMethod;
+import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
 
 import java.sql.*;
@@ -29,6 +30,32 @@ public class JdbAbstractTest {
 
     protected static final TestConfiguration testConfiguration = new TestConfiguration();
     protected final TestDataSource dataSource = new TestDataSource(testConfiguration.getDataSource());
+
+    /**
+     * Defensive backstop: a test that deliberately wipes the shared standing schema (migration
+     * tests) is expected to restore it itself once done (see {@code MigrationTestBase}'s
+     * {@code @AfterGroups} hook). This just protects against ordering surprises or a partial
+     * {@code -Dtest=...} run that never triggers that hook - cheap (once per class, not per
+     * method), and a no-op in the common case where nothing wiped the schema.
+     */
+    @BeforeClass
+    public void ensureStandingSchemaExists() throws SQLException {
+        if (!tableExists("table_1")) {
+            testConfiguration.reinitStandingSchema(dataSource);
+        }
+    }
+
+    private boolean tableExists(String tableName) throws SQLException {
+        try (Connection cnn = dataSource.getConnection();
+             ResultSet rs = cnn.getMetaData().getTables(null, null, "%", null)) {
+            while (rs.next()) {
+                if (rs.getString("TABLE_NAME").equalsIgnoreCase(tableName)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
 
     @BeforeMethod
     public void resetOpenConnectionTracking() {

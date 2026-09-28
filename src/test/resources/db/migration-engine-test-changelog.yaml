@@ -1,0 +1,131 @@
+databaseChangeLog:
+  - changeSet:
+      id: 001-create-widget
+      author: jdbscript-tests
+      changes:
+        - createTable:
+            tableName: widget
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  constraints:
+                    primaryKey: true
+  - changeSet:
+      id: 002-tag-after-widget
+      author: jdbscript-tests
+      changes:
+        - tagDatabase:
+            tag: after-widget
+  - changeSet:
+      id: 003-add-widget-description
+      author: jdbscript-tests
+      changes:
+        - addColumn:
+            tableName: widget
+            columns:
+              - column:
+                  name: description
+                  type: varchar(200)
+  - changeSet:
+      id: 004-tag-after-widget-description
+      author: jdbscript-tests
+      changes:
+        - tagDatabase:
+            tag: after-widget-description
+
+  - changeSet:
+      id: 005-create-migration_person
+      author: jdbscript-tests
+      changes:
+        - createTable:
+            tableName: migration_person
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: first_name
+                  type: varchar(100)
+              - column:
+                  name: last_name
+                  type: varchar(100)
+  - changeSet:
+      id: 006-tag-before-full-name-backfill
+      author: jdbscript-tests
+      changes:
+        - tagDatabase:
+            tag: before-full-name-backfill
+  - changeSet:
+      id: 007-add-full-name-column
+      author: jdbscript-tests
+      changes:
+        - addColumn:
+            tableName: migration_person
+            columns:
+              - column:
+                  name: full_name
+                  type: varchar(200)
+  - changeSet:
+      id: 008-backfill-full-name
+      author: jdbscript-tests
+      changes:
+        - sql:
+            # Nested 2-arg CONCAT, not CONCAT(a, b, c): Oracle's and DB2's CONCAT only accept
+            # exactly 2 arguments, unlike MySQL/Postgres/H2/MSSQL's variadic form - this works on
+            # all of them.
+            sql: UPDATE migration_person SET full_name = CONCAT(CONCAT(first_name, ' '), last_name)
+  - changeSet:
+      id: 009-tag-after-full-name-backfill
+      author: jdbscript-tests
+      changes:
+        - tagDatabase:
+            tag: after-full-name-backfill
+
+  - changeSet:
+      id: 010-create-migration_customer
+      author: jdbscript-tests
+      changes:
+        - createTable:
+            tableName: migration_customer
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: name
+                  type: varchar(100)
+  - changeSet:
+      id: 011-tag-before-migration_order-table
+      author: jdbscript-tests
+      changes:
+        - tagDatabase:
+            tag: before-migration_order-table
+  - changeSet:
+      id: 012-create-migration_order
+      author: jdbscript-tests
+      changes:
+        - createTable:
+            tableName: migration_order
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: customer_id
+                  type: int
+                  constraints:
+                    foreignKeyName: fk_migration_order_customer
+                    references: migration_customer(id)
+  - changeSet:
+      id: 013-tag-after-migration_order-table
+      author: jdbscript-tests
+      changes:
+        - tagDatabase:
+            tag: after-migration_order-table

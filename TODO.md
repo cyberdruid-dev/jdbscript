@@ -69,6 +69,10 @@
 
 #### Ecosystem Integration
 * [ ] Find a way to test liqubase/flyway patches?
+  * `JDBMigrationEngine`/`LiquibaseMigrator` done (seed pre-migration shape, `migrateTo(tag)`,
+    assert post-migration shape); `FlywayMigrator` still open
+  * [ ] Auto-detect which `MigrationRunner` to use from what's on the classpath (Liquibase vs.
+    Flyway), so `.migrator(...)` doesn't need to be configured explicitly
 * [ ] Generate schema interfaces from an existing DB
 * [ ] Kotlin support? (should already work, but may be improvable)
 * [ ] Easy Spring integration - `examples/08-springboot` already proves a plain `DataSource` bean

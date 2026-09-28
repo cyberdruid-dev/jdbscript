@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.jdbscript.examples</groupId>
+        <artifactId>jdbscript-examples</artifactId>
+        <version>1.0.0</version>
+    </parent>
+
+    <artifactId>10-flyway-data-migration</artifactId>
+    <packaging>jar</packaging>
+
+    <name>jdbscript-examples :: 10-flyway-data-migration</name>
+    <description>
+        Testing a data-migrating Flyway migration, not just that it applies cleanly: seed rows in
+        the pre-migration shape with jdbscript, run migrations up to a version, apply the rest
+        (the migration under test), then assert the post-migration shape with jdbscript. Same
+        scenario as 09-liquibase-data-migration, on top of Flyway instead of Liquibase.
+    </description>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.jdbscript</groupId>
+            <artifactId>jdbscript</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.zaxxer</groupId>
+            <artifactId>HikariCP</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+    </dependencies>
+</project>

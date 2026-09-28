@@ -31,5 +31,11 @@ mvn test
 | 06 | [`06-insert-power`](06-insert-power) | `insertDB` used to interleave arrange and act within a single test — simulating a sequence of events over time, not just one static snapshot. |
 | 07 | [`07-testcontainers`](07-testcontainers) | 01-quickstart's exact schema and seeding code, run against a real PostgreSQL instance started by Testcontainers instead of in-memory H2. Requires Docker. |
 | 08 | [`08-springboot`](08-springboot) | jdbscript dropped into a `@SpringBootTest`, using the `DataSource` bean spring-boot-starter-jdbc already auto-configured — no jdbscript-specific Spring integration exists or is needed. |
+| 09 | [`09-liquibase-data-migration`](09-liquibase-data-migration) | Testing what a Liquibase changeset does to *existing rows*, not just that it applies cleanly: `JDBMigrationEngine` seeds data in the pre-migration shape, runs the changelog up to a tag via `LiquibaseMigrator`, applies the changeset under test, then asserts the post-migration shape. |
+| 10 | [`10-flyway-data-migration`](10-flyway-data-migration) | Testing what a Flyway migration does to *existing rows*, not just that it applies cleanly: `JDBMigrationEngine` seeds data in the pre-migration shape, runs migrations up to a version via `FlywayMigrator`, applies the migration under test, then asserts the post-migration shape - no separate tagging convention needed, since Flyway migrations are already individually versioned. |
 
 See the main [README](../README.md) for the full feature list in prose form.
+
+Note: a test like `09-liquibase-data-migration` replays the changelog from scratch to reach the
+pre-migration state, so it's naturally slower than the other examples here. That's an accepted
+cost of testing data migrations this way, not something jdbscript tries to hide or work around.

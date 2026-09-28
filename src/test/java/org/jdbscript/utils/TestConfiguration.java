@@ -51,6 +51,14 @@ public class TestConfiguration {
         return dsFactory.getDbmsType();
     }
 
+    /**
+     * Re-runs the standing schema setup on an existing datasource - for tests that deliberately
+     * wipe the shared schema (migration tests) and need to restore it for whatever runs next.
+     */
+    public void reinitStandingSchema(DataSource dataSource) {
+        TestSchemaInitStrategyFactory.getStrategy(getDbmsType()).initSchema(dataSource);
+    }
+
     public DBMSType getExpectedDbmsType() {
         return expectedDbmsType;
     }
