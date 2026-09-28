@@ -11,6 +11,8 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.jdbscript.JDBFeature.DB2_ID_OWNED_SEQUENCE_ERROR;
 import static org.jdbscript.JDBFeature.Group.DB2_ID_OWNED_SEQUENCE;
@@ -24,8 +26,8 @@ class Db2Strategy extends DefaultSqlExecutorStrategy {
     }
 
     @Override
-    public void afterInsert(Connection cnn) throws SQLException {
-        resetDb2Sequences(cnn);
+    public void resetSequences(Connection cnn, List<String> tableNames) throws SQLException {
+        resetDb2Sequences(cnn, tableNames);
     }
 
     @Override
@@ -120,11 +122,18 @@ class Db2Strategy extends DefaultSqlExecutorStrategy {
         }
     }
 
-    public void resetDb2Sequences(Connection cnn) throws SQLException {
+    public void resetDb2Sequences(Connection cnn, List<String> tableNames) throws SQLException {
+        // A regular sequence isn't attributable to any table, so it stays schema-wide; an
+        // identity-owned one always has an owning table/column, so it's scoped to tableNames -
+        // otherwise cleaning up an unrelated engine's tables would force it to also configure
+        // DB2_ID_OWNED_SEQUENCE_*.
+        Set<String> tableNamesUpper = tableNames.stream().map(String::toUpperCase).collect(Collectors.toSet());
         try (Statement stmt = cnn.createStatement()) {
             for (SequenceInfo seq : getSequences(stmt)) {
                 if (seq.identityOwned()) {
-                    resetIdentityOwnedSequence(stmt, seq);
+                    if (tableNamesUpper.contains(seq.tableName().toUpperCase())) {
+                        resetIdentityOwnedSequence(stmt, seq);
+                    }
                 } else {
                     resetRegularSequence(stmt, seq);
                 }
@@ -139,8 +148,8 @@ class Db2Strategy extends DefaultSqlExecutorStrategy {
             // Must surface loudly rather than being swallowed: an auto-generated ID from this
             // sequence could now collide with a manually-inserted one.
             throw new SQLException(
-                    "Failed to reset DB2 sequence '" + seq.name() + "' to a safe value after "
-                            + "insert; auto-generated IDs from this sequence may now collide "
+                    "Failed to reset DB2 sequence '" + seq.name() + "' to a safe value during "
+                            + "cleanup; auto-generated IDs from this sequence may now collide "
                             + "with manually-inserted ones: " + e.getMessage(), e);
         }
     }
@@ -160,19 +169,14 @@ class Db2Strategy extends DefaultSqlExecutorStrategy {
             }
             case DB2_ID_OWNED_SEQUENCE_RESTART_WITH -> {
                 try {
-                    // Advance-only: RESTART WITH would otherwise rewind a sequence that's already
-                    // past 10000, handing out a value it gave out once already.
-                    long currentMax = getCurrentIdentityValue(stmt, seq);
-                    if (currentMax < 10000) {
-                        stmt.executeUpdate(String.format("ALTER TABLE %s ALTER COLUMN %s RESTART WITH 10000",
-                                seq.tableName(), seq.columnName()));
-                    }
+                    stmt.executeUpdate(String.format("ALTER TABLE %s ALTER COLUMN %s RESTART WITH 10000",
+                            seq.tableName(), seq.columnName()));
                 } catch (SQLException e) {
                     throw new SQLException(
                             "Failed to reset identity column '" + seq.tableName() + "." + seq.columnName()
                                     + "' (backed by DB2 sequence '" + seq.name() + "') to a safe value "
-                                    + "after insert; auto-generated IDs from this column may now collide "
-                                    + "with manually-inserted ones: " + e.getMessage(), e);
+                                    + "during cleanup; auto-generated IDs from this column may now "
+                                    + "collide with manually-inserted ones: " + e.getMessage(), e);
                 }
             }
             case DB2_ID_OWNED_SEQUENCE_ERROR -> throw new SQLException(
@@ -183,14 +187,6 @@ class Db2Strategy extends DefaultSqlExecutorStrategy {
                             + "alone, or .feature(JDBFeature.DB2_ID_OWNED_SEQUENCE_RESTART_WITH) to "
                             + "reset it via ALTER TABLE.");
             default -> throw new IllegalStateException("Unexpected feature: " + feature);
-        }
-    }
-
-    private long getCurrentIdentityValue(Statement stmt, SequenceInfo seq) throws SQLException {
-        try (ResultSet rs = stmt.executeQuery(
-                String.format("SELECT COALESCE(MAX(%s), 0) FROM %s", seq.columnName(), seq.tableName()))) {
-            rs.next();
-            return rs.getLong(1);
         }
     }
 
@@ -223,8 +219,8 @@ class Db2Strategy extends DefaultSqlExecutorStrategy {
             }
         } catch (SQLException e) {
             throw new SQLException(
-                    "Could not query SYSCAT.SEQUENCES to discover DB2 sequences to reset after "
-                            + "insert; if this schema uses sequences, their auto-generated IDs may "
+                    "Could not query SYSCAT.SEQUENCES to discover DB2 sequences to reset during "
+                            + "cleanup; if this schema uses sequences, their auto-generated IDs may "
                             + "now collide with manually-inserted ones: " + e.getMessage(), e);
         }
         return result;

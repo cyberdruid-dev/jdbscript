@@ -10,7 +10,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Exercises the {@link JDBFeature.Group#DB2_ID_OWNED_SEQUENCE} feature group end to end against a
- * live DB2, where {@code afterInsert()} finds an identity-owned sequence it can't touch via
+ * live DB2, where {@code cleanupDB()} finds an identity-owned sequence it can't touch via
  * {@code ALTER SEQUENCE} (see {@link org.jdbscript.impl.sql.Db2Strategy}). {@link Db2StrategyTest}
  * (in impl.sql) already covers each branch with mocks; this proves the real SQL against real DB2.
  */
@@ -54,11 +54,7 @@ public class Db2FeatureTest extends JdbAbstractTest {
                 .cacheStrategy(CacheStrategy.GLOBAL)
                 .build();
 
-        // resetDb2Sequences() scans every identity-owned sequence in the schema, not just this
-        // table - since every test table has one now, which one errors first is unspecified.
-        // Revisit once the reset is scoped to only the touched table(s).
-        assertThatThrownBy(() -> engine.insertDB(db ->
-                db.generated_int_id_table().generated_id_column(1).varchar_column("manual")))
+        assertThatThrownBy(engine::cleanupDB)
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("identity-owned sequence")
                 .hasMessageContaining("JDBFeature");
@@ -72,6 +68,9 @@ public class Db2FeatureTest extends JdbAbstractTest {
         int manualId = 900_000_000;
 
         engine.insertDB(db -> db.generated_int_id_table().generated_id_column(manualId).varchar_column("manual"));
+        // Triggers resetSequences(), a no-op here under NOT_MODIFIED; the row it also deletes is
+        // irrelevant - DELETE never touches the identity column's own counter either way.
+        engine.cleanupDB();
         // Bypasses the engine entirely, the same way a later, unrelated auto-generated insert would.
         executeUpdate("INSERT INTO %s (varchar_column) VALUES ('auto')", TABLE_WITH_AUTO_ID);
 
@@ -89,6 +88,7 @@ public class Db2FeatureTest extends JdbAbstractTest {
                 .build();
 
         engine.insertDB(db -> db.generated_int_id_table().generated_id_column(1).varchar_column("manual"));
+        engine.cleanupDB();
         executeUpdate("INSERT INTO %s (varchar_column) VALUES ('auto')", TABLE_WITH_AUTO_ID);
 
         // RESTART WITH 10000 is absolute, not relative to whatever the counter held before -

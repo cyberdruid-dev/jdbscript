@@ -231,24 +231,24 @@ public class Db2StrategyTest {
     }
 
     @Test
-    public void afterInsert_should_fail_clearly_when_sequence_discovery_itself_fails() {
+    public void resetSequences_should_fail_clearly_when_sequence_discovery_itself_fails() {
         // Same reasoning as DuckdbStrategyTest/HsqldbStrategyTest: an empty database still queries
         // SYSCAT.SEQUENCES successfully, returning zero rows - so this query failing at all means
         // something is actually wrong, not "no sequences". Swallowing it (the prior behavior) meant
-        // any sequences in the schema would silently go unreset after insert.
+        // any sequences in the schema would silently go unreset during cleanup.
         Db2Strategy strategy = new Db2Strategy();
         Connection cnn = failingConnection(sql -> {
             throw new SQLException("no such table: SYSCAT.SEQUENCES");
         }, sql -> 0);
 
-        assertThatThrownBy(() -> strategy.afterInsert(cnn))
+        assertThatThrownBy(() -> strategy.resetSequences(cnn, List.of()))
                 .isInstanceOf(SQLException.class)
                 .hasMessageContaining("SYSCAT.SEQUENCES")
                 .hasMessageContaining("no such table: SYSCAT.SEQUENCES");
     }
 
     @Test
-    public void afterInsert_should_fail_clearly_when_resetting_a_regular_sequence_fails() {
+    public void resetSequences_should_fail_clearly_when_resetting_a_regular_sequence_fails() {
         Db2Strategy strategy = new Db2Strategy();
         Connection cnn = failingConnection(
                 sql -> sequenceResultSet(List.of(SeqRow.regular("SEQ1"))),
@@ -256,27 +256,28 @@ public class Db2StrategyTest {
                     throw new SQLException("some low-level driver error");
                 });
 
-        assertThatThrownBy(() -> strategy.afterInsert(cnn))
+        assertThatThrownBy(() -> strategy.resetSequences(cnn, List.of()))
                 .isInstanceOf(SQLException.class)
                 .hasMessageContaining("SEQ1")
                 .hasMessageContaining("some low-level driver error");
     }
 
     @Test
-    public void afterInsert_should_reset_a_regular_sequence_via_alter_sequence() throws SQLException {
+    public void resetSequences_should_reset_a_regular_sequence_via_alter_sequence() throws SQLException {
+        // Regular sequences aren't attributable to a table, so this fires regardless of tableNames.
         Db2Strategy strategy = new Db2Strategy();
         List<String> executed = new ArrayList<>();
         Connection cnn = failingConnection(
                 sql -> sequenceResultSet(List.of(SeqRow.regular("SEQ1"))),
                 recording(executed));
 
-        strategy.afterInsert(cnn);
+        strategy.resetSequences(cnn, List.of());
 
         assertThat(executed).containsExactly("ALTER SEQUENCE SEQ1 RESTART WITH 10000");
     }
 
     @Test
-    public void afterInsert_with_no_feature_set_should_fail_clearly_for_an_identity_owned_sequence() {
+    public void resetSequences_with_no_feature_set_should_fail_clearly_for_an_identity_owned_sequence() {
         // DB2_ID_OWNED_SEQUENCE_ERROR is the default - see JDBFeature - so leaving this
         // unconfigured must fail loudly rather than silently leave the identity column unreset,
         // the same way an unset feature never silently degrades to "do nothing" anywhere else.
@@ -285,7 +286,7 @@ public class Db2StrategyTest {
                 sql -> sequenceResultSet(List.of(SeqRow.identityOwned("SQL123", "GENERATED_INT_ID_TABLE", "GENERATED_ID_COLUMN"))),
                 sql -> 0);
 
-        assertThatThrownBy(() -> strategy.afterInsert(cnn))
+        assertThatThrownBy(() -> strategy.resetSequences(cnn, List.of("generated_int_id_table")))
                 .isInstanceOf(SQLException.class)
                 .hasMessageContaining("GENERATED_INT_ID_TABLE")
                 .hasMessageContaining("GENERATED_ID_COLUMN")
@@ -293,7 +294,20 @@ public class Db2StrategyTest {
     }
 
     @Test
-    public void afterInsert_with_NOT_MODIFIED_feature_should_leave_identity_owned_sequence_untouched() throws SQLException {
+    public void resetSequences_should_not_raise_the_identity_feature_question_for_a_table_not_being_cleaned() throws SQLException {
+        Db2Strategy strategy = new Db2Strategy();
+        List<String> executed = new ArrayList<>();
+        Connection cnn = failingConnection(
+                sql -> sequenceResultSet(List.of(SeqRow.identityOwned("SQL123", "GENERATED_INT_ID_TABLE", "GENERATED_ID_COLUMN"))),
+                recording(executed));
+
+        strategy.resetSequences(cnn, List.of("some_other_table"));
+
+        assertThat(executed).isEmpty();
+    }
+
+    @Test
+    public void resetSequences_with_NOT_MODIFIED_feature_should_leave_identity_owned_sequence_untouched() throws SQLException {
         Db2Strategy strategy = new Db2Strategy();
         strategy.setFeatures(JDBFeatureSet.of(JDBFeature.DB2_ID_OWNED_SEQUENCE_NOT_MODIFIED));
         List<String> executed = new ArrayList<>();
@@ -301,65 +315,48 @@ public class Db2StrategyTest {
                 sql -> sequenceResultSet(List.of(SeqRow.identityOwned("SQL123", "GENERATED_INT_ID_TABLE", "GENERATED_ID_COLUMN"))),
                 recording(executed));
 
-        strategy.afterInsert(cnn);
+        strategy.resetSequences(cnn, List.of("generated_int_id_table"));
 
         assertThat(executed).isEmpty();
     }
 
     @Test
-    public void afterInsert_with_RESTART_WITH_feature_should_alter_table_for_identity_owned_sequence() throws SQLException {
+    public void resetSequences_with_RESTART_WITH_feature_should_alter_table_for_identity_owned_sequence() throws SQLException {
+        // Unconditional, no floor check - reset runs post-cleanup with no rows left to protect.
         Db2Strategy strategy = new Db2Strategy();
         strategy.setFeatures(JDBFeatureSet.of(JDBFeature.DB2_ID_OWNED_SEQUENCE_RESTART_WITH));
         List<String> executed = new ArrayList<>();
         Connection cnn = failingConnection(
-                identityOwnedSequenceQueryHandler("GENERATED_INT_ID_TABLE", "GENERATED_ID_COLUMN", 0),
+                sql -> sequenceResultSet(List.of(SeqRow.identityOwned("SQL123", "GENERATED_INT_ID_TABLE", "GENERATED_ID_COLUMN"))),
                 recording(executed));
 
-        strategy.afterInsert(cnn);
+        // Lowercase: engine-supplied tableNames don't match the catalog's casing, so this must be
+        // case-insensitive.
+        strategy.resetSequences(cnn, List.of("generated_int_id_table"));
 
         assertThat(executed).containsExactly(
                 "ALTER TABLE GENERATED_INT_ID_TABLE ALTER COLUMN GENERATED_ID_COLUMN RESTART WITH 10000");
     }
 
     @Test
-    public void afterInsert_with_RESTART_WITH_feature_should_not_rewind_a_sequence_already_past_the_safe_floor() throws SQLException {
-        Db2Strategy strategy = new Db2Strategy();
-        strategy.setFeatures(JDBFeatureSet.of(JDBFeature.DB2_ID_OWNED_SEQUENCE_RESTART_WITH));
-        List<String> executed = new ArrayList<>();
-        Connection cnn = failingConnection(
-                identityOwnedSequenceQueryHandler("GENERATED_INT_ID_TABLE", "GENERATED_ID_COLUMN", 10001),
-                recording(executed));
-
-        strategy.afterInsert(cnn);
-
-        assertThat(executed).isEmpty();
-    }
-
-    @Test
-    public void afterInsert_with_RESTART_WITH_feature_should_fail_clearly_when_the_alter_table_itself_fails() {
+    public void resetSequences_with_RESTART_WITH_feature_should_fail_clearly_when_the_alter_table_itself_fails() {
         Db2Strategy strategy = new Db2Strategy();
         strategy.setFeatures(JDBFeatureSet.of(JDBFeature.DB2_ID_OWNED_SEQUENCE_RESTART_WITH));
         Connection cnn = failingConnection(
-                identityOwnedSequenceQueryHandler("GENERATED_INT_ID_TABLE", "GENERATED_ID_COLUMN", 0),
+                sql -> sequenceResultSet(List.of(SeqRow.identityOwned("SQL123", "GENERATED_INT_ID_TABLE", "GENERATED_ID_COLUMN"))),
                 sql -> {
                     throw new SQLException("some low-level driver error");
                 });
 
-        assertThatThrownBy(() -> strategy.afterInsert(cnn))
+        assertThatThrownBy(() -> strategy.resetSequences(cnn, List.of("generated_int_id_table")))
                 .isInstanceOf(SQLException.class)
                 .hasMessageContaining("GENERATED_INT_ID_TABLE")
                 .hasMessageContaining("GENERATED_ID_COLUMN")
                 .hasMessageContaining("some low-level driver error");
     }
 
-    private static QueryHandler identityOwnedSequenceQueryHandler(String tableName, String columnName, long currentMaxValue) {
-        return sql -> sql.contains("SYSCAT.SEQUENCES")
-                ? sequenceResultSet(List.of(SeqRow.identityOwned("SQL123", tableName, columnName)))
-                : maxValueResultSet(currentMaxValue);
-    }
-
     @Test
-    public void afterInsert_should_reset_a_regular_sequence_regardless_of_the_identity_feature() throws SQLException {
+    public void resetSequences_should_reset_a_regular_sequence_regardless_of_the_identity_feature() throws SQLException {
         // A regular, user-created sequence is unaffected by the DB2_ID_OWNED_SEQUENCE_* feature -
         // that feature only governs sequences DB2 itself created for an identity column.
         Db2Strategy strategy = new Db2Strategy();
@@ -369,7 +366,7 @@ public class Db2StrategyTest {
                 sql -> sequenceResultSet(List.of(SeqRow.regular("SEQ1"))),
                 recording(executed));
 
-        strategy.afterInsert(cnn);
+        strategy.resetSequences(cnn, List.of());
 
         assertThat(executed).containsExactly("ALTER SEQUENCE SEQ1 RESTART WITH 10000");
     }
@@ -446,25 +443,6 @@ public class Db2StrategyTest {
                                 case "COLNAME" -> row.columnName();
                                 default -> throw new IllegalArgumentException("Unexpected column: " + args[0]);
                             };
-                        case "close":
-                            return null;
-                    }
-                    return null;
-                }
-        );
-    }
-
-    private static ResultSet maxValueResultSet(long value) {
-        AtomicInteger index = new AtomicInteger(-1);
-        return (ResultSet) Proxy.newProxyInstance(
-                ResultSet.class.getClassLoader(),
-                new Class<?>[]{ResultSet.class},
-                (proxy, method, args) -> {
-                    switch (method.getName()) {
-                        case "next":
-                            return index.incrementAndGet() == 0;
-                        case "getLong":
-                            return value;
                         case "close":
                             return null;
                     }

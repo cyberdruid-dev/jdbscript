@@ -19,7 +19,7 @@ public class DuckdbStrategyTest {
     }
 
     @Test
-    public void afterInsert_should_fail_clearly_when_sequence_discovery_itself_fails() {
+    public void resetSequences_should_fail_clearly_when_sequence_discovery_itself_fails() {
         // An empty database (zero sequences) still queries pg_catalog.pg_sequences successfully,
         // returning zero rows - verified against the real DuckDB driver. So this query failing at
         // all means the view itself is unavailable (e.g. an older duckdb_jdbc driver), not "no
@@ -30,14 +30,14 @@ public class DuckdbStrategyTest {
             throw new SQLException("no such table: pg_catalog.pg_sequences");
         });
 
-        assertThatThrownBy(() -> strategy.afterInsert(cnn))
+        assertThatThrownBy(() -> strategy.resetSequences(cnn, List.of()))
                 .isInstanceOf(SQLException.class)
                 .hasMessageContaining("pg_catalog.pg_sequences")
                 .hasMessageContaining("no such table: pg_catalog.pg_sequences");
     }
 
     @Test
-    public void afterInsert_should_fail_clearly_when_resetting_a_specific_sequence_fails() {
+    public void resetSequences_should_fail_clearly_when_resetting_a_specific_sequence_fails() {
         DuckdbStrategy strategy = new DuckdbStrategy();
         Connection cnn = connection(sql -> {
             if (sql.contains("pg_sequences")) {
@@ -46,7 +46,7 @@ public class DuckdbStrategyTest {
             throw new SQLException("some low-level driver error");
         });
 
-        assertThatThrownBy(() -> strategy.afterInsert(cnn))
+        assertThatThrownBy(() -> strategy.resetSequences(cnn, List.of()))
                 .isInstanceOf(SQLException.class)
                 .hasMessageContaining("SEQ1")
                 .hasMessageContaining("some low-level driver error");

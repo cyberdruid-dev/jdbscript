@@ -5,14 +5,17 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.sql.Types;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
 class DuckdbStrategy extends DefaultSqlExecutorStrategy {
     @Override
-    public void afterInsert(Connection cnn) throws SQLException {
+    public void resetSequences(Connection cnn, List<String> tableNames) throws SQLException {
+        // Ignored: getSequences() returns bare names with no table attribution to scope by.
         resetDuckdbSequences(cnn);
     }
 
@@ -31,31 +34,30 @@ class DuckdbStrategy extends DefaultSqlExecutorStrategy {
                 // surface loudly, not be treated as nothing to do.
                 throw new SQLException(
                         "Could not query pg_catalog.pg_sequences to discover DuckDB sequences to "
-                                + "reset after insert; if this schema uses sequences, their "
+                                + "reset during cleanup; if this schema uses sequences, their "
                                 + "auto-generated IDs may now collide with manually-inserted ones: "
                                 + e.getMessage(), e);
             }
             for (String seqName : seqNames) {
                 try {
                     if (!isPastSafeFloor(stmt, seqName)) {
-                        // DuckDB sequences don't advance automatically on manual inserts. We
-                        // advance them by a safe margin (10000) to avoid collisions with manual
-                        // IDs. We use range() to call nextval multiple times as ALTER SEQUENCE
-                        // RESTART is not yet fully supported in JDBC.
+                        // duckdb_jdbc 1.2.1 doesn't support ALTER SEQUENCE ... RESTART, so a
+                        // sequence can only be advanced via nextval(), never truly rewound - unlike
+                        // every other strategy here, this stays forward-only even at cleanup time.
                         try (var rs = stmt.executeQuery("SELECT nextval('" + seqName + "') FROM range(1, 10000)")) {
                         }
                     }
                 } catch (SQLException e) {
                     throw new SQLException(
-                            "Failed to reset DuckDB sequence '" + seqName + "' to a safe value after "
-                                    + "insert; auto-generated IDs from this sequence may now collide "
+                            "Failed to reset DuckDB sequence '" + seqName + "' to a safe value during "
+                                    + "cleanup; auto-generated IDs from this sequence may now collide "
                                     + "with manually-inserted ones: " + e.getMessage(), e);
                 }
             }
         }
     }
 
-    private boolean isPastSafeFloor(java.sql.Statement stmt, String seqName) throws SQLException {
+    private boolean isPastSafeFloor(Statement stmt, String seqName) throws SQLException {
         try (var rs = stmt.executeQuery(
                 "SELECT last_value FROM duckdb_sequences() WHERE sequence_name = '" + seqName + "'")) {
             return rs.next() && rs.getLong(1) >= 10000;

@@ -10,6 +10,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -17,6 +18,20 @@ public interface ISqlExecutorStrategy {
     void afterInsert(Connection cnn) throws SQLException;
 
     void beforeInsert(Connection cnn, JDBScript dbScript) throws SQLException;
+
+    /**
+     * Resets any DBMS-managed sequences this strategy is responsible for to a predictable floor.
+     * Called once per {@code cleanupTables(...)} call, after all rows are deleted, so a reset can
+     * be unconditional. No-op by default; only strategies for DBMS that manage sequences override
+     * it.
+     *
+     * @param tableNames the tables just cleaned up. A sequence attributable to a specific
+     *                    table/column (an identity/auto-increment column) must be scoped to these
+     *                    tables; one that can't (a standalone, user-created sequence) is reset
+     *                    schema/database-wide, as before.
+     */
+    default void resetSequences(Connection cnn, List<String> tableNames) throws SQLException {
+    }
 
     default void beforeEachInsert(Connection cnn, JDBRecord record) throws SQLException {
     }

@@ -10,11 +10,11 @@ import org.testng.annotations.Test;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Exercises {@code DuckdbStrategy.afterInsert()}'s sequence-reset against a live DuckDB, since the
- * mechanism it's checking (whether a sequence is already safely past the floor) is only meaningful
- * against DuckDB's own {@code duckdb_sequences()} - mocking that out wouldn't prove the real
- * behavior. {@link org.jdbscript.impl.sql.DuckdbStrategyTest} already covers the error-wrapping
- * branches with mocks; this proves the actual sequence value against real DuckDB.
+ * Exercises {@code DuckdbStrategy.resetSequences()} against a live DuckDB, since the mechanism it's
+ * checking (whether a sequence is already safely past the floor) is only meaningful against
+ * DuckDB's own {@code duckdb_sequences()} - mocking that out wouldn't prove the real behavior.
+ * {@link org.jdbscript.impl.sql.DuckdbStrategyTest} already covers the error-wrapping branches with
+ * mocks; this proves the actual sequence value against real DuckDB.
  */
 @Test
 public class DuckdbSequenceResetTest extends JdbAbstractTest {
@@ -23,7 +23,7 @@ public class DuckdbSequenceResetTest extends JdbAbstractTest {
 
     @BeforeMethod
     public void beforeMethod() {
-        skipUnless("DuckDB sequence reset after insert", DBMSType.DUCKDB);
+        skipUnless("DuckDB sequence reset on cleanup", DBMSType.DUCKDB);
         cleanupTables(TABLE_NAME_1);
     }
 
@@ -39,19 +39,22 @@ public class DuckdbSequenceResetTest extends JdbAbstractTest {
     }
 
     @Test
-    public void afterInsert_should_not_re_advance_a_sequence_already_past_the_safe_floor() {
+    public void cleanup_should_not_re_advance_a_sequence_already_past_the_safe_floor() {
         engine.insertDB(db -> db.table_1().id(1).str_column_1("first"));
-        long afterFirstInsert = currentSequenceValue();
-        assertThat(afterFirstInsert)
-                .describedAs("first insert should push the sequence past the safe floor")
+        engine.cleanupDB();
+        long afterFirstCleanup = currentSequenceValue();
+        assertThat(afterFirstCleanup)
+                .describedAs("first cleanup should push the sequence past the safe floor")
                 .isGreaterThanOrEqualTo(10000L);
 
         engine.insertDB(db -> db.table_1().id(2).str_column_1("second"));
-        long afterSecondInsert = currentSequenceValue();
+        engine.cleanupDB();
+        long afterSecondCleanup = currentSequenceValue();
 
-        assertThat(afterSecondInsert)
-                .describedAs("the sequence was already safely past the floor, so a second insert "
-                        + "shouldn't advance it any further")
-                .isEqualTo(afterFirstInsert);
+        assertThat(afterSecondCleanup)
+                .describedAs("the sequence was already safely past the floor, so a second cleanup "
+                        + "shouldn't advance it any further - DuckDB can't rewind it back down "
+                        + "(see DuckdbStrategy.resetDuckdbSequences)")
+                .isEqualTo(afterFirstCleanup);
     }
 }

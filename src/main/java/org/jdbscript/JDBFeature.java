@@ -9,7 +9,7 @@ package org.jdbscript;
  */
 public enum JDBFeature {
     /**
-     * DB2 only. {@code afterInsert()} resets sequences to a safe value so a later
+     * DB2 only. Cleanup resets sequences to a safe value so a later
      * auto-generated ID doesn't collide with a manually-inserted one - but DB2 refuses to
      * {@code ALTER SEQUENCE} a sequence that's implicitly owned by an identity column
      * (SQLCODE -20142). This constant leaves such sequences untouched: an identity column keeps

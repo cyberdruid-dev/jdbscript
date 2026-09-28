@@ -57,7 +57,7 @@ public class HsqldbStrategyTest {
     }
 
     @Test
-    public void afterInsert_should_reset_sequences() throws SQLException {
+    public void resetSequences_should_reset_sequences() throws SQLException {
         HsqldbStrategy strategy = new HsqldbStrategy();
         CallRecorder recorder = new CallRecorder();
         Connection cnn = recorder.createProxy(Connection.class);
@@ -66,7 +66,7 @@ public class HsqldbStrategyTest {
         recorder.addResultSetRow("SELECT SEQUENCE_NAME FROM INFORMATION_SCHEMA.SYSTEM_SEQUENCES WHERE SEQUENCE_SCHEMA = 'PUBLIC'", "SEQ1");
         recorder.addResultSetRow("SELECT SEQUENCE_NAME FROM INFORMATION_SCHEMA.SYSTEM_SEQUENCES WHERE SEQUENCE_SCHEMA = 'PUBLIC'", "SEQ2");
 
-        strategy.afterInsert(cnn);
+        strategy.resetSequences(cnn, List.of());
 
         assertThat(recorder.calls).contains(
                 "executeUpdate(ALTER SEQUENCE SEQ1 RESTART WITH 10000)",
@@ -75,24 +75,24 @@ public class HsqldbStrategyTest {
     }
 
     @Test
-    public void afterInsert_should_fail_clearly_when_sequence_discovery_itself_fails() {
+    public void resetSequences_should_fail_clearly_when_sequence_discovery_itself_fails() {
         // Same reasoning as DuckdbStrategyTest: an empty database still queries
         // INFORMATION_SCHEMA.SYSTEM_SEQUENCES successfully, returning zero rows - so this query
         // failing at all means something is actually wrong, not "no sequences". Swallowing it (the
-        // prior behavior) meant any sequences in the schema would silently go unreset after insert.
+        // prior behavior) meant any sequences in the schema would silently go unreset during cleanup.
         HsqldbStrategy strategy = new HsqldbStrategy();
         Connection cnn = failingConnection(sql -> {
             throw new SQLException("no such table: INFORMATION_SCHEMA.SYSTEM_SEQUENCES");
         }, sql -> 0);
 
-        assertThatThrownBy(() -> strategy.afterInsert(cnn))
+        assertThatThrownBy(() -> strategy.resetSequences(cnn, List.of()))
                 .isInstanceOf(SQLException.class)
                 .hasMessageContaining("SYSTEM_SEQUENCES")
                 .hasMessageContaining("no such table: INFORMATION_SCHEMA.SYSTEM_SEQUENCES");
     }
 
     @Test
-    public void afterInsert_should_fail_clearly_when_resetting_a_specific_sequence_fails() {
+    public void resetSequences_should_fail_clearly_when_resetting_a_specific_sequence_fails() {
         HsqldbStrategy strategy = new HsqldbStrategy();
         Connection cnn = failingConnection(
                 sql -> listResultSet(List.of("SEQ1")),
@@ -100,10 +100,103 @@ public class HsqldbStrategyTest {
                     throw new SQLException("some low-level driver error");
                 });
 
-        assertThatThrownBy(() -> strategy.afterInsert(cnn))
+        assertThatThrownBy(() -> strategy.resetSequences(cnn, List.of()))
                 .isInstanceOf(SQLException.class)
                 .hasMessageContaining("SEQ1")
                 .hasMessageContaining("some low-level driver error");
+    }
+
+    @Test
+    public void resetSequences_should_reset_an_identity_column_via_alter_table() throws SQLException {
+        HsqldbStrategy strategy = new HsqldbStrategy();
+        List<String> executed = new ArrayList<>();
+        Connection cnn = failingConnection(
+                sql -> sql.contains("SYSTEM_SEQUENCES") ? listResultSet(List.of())
+                        : identityColumnResultSet(List.<String[]>of(new String[]{"GENERATED_INT_ID_TABLE", "GENERATED_ID_COLUMN"})),
+                sql -> {
+                    executed.add(sql);
+                    return 0;
+                });
+
+        // Lowercase: engine-supplied tableNames don't match the catalog's casing, so this must be
+        // case-insensitive.
+        strategy.resetSequences(cnn, List.of("generated_int_id_table"));
+
+        assertThat(executed).containsExactly(
+                "ALTER TABLE GENERATED_INT_ID_TABLE ALTER COLUMN GENERATED_ID_COLUMN RESTART WITH 10000");
+    }
+
+    @Test
+    public void resetSequences_should_not_reset_an_identity_column_outside_the_cleaned_tables() throws SQLException {
+        HsqldbStrategy strategy = new HsqldbStrategy();
+        List<String> executed = new ArrayList<>();
+        Connection cnn = failingConnection(
+                sql -> sql.contains("SYSTEM_SEQUENCES") ? listResultSet(List.of())
+                        : identityColumnResultSet(List.<String[]>of(new String[]{"GENERATED_INT_ID_TABLE", "GENERATED_ID_COLUMN"})),
+                sql -> {
+                    executed.add(sql);
+                    return 0;
+                });
+
+        strategy.resetSequences(cnn, List.of("some_other_table"));
+
+        assertThat(executed).isEmpty();
+    }
+
+    @Test
+    public void resetSequences_should_fail_clearly_when_identity_column_discovery_itself_fails() {
+        HsqldbStrategy strategy = new HsqldbStrategy();
+        Connection cnn = failingConnection(sql -> {
+            if (sql.contains("SYSTEM_SEQUENCES")) {
+                return listResultSet(List.of());
+            }
+            throw new SQLException("no such table: INFORMATION_SCHEMA.COLUMNS");
+        }, sql -> 0);
+
+        assertThatThrownBy(() -> strategy.resetSequences(cnn, List.of()))
+                .isInstanceOf(SQLException.class)
+                .hasMessageContaining("INFORMATION_SCHEMA.COLUMNS");
+    }
+
+    @Test
+    public void resetSequences_should_fail_clearly_when_resetting_an_identity_column_fails() {
+        HsqldbStrategy strategy = new HsqldbStrategy();
+        Connection cnn = failingConnection(
+                sql -> sql.contains("SYSTEM_SEQUENCES") ? listResultSet(List.of())
+                        : identityColumnResultSet(List.<String[]>of(new String[]{"GENERATED_INT_ID_TABLE", "GENERATED_ID_COLUMN"})),
+                sql -> {
+                    throw new SQLException("some low-level driver error");
+                });
+
+        assertThatThrownBy(() -> strategy.resetSequences(cnn, List.of("generated_int_id_table")))
+                .isInstanceOf(SQLException.class)
+                .hasMessageContaining("GENERATED_INT_ID_TABLE")
+                .hasMessageContaining("GENERATED_ID_COLUMN")
+                .hasMessageContaining("some low-level driver error");
+    }
+
+    private static ResultSet identityColumnResultSet(List<String[]> rows) {
+        AtomicInteger index = new AtomicInteger(-1);
+        return (ResultSet) Proxy.newProxyInstance(
+                ResultSet.class.getClassLoader(),
+                new Class<?>[]{ResultSet.class},
+                (proxy, method, args) -> {
+                    switch (method.getName()) {
+                        case "next":
+                            return index.incrementAndGet() < rows.size();
+                        case "getString":
+                            String[] row = rows.get(index.get());
+                            return switch ((String) args[0]) {
+                                case "TABLE_NAME" -> row[0];
+                                case "COLUMN_NAME" -> row[1];
+                                default -> throw new IllegalArgumentException("Unexpected column: " + args[0]);
+                            };
+                        case "close":
+                            return null;
+                    }
+                    return null;
+                }
+        );
     }
 
     private interface QueryHandler {

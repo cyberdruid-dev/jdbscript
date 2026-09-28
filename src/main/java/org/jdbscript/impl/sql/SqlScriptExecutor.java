@@ -154,6 +154,7 @@ public class SqlScriptExecutor implements IScriptExecutor {
                     log.debug("Deleted {} rows from {}", deleted, tableName);
                 }
             }
+            getStrategy().resetSequences(cnn, tableNames);
         });
     }
 

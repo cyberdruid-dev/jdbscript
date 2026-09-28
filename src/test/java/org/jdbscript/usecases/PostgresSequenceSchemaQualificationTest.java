@@ -45,8 +45,8 @@ public class PostgresSequenceSchemaQualificationTest extends JdbAbstractTest {
 
     @BeforeMethod
     public void beforeMethod() {
-        // CockroachDBStrategy inherits getSequences()/resetPostgreSequences()/isPastSafeFloor()
-        // unchanged from PostgreSQLStrategy (no override), so the same bug and fix apply there too.
+        // CockroachDBStrategy inherits getSequences()/resetPostgreSequences() unchanged from
+        // PostgreSQLStrategy (no override), so the same bug and fix apply there too.
         skipUnless("Postgres/CockroachDB sequence schema qualification", DBMSType.POSTGRESQL, DBMSType.COCKROACHDB);
         dropTestObjects();
         executeUpdate("CREATE SCHEMA " + OTHER_SCHEMA);
@@ -83,13 +83,16 @@ public class PostgresSequenceSchemaQualificationTest extends JdbAbstractTest {
     }
 
     @Test
-    public void afterInsert_should_reset_the_sequence_the_table_actually_depends_on_not_a_same_named_one_elsewhere() {
+    public void cleanup_should_reset_the_sequence_the_table_actually_depends_on_not_a_same_named_one_elsewhere() {
         engine.insertDB(db -> db.pg_seq_qual_test_table().id(1).name("manual"));
+        engine.cleanupDB();
 
+        // >= 9999, not >= 10000: CockroachDB reports last_value as 9999 for the same "not yet
+        // consumed" state Postgres reports as 10000 (both correctly yield 10000 from nextval()).
         assertThat(sequenceValue(OTHER_SCHEMA + "." + SEQ))
                 .describedAs("the sequence actually backing the table's id should have been reset to "
-                        + "a safe value after a manual insert, not left untouched while a same-named "
-                        + "decoy elsewhere gets reset instead")
-                .isGreaterThanOrEqualTo(10000L);
+                        + "a safe value during cleanup, not left untouched while a same-named decoy "
+                        + "elsewhere gets reset instead")
+                .isGreaterThanOrEqualTo(9999L);
     }
 }

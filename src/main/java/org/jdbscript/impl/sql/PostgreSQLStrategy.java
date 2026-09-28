@@ -6,7 +6,9 @@ import java.util.UUID;
 
 class PostgreSQLStrategy extends  DefaultSqlExecutorStrategy{
     @Override
-    public void afterInsert(Connection cnn) throws SQLException {
+    public void resetSequences(Connection cnn, List<String> tableNames) throws SQLException {
+        // Ignored: getSequences() can't attribute a sequence to a table (see its comment), so
+        // there's nothing to scope by.
         resetPostgreSequences(cnn);
     }
 
@@ -28,31 +30,21 @@ class PostgreSQLStrategy extends  DefaultSqlExecutorStrategy{
             try (Statement stmt = cnn.createStatement()) {
                 List<String> seqNames = getSequences(stmt);
                 for (String seqName : seqNames) {
-                    // CockroachDB's last_value read lags what nextval() already handed out (even on
-                    // the same connection, right after a commit), so it can't be trusted for an
-                    // exact GREATEST(...) target - a stale value there would rewind the sequence
-                    // below one already in use. It's still trustworthy for this weaker check, since
-                    // staleness only ever under-reports: once it reads past the floor, skip entirely
-                    // rather than force it to a possibly-too-low computed value.
-                    if (!isPastSafeFloor(stmt, seqName)) {
-                        try (ResultSet rs = stmt.executeQuery(String.format("SELECT setval('%s', 10000, true);", seqName))) {
-                        }
+                    // is_called=false: true would mark 10000 itself as consumed, making the next
+                    // nextval() return 10001.
+                    try (ResultSet rs = stmt.executeQuery(String.format("SELECT setval('%s', 10000, false);", seqName))) {
                     }
                 }
             }
-    }
-
-    private boolean isPastSafeFloor(Statement stmt, String seqName) throws SQLException {
-        try (ResultSet rs = stmt.executeQuery("SELECT last_value FROM " + seqName)) {
-            return rs.next() && rs.getLong(1) >= 10000;
-        }
     }
 
     // information_schema.sequences deliberately excludes sequences "owned" by a table column
     // (i.e. SERIAL/GENERATED ... AS IDENTITY - see its pg_depend deptype='i' check) - exactly the
     // kind of sequence this needs to reset, so every one of them was silently skipped. pg_class
     // has no such exclusion and works on every supported Postgres/CockroachDB version, so there's
-    // no need to branch on version at all.
+    // no need to branch on version at all. Not scoped to current_schema(): a table's owning
+    // sequence can legitimately live in a different schema (see
+    // PostgresSequenceSchemaQualificationTest), so scoping this would risk missing it.
     private List<String> getSequences(Statement stmt) throws SQLException {
         List<String> result = new ArrayList<>();
         String sql = """

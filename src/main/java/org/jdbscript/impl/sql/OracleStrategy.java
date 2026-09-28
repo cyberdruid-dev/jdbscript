@@ -2,11 +2,25 @@ package org.jdbscript.impl.sql;
 
 import java.nio.ByteBuffer;
 import java.sql.*;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 class OracleStrategy extends DefaultSqlExecutorStrategy {
+
+    /** One row of {@code user_sequences}, plus the owning table/column for an identity-owned one. */
+    private record SequenceInfo(String name, long lastNumber, IdentityColumn identityColumn) {
+        boolean identityOwned() {
+            return identityColumn != null;
+        }
+    }
+
+    private record IdentityColumn(String tableName, String columnName, String generationType) {
+    }
 
     @Override
     public void setUUID(PreparedStatement stmt, int i, UUID uuid) throws SQLException {
@@ -24,54 +38,64 @@ class OracleStrategy extends DefaultSqlExecutorStrategy {
     }
 
     @Override
-    public void afterInsert(Connection cnn) throws SQLException {
-        resetOracleSequences(cnn);
+    public void resetSequences(Connection cnn, List<String> tableNames) throws SQLException {
+        resetOracleSequences(cnn, tableNames);
     }
 
-    public void resetOracleSequences(Connection cnn) throws SQLException {
+    public void resetOracleSequences(Connection cnn, List<String> tableNames) throws SQLException {
+            // A regular sequence isn't attributable to any table, so it stays schema-wide; an
+            // identity-owned one always has an owning table/column, so it's scoped to tableNames.
+            Set<String> tableNamesUpper = tableNames.stream().map(String::toUpperCase).collect(Collectors.toSet());
             try(Statement stmt = cnn.createStatement()) {
-                String sql;
-                Map<String, Long> seqValueMap = getSequences(stmt);
-                for (String seqName : seqValueMap.keySet()) {
-                    Long increment = 10000 - seqValueMap.get(seqName);
-                    if (increment == 0) {
-                        continue;
-                    }
-                    if (seqName.startsWith("ISEQ$$")) {
-                        sql = """
-                            DECLARE
-                            maxseq NUMBER;
-                            temp NUMBER;
-                            BEGIN
-                              SELECT %s.NEXTVAL INTO maxseq FROM DUAL;
-                              FOR i IN maxseq .. 10000
-                              LOOP
-                                SELECT %s.NEXTVAL INTO temp FROM DUAL;
-                              END LOOP;
-                            END;
-                        """.formatted(seqName, seqName);
-                        CallableStatement call = cnn.prepareCall(sql);
-                        call.execute();
-                        call.close();
-                    } else {
-                        stmt.executeUpdate("alter sequence " + seqName + " increment by " + increment);
-                        stmt.executeQuery("select " + seqName + ".nextval from dual").close();
-                        stmt.executeUpdate("alter sequence " + seqName + " increment by 1");
-                        stmt.executeQuery("select " + seqName + ".nextval from dual").close();
-                        stmt.executeUpdate("alter sequence " + seqName + " nocache");
+                for (SequenceInfo seq : getSequences(stmt)) {
+                    if (seq.identityOwned()) {
+                        if (!tableNamesUpper.contains(seq.identityColumn().tableName().toUpperCase())) {
+                            continue;
+                        }
+                        // ALTER TABLE ... MODIFY, not ALTER SEQUENCE - Oracle rejects ALTER
+                        // SEQUENCE on an identity column's implicit sequence. Reusing the column's
+                        // own GENERATION_TYPE matters: forcing ALWAYS would silently break explicit
+                        // inserts into a BY DEFAULT identity column.
+                        stmt.executeUpdate("ALTER TABLE %s MODIFY %s GENERATED %s AS IDENTITY (START WITH 10000)"
+                                .formatted(seq.identityColumn().tableName(), seq.identityColumn().columnName(),
+                                        seq.identityColumn().generationType()));
+                    } else if (seq.lastNumber() != 10000) {
+                        long increment = 10000 - seq.lastNumber();
+                        stmt.executeUpdate("alter sequence " + seq.name() + " increment by " + increment);
+                        stmt.executeQuery("select " + seq.name() + ".nextval from dual").close();
+                        stmt.executeUpdate("alter sequence " + seq.name() + " increment by 1");
+                        stmt.executeQuery("select " + seq.name() + ".nextval from dual").close();
+                        stmt.executeUpdate("alter sequence " + seq.name() + " nocache");
                     }
                 }
             }
     }
 
-    private Map<String, Long> getSequences(Statement stmt) throws SQLException {
-        Map<String, Long> result = new HashMap<>();
-        String sql = "SELECT SEQUENCE_NAME,LAST_NUMBER FROM user_sequences";// WHERE SEQUENCE_OWNER=";
+    private List<SequenceInfo> getSequences(Statement stmt) throws SQLException {
+        Map<String, IdentityColumn> identityColumnsBySeqName = new HashMap<>();
+        // Oracle names an identity column's implicit sequence 'ISEQ$$_<object_id>' - there's no
+        // catalog column that spells out the sequence name directly, so this rebuilds it from the
+        // owning table's object_id to join identity-column metadata back to user_sequences.
+        String identitySql = """
+                SELECT t.TABLE_NAME, t.COLUMN_NAME, t.GENERATION_TYPE, 'ISEQ$$_' || o.OBJECT_ID AS SEQ_NAME
+                FROM USER_TAB_IDENTITY_COLS t
+                JOIN USER_OBJECTS o ON o.OBJECT_NAME = t.TABLE_NAME AND o.OBJECT_TYPE = 'TABLE'
+                """;
+        try (ResultSet rs = stmt.executeQuery(identitySql)) {
+            while (rs.next()) {
+                identityColumnsBySeqName.put(rs.getString("SEQ_NAME"),
+                        new IdentityColumn(rs.getString("TABLE_NAME"), rs.getString("COLUMN_NAME"),
+                                rs.getString("GENERATION_TYPE")));
+            }
+        }
+
+        List<SequenceInfo> result = new ArrayList<>();
+        String sql = "SELECT SEQUENCE_NAME,LAST_NUMBER FROM user_sequences";
         try(ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {
                 String seqName = rs.getString("SEQUENCE_NAME");
-                Long seqValue = rs.getLong("LAST_NUMBER");
-                result.put(seqName, seqValue);
+                long seqValue = rs.getLong("LAST_NUMBER");
+                result.add(new SequenceInfo(seqName, seqValue, identityColumnsBySeqName.get(seqName)));
             }
         }
         return result;
