@@ -36,8 +36,20 @@ final class MigrationRunnerFactory {
     }
 
     static boolean classExists(String className) {
+        // Class.forName(name) alone resolves via the calling class's own loader - in a setup where
+        // jdbscript and the migration tool sit on different classloaders (e.g. an app server with
+        // jdbscript on a shared/parent classloader), that misses a Flyway/Liquibase genuinely
+        // reachable via the current thread's context classloader, so fall back to that too.
+        return classIsLoadableBy(className, MigrationRunnerFactory.class.getClassLoader())
+                || classIsLoadableBy(className, Thread.currentThread().getContextClassLoader());
+    }
+
+    private static boolean classIsLoadableBy(String className, ClassLoader loader) {
+        if (loader == null) {
+            return false;
+        }
         try {
-            Class.forName(className);
+            Class.forName(className, false, loader);
             return true;
         } catch (ClassNotFoundException e) {
             return false;
