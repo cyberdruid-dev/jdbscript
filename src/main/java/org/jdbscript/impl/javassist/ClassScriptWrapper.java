@@ -108,22 +108,30 @@ public class ClassScriptWrapper<T extends IDBSchema> {
         }
     }
 
-    private void implementMethods(CtClass cc) throws CannotCompileException {
-        for(Method jMethod: findDBRecordMethods()) {
+    private void implementMethods(CtClass cc) throws CannotCompileException, NotFoundException {
+        for(Method jMethod: findSchemaMethods()) {
             log.debug("Implementing: {}.{}()", cc.getSimpleName(), jMethod.getName());
-            String methodBody = """
-                public %s %s() {
-                    return this.script.%s();
-                }
-            """;
-            methodBody = methodBody.formatted(
-                    normalizeClassName(jMethod.getReturnType()),
-                    jMethod.getName(),
-                    jMethod.getName());
-            log.trace("method body: {}", methodBody);
-            CtMethod method = CtNewMethod.make(methodBody, cc);
+            String body = jMethod.getReturnType() == void.class
+                    ? "{ this.script.%s($$); }"
+                    : "{ return this.script.%s($$); }";
+            body = body.formatted(jMethod.getName());
+            log.trace("method body: {}", body);
+            CtMethod method = CtNewMethod.make(Modifier.PUBLIC, toCtClass(jMethod.getReturnType()), jMethod.getName(),
+                    toCtClasses(jMethod.getParameterTypes()), null, body, cc);
             cc.addMethod(method);
         }
+    }
+
+    private CtClass toCtClass(Class<?> type) throws NotFoundException {
+        return classPool.get(type.getTypeName());
+    }
+
+    private CtClass[] toCtClasses(Class<?>[] types) throws NotFoundException {
+        CtClass[] result = new CtClass[types.length];
+        for (int i = 0; i < types.length; i++) {
+            result[i] = toCtClass(types[i]);
+        }
+        return result;
     }
 
     private void addScriptField(CtClass cc) throws CannotCompileException {
@@ -152,9 +160,10 @@ public class ClassScriptWrapper<T extends IDBSchema> {
         cc.addMethod(method);
     }
 
-    private List<Method> findDBRecordMethods() {
+    private List<Method> findSchemaMethods() {
         return Arrays.stream(scriptClass.getMethods())
-                .filter(m-> IDBSchema.IDBRecord.class.isAssignableFrom(m.getReturnType()))
+                .filter(m -> Modifier.isAbstract(m.getModifiers()))
+                .filter(m -> m.getDeclaringClass().isAssignableFrom(schemaClass))
                 .toList();
     }
 
