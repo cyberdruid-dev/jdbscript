@@ -1,9 +1,8 @@
 package org.jdbscript.usecases;
 
-import org.jdbscript.IDBSchema;
-import org.jdbscript.IDBSchema.IDBRecord;
 import org.jdbscript.JDBEngine;
 import org.jdbscript.JdbAbstractTest;
+import org.jdbscript.db.ITestDBSchema;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
@@ -14,36 +13,28 @@ public class ClassScriptIncludeTest extends JdbAbstractTest {
 
     private final static String TABLE_NAME_1 = "table_1";
 
-    private interface ITable1Record extends IDBRecord {
-        ITable1Record id(int value);
-        ITable1Record str_column_1(String value);
-    }
-    private interface ITestSchema extends IDBSchema {
-        ITable1Record table_1();
-    }
+    private static final Consumer<ITestDBSchema> lambdaScript = db -> db.table_1().id(1).str_column_1("lambda");
 
-    private static final Consumer<ITestSchema> lambdaScript = db -> db.table_1().id(1).str_column_1("lambda");
-
-    public static abstract class IncludesLambdaScript implements ITestSchema {{
+    public static abstract class IncludesLambdaScript implements ITestDBSchema {{
         include(lambdaScript);
         table_1().id(2).str_column_1("class");
     }}
 
-    public static abstract class BaseScript implements ITestSchema {{
+    public static abstract class BaseScript implements ITestDBSchema {{
         table_1().id(1).str_column_1("base");
     }}
 
-    public static abstract class MiddleScript implements ITestSchema {{
+    public static abstract class MiddleScript implements ITestDBSchema {{
         include(BaseScript.class);
         table_1().id(2).str_column_1("middle");
     }}
 
-    public static abstract class TopScript implements ITestSchema {{
+    public static abstract class TopScript implements ITestDBSchema {{
         include(MiddleScript.class);
         table_1().id(3).str_column_1("top");
     }}
 
-    private final JDBEngine<ITestSchema> engine = createEngine(ITestSchema.class);
+    private final JDBEngine<ITestDBSchema> engine = createEngine(ITestDBSchema.class);
 
     @BeforeMethod
     public void beforeMethod() {

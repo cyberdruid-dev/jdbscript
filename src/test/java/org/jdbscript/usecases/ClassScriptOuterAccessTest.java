@@ -1,9 +1,8 @@
 package org.jdbscript.usecases;
 
-import org.jdbscript.IDBSchema;
-import org.jdbscript.IDBSchema.IDBRecord;
 import org.jdbscript.JDBEngine;
 import org.jdbscript.JdbAbstractTest;
+import org.jdbscript.db.ITestDBSchema;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
@@ -19,23 +18,15 @@ public class ClassScriptOuterAccessTest extends JdbAbstractTest {
         return "private method";
     }
 
-    private interface ITable1Record extends IDBRecord {
-        ITable1Record id(int value);
-        ITable1Record str_column_1(String value);
-    }
-    private interface ITestSchema extends IDBSchema {
-        ITable1Record table_1();
-    }
-
-    public static abstract class ReadsOuterPrivateField implements ITestSchema {{
+    public static abstract class ReadsOuterPrivateField implements ITestDBSchema {{
         table_1().id(1).str_column_1(PRIVATE_FIELD_VALUE);
     }}
 
-    public static abstract class CallsOuterPrivateMethod implements ITestSchema {{
+    public static abstract class CallsOuterPrivateMethod implements ITestDBSchema {{
         table_1().id(1).str_column_1(privateMethodValue());
     }}
 
-    private static abstract class PrivateBaseScript implements ITestSchema {{
+    private static abstract class PrivateBaseScript implements ITestDBSchema {{
         table_1().id(1).str_column_1("private base");
     }}
 
@@ -43,7 +34,7 @@ public class ClassScriptOuterAccessTest extends JdbAbstractTest {
         table_1().id(2).str_column_1("child");
     }}
 
-    private final JDBEngine<ITestSchema> engine = createEngine(ITestSchema.class);
+    private final JDBEngine<ITestDBSchema> engine = createEngine(ITestDBSchema.class);
 
     @BeforeMethod
     public void beforeMethod() {

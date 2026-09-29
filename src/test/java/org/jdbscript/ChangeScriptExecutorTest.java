@@ -1,6 +1,6 @@
 package org.jdbscript;
 
-import org.jdbscript.IDBSchema.IDBRecord;
+import org.jdbscript.db.ITestDBSchema;
 import org.jdbscript.errors.JDBScriptException;
 import org.jdbscript.impl.JDBScript;
 import org.jdbscript.impl.sql.SqlScriptExecutor;
@@ -15,16 +15,7 @@ public class ChangeScriptExecutorTest extends JdbAbstractTest {
 
     private final static String TABLE_NAME_1 = "table_1";
 
-    private interface ITable1Record extends IDBRecord {
-        ITable1Record id(int value);
-        ITable1Record str_column_1(String value);
-    }
-    private interface ITestSchema extends IDBSchema {
-
-        ITable1Record table_1();
-
-    }
-    private JDBEngine<ITestSchema> engine;
+    private JDBEngine<ITestDBSchema> engine;
     private static boolean myScriptExecutorUsed = false;
 
 
@@ -44,20 +35,20 @@ public class ChangeScriptExecutorTest extends JdbAbstractTest {
     public void beforeMethod(){
         cleanupTables(TABLE_NAME_1);
         myScriptExecutorUsed = false;
-        engine = JDBEngine.builder(ITestSchema.class)
+        engine = JDBEngine.builder(ITestDBSchema.class)
                 .dataSource(dataSource)
                 .build();
     }
 
     @Test
     public void builder_executor_method_should_not_accept_null() {
-        assertThatThrownBy(()->JDBEngine.builder(ITestSchema.class).executor(null))
+        assertThatThrownBy(()->JDBEngine.builder(ITestDBSchema.class).executor(null))
                 .isInstanceOf(JDBScriptException.class);
     }
 
     @Test
     public void engine_uses_executor_from_builder() {
-        JDBEngine<ITestSchema> engine = JDBEngine.builder(ITestSchema.class)
+        JDBEngine<ITestDBSchema> engine = JDBEngine.builder(ITestDBSchema.class)
                 .dataSource(dataSource)
                 .executor(new MyScriptExecutor())
                 .feature(JDBFeature.DB2_ID_OWNED_SEQUENCE_RESTART_WITH)

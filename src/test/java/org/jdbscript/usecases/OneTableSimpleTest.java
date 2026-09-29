@@ -1,9 +1,8 @@
 package org.jdbscript.usecases;
 
-import org.jdbscript.IDBSchema;
-import org.jdbscript.IDBSchema.IDBRecord;
 import org.jdbscript.IJDBEngine;
 import org.jdbscript.JdbAbstractTest;
+import org.jdbscript.db.ITestDBSchema;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
@@ -14,23 +13,12 @@ public class OneTableSimpleTest extends JdbAbstractTest {
 
     private final static String TABLE_NAME_1 = "table_1";
 
-    private interface ITable1Record extends IDBRecord {
-        ITable1Record id(int value);
-        ITable1Record str_column_1(String value);
-        ITable1Record str_column_2(String value);
-    }
-    private interface ITestSchema extends IDBSchema {
-
-        ITable1Record table_1();
-
-    }
-
     @BeforeMethod
     public void beforeMethod(){
         cleanupTables(TABLE_NAME_1);
     }
 
-    private final IJDBEngine<ITestSchema> engine = createEngine(ITestSchema.class);
+    private final IJDBEngine<ITestDBSchema> engine = createEngine(ITestDBSchema.class);
 
     @Test
     public void testResetOneColumn() {

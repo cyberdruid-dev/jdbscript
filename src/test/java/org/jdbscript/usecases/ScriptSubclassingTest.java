@@ -1,9 +1,8 @@
 package org.jdbscript.usecases;
 
-import org.jdbscript.IDBSchema;
-import org.jdbscript.IDBSchema.IDBRecord;
 import org.jdbscript.JDBEngine;
 import org.jdbscript.JdbAbstractTest;
+import org.jdbscript.db.ITestDBSchema;
 import org.jdbscript.errors.JDBScriptException;
 import org.assertj.core.api.Assertions;
 import org.slf4j.Logger;
@@ -19,18 +18,7 @@ public class ScriptSubclassingTest extends JdbAbstractTest {
 
     private final static String TABLE_NAME_1 = "table_1";
 
-    private interface ITable1Record extends IDBRecord {
-        ITable1Record id(int value);
-        ITable1Record str_column_1(String value);
-        ITable1Record str_column_2(String value);
-    }
-    private interface ITestSchema extends IDBSchema {
-
-        ITable1Record table_1();
-
-    }
-
-    public static abstract class TestDbScriptClass implements ITestSchema {{
+    public static abstract class TestDbScriptClass implements ITestDBSchema {{
         log.debug("Start: {}", this.getClass());
         table_1().id(1).str_column_1("one").str_column_2("two");
         table_1().id(2).str_column_1("three").str_column_2("four");
@@ -41,21 +29,21 @@ public class ScriptSubclassingTest extends JdbAbstractTest {
     // id can't be a fixed literal - it'd collide with itself on the second call.
     static final AtomicInteger privateTestDbScriptClassId = new AtomicInteger(1);
 
-    private static abstract class PrivateTestDbScriptClass implements ITestSchema {{
+    private static abstract class PrivateTestDbScriptClass implements ITestDBSchema {{
         log.debug("Start: {}", this.getClass());
         table_1().id(privateTestDbScriptClassId.getAndIncrement()).str_column_1("three").str_column_2("four");
     }
     public PrivateTestDbScriptClass() {};
     };
 
-    private static abstract class PrivateTestDbScriptClassWithPrivateConstructor implements ITestSchema {{
+    private static abstract class PrivateTestDbScriptClassWithPrivateConstructor implements ITestDBSchema {{
         log.debug("Start: {}", this.getClass());
         table_1().id(1).str_column_1("three").str_column_2("four");
     }
         private PrivateTestDbScriptClassWithPrivateConstructor() {};
     };
 
-    private abstract class NonStaticPrivateTestDbScriptClassWithPrivateConstructor implements ITestSchema {{
+    private abstract class NonStaticPrivateTestDbScriptClassWithPrivateConstructor implements ITestDBSchema {{
         log.debug("Start: {}", this.getClass());
         table_1().id(1).str_column_1("three").str_column_2("four");
     }
@@ -67,7 +55,7 @@ public class ScriptSubclassingTest extends JdbAbstractTest {
         cleanupTables(TABLE_NAME_1);
     }
 
-    private final JDBEngine<ITestSchema> engine = createEngine(ITestSchema.class);
+    private final JDBEngine<ITestDBSchema> engine = createEngine(ITestDBSchema.class);
 
 
     @Test

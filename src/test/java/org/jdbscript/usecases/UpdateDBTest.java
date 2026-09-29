@@ -6,6 +6,7 @@ import org.jdbscript.IDBSchema.IDBRecord;
 import org.jdbscript.JDBEngine;
 import org.jdbscript.JdbAbstractTest;
 import org.jdbscript.RecordTools;
+import org.jdbscript.db.ITestDBSchema;
 import org.jdbscript.errors.JDBScriptException;
 import org.jdbscript.impl.conversion.IJDBTypeConverter;
 import org.testng.annotations.BeforeMethod;
@@ -23,24 +24,12 @@ public class UpdateDBTest extends JdbAbstractTest {
     private final static String COMPOSITE_PK_TABLE = "composite_pk_table";
     private final static String NO_PK_TABLE = "no_pk_table";
 
-    private interface ITable1Record extends IDBRecord {
-        ITable1Record id(int value);
-        ITable1Record str_column_1(String value);
-        ITable1Record str_column_2(String value);
-        ITable1Record int_column_1(Integer value);
-    }
-    private interface ITable2Record extends IDBRecord {
-        ITable2Record id(int value);
-        ITable2Record int_column_1(Integer value);
-    }
     private interface ICompositePkRecord extends IDBRecord {
         ICompositePkRecord key_1(int value);
         ICompositePkRecord key_2(String value);
         ICompositePkRecord value_column(String value);
     }
-    private interface ITestSchema extends IDBSchema {
-        ITable1Record table_1();
-        ITable2Record table_2();
+    private interface ITestSchema extends ITestDBSchema {
         ICompositePkRecord composite_pk_table();
     }
 

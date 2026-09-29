@@ -1,9 +1,8 @@
 package org.jdbscript.usecases;
 
-import org.jdbscript.IDBSchema;
-import org.jdbscript.IDBSchema.IDBRecord;
 import org.jdbscript.JDBEngine;
 import org.jdbscript.JdbAbstractTest;
+import org.jdbscript.db.ITestDBSchema;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
@@ -14,23 +13,12 @@ public class IncludeScriptTest extends JdbAbstractTest {
 
     private final static String TABLE_NAME_1 = "table_1";
 
-    private interface ITable1Record extends IDBRecord {
-        ITable1Record id(int value);
-        ITable1Record str_column_1(String value);
-        ITable1Record str_column_2(String value);
-    }
-    private interface ITestSchema extends IDBSchema {
-
-        ITable1Record table_1();
-
-    }
-
-    private final Consumer<ITestSchema> includedScript = (db)-> {
+    private final Consumer<ITestDBSchema> includedScript = (db)-> {
         db.table_1().id(2).str_column_1("one").str_column_2("two");
         db.table_1().id(3).str_column_1("three").str_column_2("four");
     };
 
-    private static abstract class IncludedScriptClass implements ITestSchema {{
+    private static abstract class IncludedScriptClass implements ITestDBSchema {{
         table_1().id(2).str_column_1("class one").str_column_2("class two");
         table_1().id(3).str_column_1("class three").str_column_2("class four");
     }};
@@ -40,7 +28,7 @@ public class IncludeScriptTest extends JdbAbstractTest {
         cleanupTables(TABLE_NAME_1);
     }
 
-    private final JDBEngine<ITestSchema> engine = createEngine(ITestSchema.class);
+    private final JDBEngine<ITestDBSchema> engine = createEngine(ITestDBSchema.class);
 
     @Test
     public void included_script_should_be_added_to_result() {

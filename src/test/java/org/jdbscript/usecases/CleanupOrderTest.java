@@ -1,30 +1,14 @@
 package org.jdbscript.usecases;
 
 import org.jdbscript.*;
-import org.jdbscript.IDBSchema.IDBRecord;
+import org.jdbscript.db.ICustomerRecord;
+import org.jdbscript.db.IOrderItemRecord;
+import org.jdbscript.db.IOrderRecord;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 @Test
 public class CleanupOrderTest extends JdbAbstractTest {
-
-    private interface ICustomerRecord extends IDBRecord {
-        ICustomerRecord id(int value);
-        ICustomerRecord name(String value);
-    }
-
-    private interface IOrderRecord extends IDBRecord {
-        IOrderRecord id(int value);
-        IOrderRecord customer_id(int value);
-        IOrderRecord order_date(String value);
-    }
-
-    private interface IOrderItemRecord extends IDBRecord {
-        IOrderItemRecord id(int value);
-        IOrderItemRecord order_id(int value);
-        IOrderItemRecord product_name(String value);
-        IOrderItemRecord quantity(int value);
-    }
 
     private interface IBaseSchema extends IDBSchema {
         IOrderItemRecord order_items();

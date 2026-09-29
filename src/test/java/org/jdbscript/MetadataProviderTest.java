@@ -1,6 +1,6 @@
 package org.jdbscript;
 
-import org.jdbscript.IDBSchema.IDBRecord;
+import org.jdbscript.db.ICustomerRecord;
 import org.jdbscript.impl.IMetadataProvider;
 import org.jdbscript.impl.sql.SqlConnectionProvider;
 import org.jdbscript.impl.sql.SqlMetadataProvider;
@@ -14,10 +14,6 @@ import static org.testng.Assert.assertFalse;
 
 @Test
 public class MetadataProviderTest extends JdbAbstractTest {
-
-    private interface ICustomerRecord extends IDBRecord {
-        ICustomerRecord id(int value);
-    }
 
     private interface ITestSchema extends IDBSchema {
         ICustomerRecord customers();

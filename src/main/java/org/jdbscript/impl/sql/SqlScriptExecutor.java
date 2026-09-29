@@ -32,6 +32,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import static org.jdbscript.DBMSType.UNKNOWN;
 import static org.jdbscript.errors.Checks.checkIsNull;
+import static java.util.stream.Collectors.joining;
 import static org.jdbscript.errors.Checks.checkNotNull;
 import static org.jdbscript.errors.JDBErrors.DATASOURCE_ALREADY_SET;
 import static org.jdbscript.errors.JDBErrors.DATASOURCE_IS_NOT_CONFIGURED;
@@ -220,8 +221,8 @@ public class SqlScriptExecutor implements IScriptExecutor {
             throw UPDATE_NOTHING_TO_SET.get(record.getTableName());
         }
         String sql = "UPDATE " + record.getTableName()
-                + " SET " + String.join(", ", setColumns.stream().map(c -> c + " = ?").toList())
-                + " WHERE " + String.join(" AND ", keyColumns.stream().map(c -> c + " = ?").toList());
+                + " SET " + setColumns.stream().map(c -> c + " = ?").collect(joining(", "))
+                + " WHERE " + keyColumns.stream().map(c -> c + " = ?").collect(joining(" AND "));
         PreparedStatement stmt = stmtProvider.get(sql);
         int paramIndex = 1;
         for (String column : setColumns) {
@@ -231,7 +232,7 @@ public class SqlScriptExecutor implements IScriptExecutor {
             setColumnValue(cnn, record.getTableName(), column, stmt, paramIndex++, record.getColumns().get(column));
         }
         if (stmt.executeUpdate() == 0) {
-            String key = String.join(", ", keyColumns.stream().map(c -> c + "=" + record.getColumns().get(c)).toList());
+            String key = keyColumns.stream().map(c -> c + "=" + record.getColumns().get(c)).collect(joining(", "));
             throw UPDATE_ROW_NOT_FOUND.get(record.getTableName(), key);
         }
     }

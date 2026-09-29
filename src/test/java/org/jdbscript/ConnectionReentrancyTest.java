@@ -1,8 +1,8 @@
 package org.jdbscript;
 
+import org.jdbscript.db.ICustomerRecord;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
-import org.jdbscript.IDBSchema.IDBRecord;
 import org.testng.annotations.Test;
 
 import java.sql.Connection;
@@ -16,11 +16,6 @@ import java.sql.Connection;
  */
 @Test
 public class ConnectionReentrancyTest {
-
-    private interface ICustomerRecord extends IDBRecord {
-        ICustomerRecord id(int value);
-        ICustomerRecord name(String value);
-    }
 
     private interface ITestSchema extends IDBSchema {
         ICustomerRecord customers();

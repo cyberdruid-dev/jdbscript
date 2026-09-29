@@ -1,7 +1,7 @@
 package org.jdbscript.usecases;
 
+import org.jdbscript.db.IOrderSchema;
 import org.jdbscript.*;
-import org.jdbscript.IDBSchema.IDBRecord;
 import org.jdbscript.errors.JDBScriptException;
 import org.jdbscript.impl.IMetadataProvider;
 import org.jdbscript.impl.JDBRecord;
@@ -20,24 +20,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @Test
 public class TableDependencyOrderTest extends JdbAbstractTest {
-
-    private interface ICustomerRecord extends IDBRecord {
-        ICustomerRecord id(int value);
-    }
-
-    private interface IOrderRecord extends IDBRecord {
-        IOrderRecord id(int value);
-    }
-
-    private interface IOrderItemRecord extends IDBRecord {
-        IOrderItemRecord id(int value);
-    }
-
-    private interface ITestSchema extends IDBSchema {
-        ICustomerRecord customers();
-        IOrderRecord orders();
-        IOrderItemRecord order_items();
-    }
 
     /**
      * A metadata provider whose auto-detected ordering methods throw if called - proves that a
@@ -88,7 +70,7 @@ public class TableDependencyOrderTest extends JdbAbstractTest {
             }
         };
 
-        IJDBEngine<ITestSchema> engine = JDBEngine.builder(ITestSchema.class)
+        IJDBEngine<IOrderSchema> engine = JDBEngine.builder(IOrderSchema.class)
                 .dataSource(() -> dataSource)
                 .executor(mockExecutor)
                 .tableDependencyOrder(List.of("customers", "orders", "order_items"))
@@ -120,7 +102,7 @@ public class TableDependencyOrderTest extends JdbAbstractTest {
             }
         };
 
-        IJDBEngine<ITestSchema> engine = JDBEngine.builder(ITestSchema.class)
+        IJDBEngine<IOrderSchema> engine = JDBEngine.builder(IOrderSchema.class)
                 .dataSource(() -> dataSource)
                 .executor(mockExecutor)
                 .tableDependencyOrder(List.of("customers", "orders", "order_items"))
@@ -134,7 +116,7 @@ public class TableDependencyOrderTest extends JdbAbstractTest {
     @Test
     public void tableDependencyOrder_missing_an_interface_table_fails_on_first_use() {
         // Validated lazily, on first use - not eagerly at build() - to keep the engine lazy.
-        IJDBEngine<ITestSchema> engine = JDBEngine.builder(ITestSchema.class)
+        IJDBEngine<IOrderSchema> engine = JDBEngine.builder(IOrderSchema.class)
                 .dataSource(() -> dataSource)
                 .executor(testConfiguration.getScriptExecutor())
                 .tableDependencyOrder(List.of("customers", "orders"))
@@ -147,7 +129,7 @@ public class TableDependencyOrderTest extends JdbAbstractTest {
 
     @Test
     public void tableDependencyOrder_is_case_insensitive_and_ignores_extra_tables() {
-        IJDBEngine<ITestSchema> engine = JDBEngine.builder(ITestSchema.class)
+        IJDBEngine<IOrderSchema> engine = JDBEngine.builder(IOrderSchema.class)
                 .dataSource(() -> dataSource)
                 .executor(testConfiguration.getScriptExecutor())
                 .tableDependencyOrder(List.of("CUSTOMERS", "Orders", "order_items", "some_other_table"))

@@ -1,7 +1,7 @@
 package org.jdbscript.usecases;
 
+import org.jdbscript.db.IOrderSchema;
 import org.jdbscript.*;
-import org.jdbscript.IDBSchema.IDBRecord;
 import org.jdbscript.impl.IMetadataProvider;
 import org.jdbscript.impl.JDBRecord;
 import org.jdbscript.impl.JDBScript;
@@ -18,31 +18,7 @@ import java.util.List;
 @Test
 public class InsertOrderTest extends JdbAbstractTest {
 
-    private interface ICustomerRecord extends IDBRecord {
-        ICustomerRecord id(int value);
-        ICustomerRecord name(String value);
-    }
-
-    private interface IOrderRecord extends IDBRecord {
-        IOrderRecord id(int value);
-        IOrderRecord customer_id(int value);
-        IOrderRecord order_date(String value);
-    }
-
-    private interface IOrderItemRecord extends IDBRecord {
-        IOrderItemRecord id(int value);
-        IOrderItemRecord order_id(int value);
-        IOrderItemRecord product_name(String value);
-        IOrderItemRecord quantity(int value);
-    }
-
-    private interface ITestSchema extends IDBSchema {
-        ICustomerRecord customers();
-        IOrderRecord orders();
-        IOrderItemRecord order_items();
-    }
-
-    private final IJDBEngine<ITestSchema> engine = createEngine(ITestSchema.class);
+    private final IJDBEngine<IOrderSchema> engine = createEngine(IOrderSchema.class);
 
     @BeforeMethod
     public void before() {
@@ -119,7 +95,7 @@ public class InsertOrderTest extends JdbAbstractTest {
             }
         };
 
-        IJDBEngine<ITestSchema> engineWithMock = JDBEngine.builder(ITestSchema.class)
+        IJDBEngine<IOrderSchema> engineWithMock = JDBEngine.builder(IOrderSchema.class)
                 .dataSource(() -> dataSource)
                 .executor(mockExecutor)
                 .build();
