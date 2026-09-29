@@ -36,6 +36,10 @@ import static org.jdbscript.errors.Checks.checkNotNull;
 import static org.jdbscript.errors.JDBErrors.DATASOURCE_ALREADY_SET;
 import static org.jdbscript.errors.JDBErrors.DATASOURCE_IS_NOT_CONFIGURED;
 import static org.jdbscript.errors.JDBErrors.EMPTY_ASSERTION_RECORD;
+import static org.jdbscript.errors.JDBErrors.UPDATE_NOTHING_TO_SET;
+import static org.jdbscript.errors.JDBErrors.UPDATE_PRIMARY_KEY_NOT_SET;
+import static org.jdbscript.errors.JDBErrors.UPDATE_ROW_NOT_FOUND;
+import static org.jdbscript.errors.JDBErrors.UPDATE_TABLE_HAS_NO_PRIMARY_KEY;
 
 public class SqlScriptExecutor implements IScriptExecutor {
     private static final Logger log = LoggerFactory.getLogger(SqlScriptExecutor.class);
@@ -184,6 +188,52 @@ public class SqlScriptExecutor implements IScriptExecutor {
     @Override
     public IMetadataProvider getMetadataProvider() {
         return metadataProvider;
+    }
+
+    @Override
+    public void update(JDBScript dbScript) {
+        withPreparedStatements((cnn, stmtProvider) -> {
+            for (JDBRecord record : dbScript.getRecords()) {
+                updateRecord(cnn, record, stmtProvider);
+            }
+        });
+    }
+
+    private void updateRecord(Connection cnn, JDBRecord record, PreparedStatementProvider stmtProvider) throws SQLException {
+        List<String> primaryKey = metadataProvider.getPrimaryKeyColumns(record.getTableName());
+        if (primaryKey.isEmpty()) {
+            throw UPDATE_TABLE_HAS_NO_PRIMARY_KEY.get(record.getTableName());
+        }
+        List<String> keyColumns = new ArrayList<>();
+        List<String> setColumns = new ArrayList<>();
+        for (String column : getSortedColumns(record)) {
+            boolean isKey = primaryKey.stream().anyMatch(pk -> pk.equalsIgnoreCase(column));
+            (isKey ? keyColumns : setColumns).add(column);
+        }
+        List<String> missingKeys = primaryKey.stream()
+                .filter(pk -> keyColumns.stream().noneMatch(pk::equalsIgnoreCase))
+                .toList();
+        if (!missingKeys.isEmpty()) {
+            throw UPDATE_PRIMARY_KEY_NOT_SET.get(record.getTableName(), String.join(", ", missingKeys));
+        }
+        if (setColumns.isEmpty()) {
+            throw UPDATE_NOTHING_TO_SET.get(record.getTableName());
+        }
+        String sql = "UPDATE " + record.getTableName()
+                + " SET " + String.join(", ", setColumns.stream().map(c -> c + " = ?").toList())
+                + " WHERE " + String.join(" AND ", keyColumns.stream().map(c -> c + " = ?").toList());
+        PreparedStatement stmt = stmtProvider.get(sql);
+        int paramIndex = 1;
+        for (String column : setColumns) {
+            setColumnValue(cnn, record.getTableName(), column, stmt, paramIndex++, record.getColumns().get(column));
+        }
+        for (String column : keyColumns) {
+            setColumnValue(cnn, record.getTableName(), column, stmt, paramIndex++, record.getColumns().get(column));
+        }
+        if (stmt.executeUpdate() == 0) {
+            String key = String.join(", ", keyColumns.stream().map(c -> c + "=" + record.getColumns().get(c)).toList());
+            throw UPDATE_ROW_NOT_FOUND.get(record.getTableName(), key);
+        }
     }
 
     @Override

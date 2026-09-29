@@ -29,6 +29,7 @@ public class SqlMetadataProvider implements IMetadataProvider {
     private record TableDependencyKey(String tableName) implements IJDBCacheKey<Set<String>> {}
     private record AllTablesKey() implements IJDBCacheKey<List<String>> {}
     private record SortedTablesKey() implements IJDBCacheKey<List<String>> {}
+    private record PrimaryKeyKey(String tableName) implements IJDBCacheKey<List<String>> {}
     private static final DBMSTypeKey DBMS_TYPE_KEY = new DBMSTypeKey();
     private static final AllTablesKey ALL_TABLES_KEY = new AllTablesKey();
     private static final SortedTablesKey SORTED_TABLES_KEY = new SortedTablesKey();
@@ -113,6 +114,29 @@ public class SqlMetadataProvider implements IMetadataProvider {
             }
         });
         return tables;
+    }
+
+    public List<String> getPrimaryKeyColumns(String tableName) {
+        return cache.getOrCompute(new PrimaryKeyKey(tableName.toUpperCase()), k -> fetchPrimaryKeyColumns(tableName));
+    }
+
+    // getPrimaryKeys matches the table name exactly, so use the DBMS's own spelling of it.
+    private List<String> fetchPrimaryKeyColumns(String tableName) {
+        String dbTableName = getAllTables().stream()
+                .filter(t -> t.equalsIgnoreCase(tableName))
+                .findFirst()
+                .orElse(tableName);
+        List<String> columns = new ArrayList<>();
+        withConnection(cnn -> {
+            String searchCatalog = getStrategy().getSearchCatalog(cnn);
+            String searchSchema = getStrategy().getSearchSchema(cnn);
+            try (ResultSet rs = cnn.getMetaData().getPrimaryKeys(searchCatalog, searchSchema, dbTableName)) {
+                while (rs.next()) {
+                    columns.add(rs.getString("COLUMN_NAME"));
+                }
+            }
+        });
+        return columns;
     }
 
     @Override

@@ -4,11 +4,14 @@ package org.jdbscript.impl.sql;
  * Lifecycle hooks for a {@link ReentrantResource}: {@link #afterOpen} runs exactly once, right
  * after the resource is freshly created (skipped on a reentrant reuse), and {@link #beforeClose}
  * runs exactly once, right before the resource is actually closed (i.e. when the outermost caller
- * releases it).
+ * releases it). If the outermost caller fails, {@link #onFailure} runs instead of {@link #beforeClose}.
  *
  * @param <T> the resource type
  */
 interface IReentrantResourceCallback<T extends AutoCloseable> {
     void afterOpen(T resource) throws Exception;
     void beforeClose(T resource) throws Exception;
+
+    default void onFailure(T resource) throws Exception {
+    }
 }

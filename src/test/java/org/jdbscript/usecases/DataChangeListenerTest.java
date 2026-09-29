@@ -71,6 +71,45 @@ public class DataChangeListenerTest extends JdbAbstractTest {
     }
 
     @Test
+    public void test_updateDB_consumer_fires_listener_once() {
+        executeUpdate("INSERT INTO table_1 (id, str_column_1) VALUES (1, 'hello')");
+        AtomicInteger count = new AtomicInteger();
+        IJDBEngine<ITestSchema> engine = engineBuilder(ITestSchema.class)
+                .onDataChange(count::incrementAndGet)
+                .build();
+
+        engine.updateDB(db -> db.table_1().id(1).str_column_1("changed"));
+
+        assertThat(count).hasValue(1);
+    }
+
+    @Test
+    public void test_updateDB_class_fires_listener_once() {
+        executeUpdate("INSERT INTO table_1 (id, str_column_1) VALUES (1, 'hello')");
+        AtomicInteger count = new AtomicInteger();
+        IJDBEngine<ITestSchema> engine = engineBuilder(ITestSchema.class)
+                .onDataChange(count::incrementAndGet)
+                .build();
+
+        engine.updateDB(SomeScript.class);
+
+        assertThat(count).hasValue(1);
+    }
+
+    @Test
+    public void test_failed_updateDB_does_not_fire_listener() {
+        AtomicInteger count = new AtomicInteger();
+        IJDBEngine<ITestSchema> engine = engineBuilder(ITestSchema.class)
+                .onDataChange(count::incrementAndGet)
+                .build();
+
+        assertThatThrownBy(() -> engine.updateDB(db -> db.table_1().id(99).str_column_1("changed")))
+                .isInstanceOf(JDBScriptException.class);
+
+        assertThat(count).hasValue(0);
+    }
+
+    @Test
     public void test_resetDB_class_fires_listener_once_not_twice() {
         AtomicInteger count = new AtomicInteger();
         IJDBEngine<ITestSchema> engine = engineBuilder(ITestSchema.class)

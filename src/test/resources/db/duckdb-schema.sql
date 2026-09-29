@@ -99,3 +99,15 @@ CREATE TABLE IF NOT EXISTS order_items (
     quantity INTEGER,
     CONSTRAINT fk_order_items_orders FOREIGN KEY (order_id) REFERENCES orders(id)
 );
+
+CREATE TABLE IF NOT EXISTS composite_pk_table (
+    key_1 INTEGER,
+    key_2 VARCHAR(20),
+    value_column VARCHAR(50),
+    PRIMARY KEY (key_1, key_2)
+);
+
+CREATE TABLE IF NOT EXISTS no_pk_table (
+    id INTEGER,
+    value_column VARCHAR(50)
+);

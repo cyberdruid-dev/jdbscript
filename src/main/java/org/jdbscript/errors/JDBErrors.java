@@ -52,7 +52,19 @@ public enum JDBErrors implements Supplier<JDBScriptException> {
     /** assertDBHas/assertDBHasNot called with a record that has no columns set. */
     EMPTY_ASSERTION_RECORD(JDBScriptException.class,
             "assertDBHas/assertDBHasNot requires at least one column to be set to match against, "
-                    + "but table '%s' had none set.");
+                    + "but table '%s' had none set."),
+    /** updateDB found no row with the record's primary key. */
+    UPDATE_ROW_NOT_FOUND(JDBScriptException.class,
+            "updateDB found no row in table '%s' with primary key %s."),
+    /** updateDB can only find a row by its primary key. */
+    UPDATE_TABLE_HAS_NO_PRIMARY_KEY(JDBScriptException.class,
+            "updateDB finds the row to update by its primary key, but table '%s' has no primary key."),
+    /** updateDB needs every primary key column set, or it could update several rows. */
+    UPDATE_PRIMARY_KEY_NOT_SET(JDBScriptException.class,
+            "updateDB needs every primary key column set to find the row in table '%s'; missing: %s."),
+    /** updateDB record sets only primary key columns. */
+    UPDATE_NOTHING_TO_SET(JDBScriptException.class,
+            "updateDB has nothing to update in table '%s': only primary key columns were set.");
 
     private final Class<? extends JDBScriptException> exception;
     private final String message;

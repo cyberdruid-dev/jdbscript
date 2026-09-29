@@ -124,6 +124,24 @@ public class JDBEngine<T extends IDBSchema> implements IJDBEngine<T>{
         notifyDataChange();
     }
 
+    @Override
+    public void updateDB(Consumer<T> db) {
+        log.debug("updateDB(consumer={})", db);
+        validateSchema();
+        ScriptHandler<T> handler = new ScriptHandler(dbSchemaClass);
+        db.accept(handler.getProxy());
+        JDBScript script = handler.getDbScript();
+        converter.convertTypes(script);
+        getExecutor().update(script);
+        notifyDataChange();
+    }
+
+    @Override
+    public void updateDB(Class<? extends T> scriptClass) {
+        log.debug("updateDB({})", scriptClass.getName());
+        updateDB(db -> db.include(scriptClass));
+    }
+
     private void insertDBInternal(Class<? extends T> scriptClass) {
         insertDBInternal(db -> db.include(scriptClass));
     }

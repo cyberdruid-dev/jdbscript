@@ -27,6 +27,15 @@ public interface IScriptExecutor {
     void insert(JDBScript dbScript);
 
     /**
+     * Updates the rows selected by each record's primary key with the record's other columns.
+     *
+     * @param dbScript the compiled script containing records to update
+     */
+    default void update(JDBScript dbScript) {
+        throw new UnsupportedOperationException(getClass().getName() + " does not support updateDB()");
+    }
+
+    /**
      * Cleans up (deletes all records from) the specified tables.
      *
      * @param tableNames the names of the tables to truncate or delete

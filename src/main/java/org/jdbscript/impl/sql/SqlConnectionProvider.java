@@ -68,6 +68,11 @@ public class SqlConnectionProvider {
             public void beforeClose(Connection cnn) throws SQLException {
                 getStrategy(cnn).commit(cnn);
             }
+
+            @Override
+            public void onFailure(Connection cnn) throws SQLException {
+                getStrategy(cnn).rollback(cnn);
+            }
         };
 
         try {

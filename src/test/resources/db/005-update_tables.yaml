@@ -1,0 +1,36 @@
+databaseChangeLog:
+  - changeSet:
+      id: 005-composite_pk_table
+      author: Cyber Druid
+      changes:
+        - createTable:
+            tableName: composite_pk_table
+            columns:
+              - column:
+                  name: key_1
+                  type: int
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: key_2
+                  type: varchar(20)
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: value_column
+                  type: varchar(50)
+  - changeSet:
+      id: 005-no_pk_table
+      author: Cyber Druid
+      # Spanner requires a primary key on every table.
+      dbms: "!cloudspanner"
+      changes:
+        - createTable:
+            tableName: no_pk_table
+            columns:
+              - column:
+                  name: id
+                  type: int
+              - column:
+                  name: value_column
+                  type: varchar(50)

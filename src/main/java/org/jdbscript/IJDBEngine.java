@@ -42,6 +42,22 @@ public interface IJDBEngine <T extends IDBSchema>{
      */
     void cleanupDB();
 
+    /**
+     * Updates existing rows: for each record, its primary key columns (read from the database
+     * metadata) select the row, and every other column set in the script is updated. No defaults
+     * are applied - only the columns set in the script are touched.
+     *
+     * @param db a {@link Consumer} receiving the schema proxy to define the rows to update
+     */
+    void updateDB(Consumer<T> db);
+
+    /**
+     * Updates existing rows from the specified class-based script, as {@link #updateDB(Consumer)} does.
+     *
+     * @param scriptClass the class extending the schema interface that defines the rows to update
+     */
+    void updateDB(Class<? extends T> scriptClass);
+
     void assertDBHas(Consumer<T> dbAsserts);
 
     void assertDBHasNot(Consumer<T> dbAsserts);

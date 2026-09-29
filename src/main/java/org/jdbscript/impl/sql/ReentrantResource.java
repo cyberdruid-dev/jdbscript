@@ -35,8 +35,8 @@ class ReentrantResource<T extends AutoCloseable> {
     /**
      * Gets (creating if needed) the resource for the current thread and runs {@code consumer}
      * against it. Only the outermost call on this thread actually closes the resource when it
-     * returns - running {@code callback.beforeClose} first - or releases it (without ever having
-     * run {@code callback.beforeClose} or closed it) if {@code consumer} or {@code callback} fails.
+     * returns - running {@code callback.beforeClose} first - or, if {@code consumer} or
+     * {@code callback} fails, runs {@code callback.onFailure} instead and closes it.
      *
      * @param consumer run against the resource on every call, fresh or reentrant
      * @param callback lifecycle hooks; see {@link IReentrantResourceCallback}
@@ -68,18 +68,18 @@ class ReentrantResource<T extends AutoCloseable> {
         // Only reached on success, after the try/catch above - so a failure here (e.g. commit())
         // propagates directly, instead of being caught by that catch and treated as a second,
         // spurious release of the same acquisition.
-        close(opened, callback);
+        close(opened, callback, false);
     }
 
     private void releaseQuietly(ResourceCount<T> resource, IReentrantResourceCallback<T> callback, Throwable primary) {
         try {
-            close(resource, callback);
+            close(resource, callback, true);
         } catch (Exception releaseFailure) {
             primary.addSuppressed(releaseFailure);
         }
     }
 
-    private void close(ResourceCount<T> resource, IReentrantResourceCallback<T> callback) throws Exception {
+    private void close(ResourceCount<T> resource, IReentrantResourceCallback<T> callback, boolean failed) throws Exception {
         resource.count--;
         if (resource.count == 0) {
             localResource.remove();
@@ -87,7 +87,11 @@ class ReentrantResource<T extends AutoCloseable> {
             // otherwise a failed commit would leak the underlying connection instead of
             // returning it to the pool.
             try {
-                callback.beforeClose(resource.resource);
+                if (failed) {
+                    callback.onFailure(resource.resource);
+                } else {
+                    callback.beforeClose(resource.resource);
+                }
             } catch (Throwable beforeCloseFailure) {
                 try {
                     resource.resource.close();

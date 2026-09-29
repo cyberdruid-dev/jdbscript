@@ -32,6 +32,11 @@ public class ReentrantResourceTest {
             public void beforeClose(FakeResource resource) {
                 events.add("beforeClose");
             }
+
+            @Override
+            public void onFailure(FakeResource resource) {
+                events.add("onFailure");
+            }
         };
     }
 
@@ -105,6 +110,21 @@ public class ReentrantResourceTest {
         }, callback);
 
         assertThat(supplierCalls.get()).describedAs("each thread gets its own resource").isEqualTo(2);
+    }
+
+    @Test
+    public void failed_run_calls_onFailure_instead_of_beforeClose() {
+        FakeResource resource = new FakeResource();
+        ReentrantResource<FakeResource> reentrant = new ReentrantResource<>(() -> resource);
+        List<String> events = new ArrayList<>();
+
+        assertThatThrownBy(() -> reentrant.run(r -> {
+            events.add("consumer");
+            throw new RuntimeException("boom");
+        }, recordingCallback(events))).hasMessage("boom");
+
+        assertThat(events).containsExactly("afterOpen", "consumer", "onFailure");
+        assertThat(resource.closeCount.get()).isEqualTo(1);
     }
 
     @Test

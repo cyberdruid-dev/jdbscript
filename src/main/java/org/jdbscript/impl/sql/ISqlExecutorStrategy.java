@@ -60,6 +60,12 @@ public interface ISqlExecutorStrategy {
 
     void commit(Connection cnn) throws SQLException;
 
+    default void rollback(Connection cnn) throws SQLException {
+        if (!cnn.getAutoCommit()) {
+            cnn.rollback();
+        }
+    }
+
     String getSearchCatalog(Connection cnn) throws SQLException;
 
     String getSearchSchema(Connection cnn) throws SQLException;

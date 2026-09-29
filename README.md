@@ -240,6 +240,16 @@ engine.resetDB(db -> {
 });
 ```
 
+### Updating Existing Rows
+
+Change a few columns of rows that are already in the database, e.g. a shared baseline from `@BeforeMethod`, or data changed mid-test:
+
+```java
+engine.updateDB(db -> db.users().id(1L).active(false));
+```
+
+Each record's primary key (read from the database metadata) selects the row; every other column set in the script is updated, and nothing else is touched - defaults are not applied. The call fails if a row isn't found, the table has no primary key, or a record doesn't set every primary key column. Like `insertDB`, each call runs in one transaction, rolled back if any record fails.
+
 ### Database Cleanup
 
 Purge all records from tables associated with the schema:
@@ -261,7 +271,7 @@ IJDBEngine<IAppSchema> engine = JDBEngine.builder(IAppSchema.class)
     .build();
 ```
 
-It runs once after each successful `resetDB`, `insertDB`, or `cleanupDB` call. To register several callbacks, call `.onDataChange(...)` once per callback; they run in registration order. An exception thrown by a callback is wrapped in a `JDBScriptException` and rethrown from the data-changing call.
+It runs once after each successful `resetDB`, `insertDB`, `updateDB`, or `cleanupDB` call. To register several callbacks, call `.onDataChange(...)` once per callback; they run in registration order. An exception thrown by a callback is wrapped in a `JDBScriptException` and rethrown from the data-changing call.
 
 ---
 

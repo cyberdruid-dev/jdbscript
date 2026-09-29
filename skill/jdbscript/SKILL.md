@@ -1,6 +1,6 @@
 ---
 name: jdbscript
-description: Use when writing or editing JVM test code that seeds, resets, or asserts against a relational database with jdbscript (org.jdbscript) — defining IDBSchema/IDBRecord interfaces, building a JDBEngine, or calling resetDB/insertDB/cleanupDB/assertDBHas/assertDBHasNot. Covers schema modeling, fixtures, defaults/generators, composition, and multi-DBMS quirks.
+description: Use when writing or editing JVM test code that seeds, resets, or asserts against a relational database with jdbscript (org.jdbscript) — defining IDBSchema/IDBRecord interfaces, building a JDBEngine, or calling resetDB/insertDB/updateDB/cleanupDB/assertDBHas/assertDBHasNot. Covers schema modeling, fixtures, defaults/generators, composition, and multi-DBMS quirks.
 ---
 
 # jdbscript
@@ -16,7 +16,7 @@ state — no XML/JSON fixtures, no raw SQL strings.
 2. **Record interface** extends `IDBSchema.IDBRecord`. Each fluent setter method returns `this`
    (well, the record type) so calls chain: `db.users().id(1L).username("alice")`.
 3. **`JDBEngine<TSchema>`** built via `JDBEngine.builder(TSchema.class).dataSource(ds).build()`,
-   used to run scripts: `engine.resetDB(...)`, `engine.insertDB(...)`, `engine.cleanupDB()`,
+   used to run scripts: `engine.resetDB(...)`, `engine.insertDB(...)`, `engine.updateDB(...)`, `engine.cleanupDB()`,
    `engine.assertDBHas(...)`, `engine.assertDBHasNot(...)`.
 4. A **script** is either a lambda (`Consumer<TSchema>` — `db -> { db.users()... ; }`) or a
    class that `implements TSchema` and populates rows in an instance initializer block. Rules for
@@ -60,6 +60,14 @@ engine.insertDB(db -> {                // inserts without wiping existing data
 
 Prefer `resetDB` for a test's baseline arrange step; use `insertDB` when you need to interleave
 inserts with actions under test (simulating events over time within one test).
+
+```java
+engine.updateDB(db -> db.users().id(1L).active(false));   // changes only `active` of user 1
+```
+
+Use `updateDB` to tweak a row of a shared baseline for one test, or to change data between actions
+under test. The primary key columns (from DB metadata) select the row and must all be set; the other
+set columns are updated; defaults are not applied. It fails if the row doesn't exist.
 
 ## Reusable / composable scripts
 
