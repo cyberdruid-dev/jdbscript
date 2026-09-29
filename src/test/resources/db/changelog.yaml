@@ -17,6 +17,15 @@ databaseChangeLog:
     name: auto_inc
     value: false
     dbms: "cloudspanner"
+- property:
+    # Liquibase maps "blob" to oid on Postgres; bytea is Postgres' native binary type.
+    name: binary_type
+    value: bytea
+    dbms: "postgresql,cockroachdb"
+- property:
+    name: binary_type
+    value: blob
+    dbms: "!postgresql,!cockroachdb"
 - include:
     file: db/000-test-schema.yaml
 - include:

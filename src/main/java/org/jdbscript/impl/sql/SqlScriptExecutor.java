@@ -18,6 +18,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.sql.DataSource;
 import java.io.InputStream;
+import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -113,8 +114,8 @@ public class SqlScriptExecutor implements IScriptExecutor {
                     String sql = insertSqlCache.computeIfAbsent(sqlKey, k -> createInsertSql(record, columns));
                     PreparedStatement stmt = stmtProvider.get(sql);
                     for (int i = 0; i < columns.size(); i++) {
-                        Object value = record.getColumns().get(columns.get(i));
-                        setColumnValue(stmt, i + 1, value);
+                        String column = columns.get(i);
+                        setColumnValue(cnn, record.getTableName(), column, stmt, i + 1, record.getColumns().get(column));
                     }
                     stmt.execute();
                 }
@@ -141,13 +142,13 @@ public class SqlScriptExecutor implements IScriptExecutor {
         connectionProvider.withPreparedStatements(consumer);
     }
 
-    private void setColumnValue(PreparedStatement stmt, int columnIndex, Object value) throws SQLException {
+    private void setColumnValue(Connection cnn, String tableName, String columnName, PreparedStatement stmt, int columnIndex, Object value) throws SQLException {
         Class<?> argumentType = detectValueType(value);
         value = (value instanceof TypedNull)? null : value;
         if (InputStream.class.isAssignableFrom(argumentType)) {
-            getStrategy().setInputStream(stmt, columnIndex, (InputStream) value);
+            getStrategy().setInputStream(cnn, tableName, columnName, stmt, columnIndex, (InputStream) value);
         } else if(byte[].class.isAssignableFrom(argumentType)) {
-            getStrategy().setByteArray(stmt, columnIndex, (byte[])value);
+            getStrategy().setByteArray(cnn, tableName, columnName, stmt, columnIndex, (byte[])value);
         } else if (UUID.class.isAssignableFrom(argumentType)) {
             getStrategy().setUUID(stmt, columnIndex, (UUID)value);
         } else {
@@ -189,7 +190,7 @@ public class SqlScriptExecutor implements IScriptExecutor {
     public void assertRowsExist(JDBScript script) {
         withPreparedStatements((cnn, stmtProvider) -> {
             for (JDBRecord record : script.getRecords()) {
-                if (countMatchingRows(record, stmtProvider) == 0) {
+                if (countMatchingRows(cnn, record, stmtProvider) == 0) {
                     throw new AssertionFailedError("Expected row to exist.");
                 }
             }
@@ -200,14 +201,14 @@ public class SqlScriptExecutor implements IScriptExecutor {
     public void assertRowsNotExist(JDBScript script) {
         withPreparedStatements((cnn, stmtProvider) -> {
             for (JDBRecord record : script.getRecords()) {
-                if (countMatchingRows(record, stmtProvider) > 0) {
+                if (countMatchingRows(cnn, record, stmtProvider) > 0) {
                     throw new AssertionFailedError("Expected row to NOT exist.");
                 }
             }
         });
     }
 
-    private long countMatchingRows(JDBRecord record, PreparedStatementProvider stmtProvider) throws SQLException {
+    private long countMatchingRows(Connection cnn, JDBRecord record, PreparedStatementProvider stmtProvider) throws SQLException {
         // Not cached: the SQL shape now depends on which columns are null for this specific record
         // (see createSelectAssertSql), and building it is cheap string concatenation, not a JDBC
         // round trip - the thing actually worth caching, the PreparedStatement, is already handled
@@ -222,7 +223,7 @@ public class SqlScriptExecutor implements IScriptExecutor {
         for (String column : columns) {
             Object value = record.getColumns().get(column);
             if (!isNullValue(value)) {
-                setColumnValue(stmt, paramIndex++, value);
+                setColumnValue(cnn, record.getTableName(), column, stmt, paramIndex++, value);
             }
             // A null column is expressed as a literal "IS NULL" in the SQL - nothing to bind.
         }

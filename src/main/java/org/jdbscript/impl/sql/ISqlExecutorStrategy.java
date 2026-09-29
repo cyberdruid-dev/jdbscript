@@ -42,6 +42,18 @@ public interface ISqlExecutorStrategy {
 
     void setByteArray(PreparedStatement stmt, int i, byte[] value) throws SQLException;
 
+    /**
+     * Column-aware variant, for a DBMS that binds binary data differently depending on the target
+     * column's type (e.g. Postgres' {@code bytea} vs {@code oid}).
+     */
+    default void setInputStream(Connection cnn, String tableName, String columnName, PreparedStatement stmt, int i, InputStream value) throws SQLException {
+        setInputStream(stmt, i, value);
+    }
+
+    default void setByteArray(Connection cnn, String tableName, String columnName, PreparedStatement stmt, int i, byte[] value) throws SQLException {
+        setByteArray(stmt, i, value);
+    }
+
     void setObject(PreparedStatement stmt, int i, Object value) throws SQLException;
 
     void onConnection(Connection cnn) throws SQLException;

@@ -1,20 +1,15 @@
 package org.jdbscript.impl.sql;
 
-import java.io.InputStream;
-import java.sql.PreparedStatement;
+import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
 class CockroachDBStrategy extends PostgreSQLStrategy {
 
+    // CockroachDB has no large objects: every binary column is BYTES (bytea).
     @Override
-    public void setInputStream(PreparedStatement stmt, int columnIndex, InputStream value) throws SQLException {
-        stmt.setBinaryStream(columnIndex, value);
-    }
-
-    @Override
-    public void setByteArray(PreparedStatement stmt, int columnIndex, byte[] bytes) throws SQLException {
-        stmt.setBytes(columnIndex, bytes);
+    protected boolean isBytea(Connection cnn, String tableName, String columnName) {
+        return true;
     }
 
     @Override

@@ -1,10 +1,26 @@
 package org.jdbscript.impl.sql;
+import org.jdbscript.impl.cache.IJDBCache;
+import org.jdbscript.impl.cache.IJDBCache.IJDBCacheKey;
+import org.jdbscript.impl.cache.NoCache;
+
+import java.io.InputStream;
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 class PostgreSQLStrategy extends  DefaultSqlExecutorStrategy{
+    private record ColumnTypesKey(String tableName) implements IJDBCacheKey<Map<String, String>> {}
+
+    private IJDBCache cache = new NoCache();
+
+    @Override
+    public void setCache(IJDBCache cache) {
+        this.cache = cache != null ? cache : new NoCache();
+    }
+
     @Override
     public void resetSequences(Connection cnn, List<String> tableNames) throws SQLException {
         // Ignored: getSequences() can't attribute a sequence to a table (see its comment), so
@@ -17,9 +33,72 @@ class PostgreSQLStrategy extends  DefaultSqlExecutorStrategy{
         stmt.setObject(i, uuid);
     }
 
+    // A plain "blob" binding is a large object whose oid is sent, which a bytea column rejects.
+    @Override
+    public void setInputStream(Connection cnn, String tableName, String columnName, PreparedStatement stmt, int i, InputStream value) throws SQLException {
+        if (isBytea(cnn, tableName, columnName)) {
+            stmt.setBinaryStream(i, value);
+        } else {
+            setInputStream(stmt, i, value);
+        }
+    }
+
+    @Override
+    public void setByteArray(Connection cnn, String tableName, String columnName, PreparedStatement stmt, int i, byte[] value) throws SQLException {
+        if (isBytea(cnn, tableName, columnName)) {
+            stmt.setBytes(i, value);
+        } else {
+            setByteArray(stmt, i, value);
+        }
+    }
+
+    protected boolean isBytea(Connection cnn, String tableName, String columnName) throws SQLException {
+        return "bytea".equals(columnTypes(cnn, tableName).get(columnName.toLowerCase()));
+    }
+
+    private Map<String, String> columnTypes(Connection cnn, String tableName) throws SQLException {
+        try {
+            return cache.getOrCompute(new ColumnTypesKey(tableName), k -> {
+                try {
+                    return findColumnTypes(cnn, k.tableName());
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                }
+            });
+        } catch (RuntimeException e) {
+            if (e.getCause() instanceof SQLException) {
+                throw (SQLException) e.getCause();
+            }
+            throw e;
+        }
+    }
+
+    // to_regclass resolves the name exactly as the INSERT will (search_path, unquoted case folding),
+    // and yields NULL instead of an error for a missing table, so the INSERT reports it as usual.
+    private Map<String, String> findColumnTypes(Connection cnn, String tableName) throws SQLException {
+        Map<String, String> result = new HashMap<>();
+        String sql = """
+                SELECT a.attname, t.typname FROM pg_attribute a
+                JOIN pg_type t ON t.oid = a.atttypid
+                WHERE a.attrelid = to_regclass(?) AND a.attnum > 0 AND NOT a.attisdropped
+                """;
+        try (PreparedStatement stmt = cnn.prepareStatement(sql)) {
+            stmt.setString(1, tableName);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    result.put(rs.getString(1).toLowerCase(), rs.getString(2));
+                }
+            }
+        }
+        return result;
+    }
+
     @Override
     public Object getColumnValue(ResultSet rs, int columnIndex, String expectedType) throws SQLException {
         if ("blob".equals(expectedType)) {
+            if ("bytea".equals(rs.getMetaData().getColumnTypeName(columnIndex))) {
+                return rs.getBytes(columnIndex);
+            }
             Blob blob = rs.getBlob(columnIndex);
             return blob == null ? null : blob.getBytes(1, (int) blob.length());
         }

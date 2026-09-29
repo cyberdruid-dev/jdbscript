@@ -87,6 +87,9 @@ databaseChangeLog:
               - column:
                   name: blob_column
                   type: blob
+              - column:
+                  name: bytea_column
+                  type: ${binary_type}
 
 ##NUMBERS:  DECIMAL, DOUBLE, FLOAT, INT, SMALLINT, TINYINT, MEDIUMINT, NUMBER
 ##STR: CHAR, NCHAR,  VARCHAR

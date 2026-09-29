@@ -60,7 +60,8 @@ CREATE TABLE IF NOT EXISTS uuid_table (
 CREATE SEQUENCE IF NOT EXISTS blob_table_id_seq;
 CREATE TABLE IF NOT EXISTS blob_table (
     id BIGINT PRIMARY KEY DEFAULT nextval('blob_table_id_seq'),
-    blob_column BLOB
+    blob_column BLOB,
+    bytea_column BLOB
 );
 
 CREATE SEQUENCE IF NOT EXISTS generated_int_id_seq;

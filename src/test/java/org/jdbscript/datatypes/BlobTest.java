@@ -1,5 +1,6 @@
 package org.jdbscript.datatypes;
 
+import org.jdbscript.DBMSType;
 import org.jdbscript.IDBSchema;
 import org.jdbscript.IDBSchema.IDBRecord;
 import org.jdbscript.IJDBEngine;
@@ -18,6 +19,7 @@ public class BlobTest extends JdbAbstractTest {
     private interface IBlobTable extends IDBRecord {
         IBlobTable id(int value);
         IBlobTable blob_column(byte[] data);
+        IBlobTable bytea_column(byte[] data);
     }
     private interface IBlobTestSchema extends IDBSchema {
 
@@ -28,6 +30,7 @@ public class BlobTest extends JdbAbstractTest {
     private interface IInputStreamBlobTable extends IDBRecord {
         IInputStreamBlobTable id(int value);
         IInputStreamBlobTable blob_column(InputStream data);
+        IInputStreamBlobTable bytea_column(InputStream data);
     }
     private interface IInputStreamBlobTestSchema extends IDBSchema {
 
@@ -87,4 +90,55 @@ public class BlobTest extends JdbAbstractTest {
         ));
     }
 
+    // bytea_column is bytea on Postgres, the same type as blob_column elsewhere.
+    public void bytea_column_should_accept_byte_array() {
+        byte[] data = new byte[]{1,2,3,4,5};
+
+        engine.resetDB((db)->{
+            db.blob_table().id(1).bytea_column(data);
+        });
+
+        assertTableValues(table(TABLE_NAME,
+                columns("bytea_column:blob"),
+                row(data)
+        ));
+    }
+
+    public void bytea_column_should_accept_InputStream() {
+        byte[] data = new byte[]{1,2,3,4,5};
+        InputStream in = new ByteArrayInputStream(data);
+
+        inputStreamEngine.resetDB((db)->{
+            db.blob_table().id(1).bytea_column(in);
+        });
+
+        assertTableValues(table(TABLE_NAME,
+                columns("bytea_column:blob"),
+                row(data)
+        ));
+    }
+
+    public void bytea_column_should_accept_null() {
+        engine.resetDB((db)->{
+            db.blob_table().id(1).bytea_column(null);
+        });
+
+        assertTableValues(table(TABLE_NAME,
+                columns("bytea_column:blob"),
+                row(new Object[]{null})
+        ));
+    }
+
+    public void assertDBHas_should_match_bytea_column() {
+        // Comparing binary columns with = isn't portable (e.g. Oracle rejects it for BLOB).
+        skipUnless("bytea equality in assertDBHas", DBMSType.POSTGRESQL, DBMSType.COCKROACHDB);
+        byte[] data = new byte[]{1,2,3,4,5};
+        engine.resetDB((db)->{
+            db.blob_table().id(1).bytea_column(data);
+        });
+
+        engine.assertDBHas((db)->{
+            db.blob_table().id(1).bytea_column(data);
+        });
+    }
 }
