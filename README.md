@@ -238,6 +238,7 @@ engine.resetDB(db -> {
     db.users(); // id=1, username="user_1", email="user_1@example.com"
     db.users().username("custom_user"); // id=2, username="custom_user", email="custom_user@example.com"
 });
+engine.insertDB(db -> db.users()); // id=3: counters keep counting until the next cleanupDB/resetDB
 ```
 
 ### Updating Existing Rows

@@ -107,7 +107,8 @@ interface IUserRecord extends IDBRecord {
 
 `defaults(...)` runs before explicit setters in the script are applied to fill in gaps — any
 column already set by the caller wins over the default. Use `tools.nextIntId(key, start)` for
-auto-incrementing IDs scoped by an arbitrary key, and `tools.strValue("${col}...")` to template a
+auto-incrementing IDs scoped by an arbitrary key (counters live on the engine: a later `insertDB`
+continues where `resetDB` left off, and they restart on the next `cleanupDB`/`resetDB`), and `tools.strValue("${col}...")` to template a
 string off another column already set on the same record.
 
 ## Assertions

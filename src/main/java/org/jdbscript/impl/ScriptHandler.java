@@ -17,7 +17,7 @@ public class ScriptHandler<T extends IDBSchema> {
     private final static String DEFAULTS_METHOD_NAME = "defaults";
 
     private final JDBScript dbScript = new JDBScript();
-    private final Map<String,Object> tableTools = new HashMap<>();
+    private final Map<String,Object> tableTools;
     private Class<T> schemaClass;
 
     private static class AddedRecord {
@@ -132,7 +132,12 @@ public class ScriptHandler<T extends IDBSchema> {
     private final T scriptProxy;
 
     public ScriptHandler(Class<T> dbSchemaClass) {
+        this(dbSchemaClass, new HashMap<>());
+    }
+
+    public ScriptHandler(Class<T> dbSchemaClass, Map<String, Object> tableTools) {
         this.schemaClass = dbSchemaClass;
+        this.tableTools = tableTools;
         scriptProxy = newProxy(dbSchemaClass, scriptHandler);
     }
 

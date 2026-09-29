@@ -46,6 +46,7 @@ public class JDBEngine<T extends IDBSchema> implements IJDBEngine<T>{
     private final boolean suppressDefaultUnmappedTables;
     private final JDBFeatureSet features;
     private final List<ThrowingRunnable> dataChangeListeners;
+    private final Map<String, Object> tableTools = new HashMap<>();
 
     private JDBEngine(Builder<T> builder) {
         this.dbSchemaClass = checkNotNull(builder.dbSchemaClass, DB_SCHEMA_IS_NULL);
@@ -148,7 +149,7 @@ public class JDBEngine<T extends IDBSchema> implements IJDBEngine<T>{
 
     private void insertDBInternal(Consumer<T> db) {
         validateSchema();
-        ScriptHandler<T> handler = new ScriptHandler(dbSchemaClass);
+        ScriptHandler<T> handler = new ScriptHandler(dbSchemaClass, tableTools);
         db.accept(handler.getProxy());
         handler.applyDefaults();
         JDBScript script = handler.getDbScript();
@@ -214,6 +215,7 @@ public class JDBEngine<T extends IDBSchema> implements IJDBEngine<T>{
 
     private void cleanupDBInternal() {
         getExecutor().cleanupTables(getTableNamesCleanupOrder());
+        tableTools.clear();
     }
 
     @Override

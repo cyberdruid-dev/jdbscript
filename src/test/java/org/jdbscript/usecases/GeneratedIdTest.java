@@ -124,4 +124,52 @@ public class GeneratedIdTest extends JdbAbstractTest {
                 row( 5, "text5")
         ));
     }
+
+    @Test
+    public void insertDB_after_resetDB_should_continue_generated_ids() {
+        engine.resetDB(db -> {
+            db.table_with_defaults();
+            db.table_with_defaults();
+        });
+
+        engine.insertDB(db -> db.table_with_defaults());
+
+        assertTableValues(table(TABLE_WITH_DEFAULTS,
+                columns("id"),
+                row(1),
+                row(2),
+                row(3)
+        ));
+    }
+
+    @Test
+    public void cleanupDB_should_restart_generated_ids() {
+        engine.resetDB(db -> {
+            db.table_with_defaults();
+            db.table_with_defaults();
+        });
+
+        engine.cleanupDB();
+        engine.insertDB(db -> db.table_with_defaults());
+
+        assertTableValues(table(TABLE_WITH_DEFAULTS,
+                columns("id"),
+                row(1)
+        ));
+    }
+
+    @Test
+    public void resetDB_should_restart_generated_ids() {
+        engine.resetDB(db -> {
+            db.table_with_defaults();
+            db.table_with_defaults();
+        });
+
+        engine.resetDB(db -> db.table_with_defaults());
+
+        assertTableValues(table(TABLE_WITH_DEFAULTS,
+                columns("id"),
+                row(1)
+        ));
+    }
 }
