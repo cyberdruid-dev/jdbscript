@@ -12,8 +12,8 @@ import java.util.stream.Collectors;
 
 class OracleStrategy extends DefaultSqlExecutorStrategy {
 
-    /** One row of {@code user_sequences}, plus the owning table/column for an identity-owned one. */
-    private record SequenceInfo(String name, long lastNumber, IdentityColumn identityColumn) {
+    /** A sequence from {@code user_sequences}, plus the owning table/column for an identity-owned one. */
+    private record SequenceInfo(String name, IdentityColumn identityColumn) {
         boolean identityOwned() {
             return identityColumn != null;
         }
@@ -59,16 +59,23 @@ class OracleStrategy extends DefaultSqlExecutorStrategy {
                         stmt.executeUpdate("ALTER TABLE %s MODIFY %s GENERATED %s AS IDENTITY (START WITH 10000)"
                                 .formatted(seq.identityColumn().tableName(), seq.identityColumn().columnName(),
                                         seq.identityColumn().generationType()));
-                    } else if (seq.lastNumber() != 10000) {
-                        long increment = 10000 - seq.lastNumber();
-                        stmt.executeUpdate("alter sequence " + seq.name() + " increment by " + increment);
-                        stmt.executeQuery("select " + seq.name() + ".nextval from dual").close();
-                        stmt.executeUpdate("alter sequence " + seq.name() + " increment by 1");
-                        stmt.executeQuery("select " + seq.name() + ".nextval from dual").close();
-                        stmt.executeUpdate("alter sequence " + seq.name() + " nocache");
+                    } else {
+                        resetRegularSequence(stmt, seq);
                     }
                 }
             }
+    }
+
+    private void resetRegularSequence(Statement stmt, SequenceInfo seq) throws SQLException {
+        try {
+            stmt.executeUpdate("ALTER SEQUENCE %s RESTART START WITH 10000".formatted(seq.name()));
+        } catch (SQLException e) {
+            throw new SQLException(
+                    "Failed to reset Oracle sequence '" + seq.name() + "' to 10000 during cleanup "
+                            + "(ALTER SEQUENCE ... RESTART requires Oracle 18c+, or 12.2); auto-generated "
+                            + "IDs from this sequence may now collide with manually-inserted ones: "
+                            + e.getMessage(), e);
+        }
     }
 
     private List<SequenceInfo> getSequences(Statement stmt) throws SQLException {
@@ -90,12 +97,11 @@ class OracleStrategy extends DefaultSqlExecutorStrategy {
         }
 
         List<SequenceInfo> result = new ArrayList<>();
-        String sql = "SELECT SEQUENCE_NAME,LAST_NUMBER FROM user_sequences";
+        String sql = "SELECT SEQUENCE_NAME FROM user_sequences";
         try(ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {
                 String seqName = rs.getString("SEQUENCE_NAME");
-                long seqValue = rs.getLong("LAST_NUMBER");
-                result.add(new SequenceInfo(seqName, seqValue, identityColumnsBySeqName.get(seqName)));
+                result.add(new SequenceInfo(seqName, identityColumnsBySeqName.get(seqName)));
             }
         }
         return result;

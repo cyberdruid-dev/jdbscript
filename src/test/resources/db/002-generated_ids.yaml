@@ -15,6 +15,15 @@ databaseChangeLog:
               - column:
                   name: varchar_column
                   type: varchar(50)
+  - changeSet:
+      id: 002-standalone_sequence
+      author: Cyber Druid
+      # Only the DBMS whose cleanup rewinds a standalone sequence to exactly 10000.
+      dbms: oracle,postgresql,cockroachdb,db2,hsqldb
+      changes:
+        - createSequence:
+            sequenceName: standalone_seq
+            startValue: 1
 
 ##NUMBERS:  DECIMAL, DOUBLE, FLOAT, INT, SMALLINT, TINYINT, MEDIUMINT, NUMBER
 ##STR: CHAR, NCHAR,  VARCHAR

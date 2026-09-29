@@ -262,8 +262,10 @@ public class JdbAbstractTest {
         }
     }
 
-    protected void skipFor(String featureName, DBMSType type) {
-        skipFor(featureName, type, null, null);
+    protected void skipFor(String featureName, DBMSType... types) {
+        for (DBMSType type : types) {
+            skipFor(featureName, type, null, null);
+        }
     }
 
     /**
