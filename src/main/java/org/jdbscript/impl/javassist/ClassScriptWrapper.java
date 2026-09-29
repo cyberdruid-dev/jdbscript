@@ -8,18 +8,22 @@ import javassist.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Optional;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
+import static java.lang.invoke.MethodHandles.Lookup.ClassOption.NESTMATE;
 import static org.jdbscript.errors.Checks.checkThat;
 import static java.lang.reflect.Modifier.isStatic;
 
 public class ClassScriptWrapper<T extends IDBSchema> {
     protected static final Logger log = LoggerFactory.getLogger(ClassScriptWrapper.class);
     private final static String IMPLEMENTATION_SUFFIX = "_jdbscript";
+    private final static Map<Class<?>, Class<?>> implementations = new ConcurrentHashMap<>();
 
     private final Class<? extends T> scriptClass;
     private final Class<T> schemaClass;
@@ -31,8 +35,7 @@ public class ClassScriptWrapper<T extends IDBSchema> {
         this.scriptClass = scriptClass;
         this.schemaClass = schemaClass;
         this.javassistClassName = this.scriptClass.getName()+IMPLEMENTATION_SUFFIX;
-        newClass = loadClass(javassistClassName)
-                .orElseGet(this::implementScriptClass);
+        newClass = implementations.computeIfAbsent(scriptClass, k -> implementScriptClass());
     }
 
     private String normalizeClassName(String className) {
@@ -41,16 +44,6 @@ public class ClassScriptWrapper<T extends IDBSchema> {
 
     private String normalizeClassName(Class clazz) {
         return normalizeClassName(clazz.getName());
-    }
-
-    private Optional<Class> loadClass(String className){
-        try {
-            log.debug("loading class: {}...",className);
-            return Optional.of(classPool.getClassLoader().loadClass(className));
-        } catch (ClassNotFoundException e) {
-            log.debug("class NOT FOUND: {}",className);
-            return Optional.empty();
-        }
     }
 
     private Class implementScriptClass() {
@@ -64,7 +57,10 @@ public class ClassScriptWrapper<T extends IDBSchema> {
             cc.setModifiers(Modifier.PUBLIC);
             addStaticScriptGetter(cc);
             implementMethods(cc);
-            return cc.toClass(scriptClass);
+            // The rename leaves duplicate CONSTANT_Class entries; the pre-super() `this.script = $1`
+            // must reference this_class itself, or the verifier rejects it in a hidden class.
+            cc.getClassFile().compact();
+            return defineClass(cc.toBytecode());
         } catch (JDBScriptException e) {
             throw e;
         } catch (Exception e) {
@@ -72,6 +68,17 @@ public class ClassScriptWrapper<T extends IDBSchema> {
             throw new RuntimeException(e);
         }
 
+    }
+
+    // A plain copy isn't listed in the nest of the script's outer class, so it can't touch the outer
+    // class's private members; a hidden NESTMATE class joins that nest. defineHiddenClass needs full
+    // privilege access, which a script class from another class loader doesn't grant, so fall back.
+    private Class<?> defineClass(byte[] bytecode) throws IllegalAccessException {
+        MethodHandles.Lookup lookup = MethodHandles.privateLookupIn(scriptClass, MethodHandles.lookup());
+        if (lookup.hasFullPrivilegeAccess()) {
+            return lookup.defineHiddenClass(bytecode, true, NESTMATE).lookupClass();
+        }
+        return lookup.defineClass(bytecode);
     }
 
     private void modifyConstructor(CtClass cc) throws NotFoundException, CannotCompileException {
