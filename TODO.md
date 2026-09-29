@@ -14,6 +14,11 @@
   which now needs `resetSequences(Connection, List<String> tableNames)` to scope identity-owned/
   identity-column handling (DB2/Oracle/HSQLDB) to the tables actually being cleaned.
 
+#### Release (v1.3.0)
+* [ ] Bump `jdbscript.version` in `examples/pom.xml` to 1.3.0
+* [ ] Add an `updateDB` test to `examples/02-class-scripts-and-include` (reset `BaseUsersFixture`,
+  tweak one row, act, assert) and list it in `skill/jdbscript/reference/examples.md`
+
 #### Performance (v1.2.5)
 * [ ] Reduce round trips during cleanup (especially on Oracle)
 * [ ] Batch inserts
@@ -69,7 +74,7 @@
 * [ ] `disableConstraintsDuringCleanup()` option (not applicable to Oracle)
 
 #### Scripts & API
-* [ ] `updateDB` - update specific columns on a known row id, not just insert/reset
+* [x] `updateDB` - update specific columns on a known row id, not just insert/reset
 * [ ] Parametrized scripts?
 * [ ] Split a schema across multiple interfaces
 * [ ] Single-table inserts (useful for inline updates)

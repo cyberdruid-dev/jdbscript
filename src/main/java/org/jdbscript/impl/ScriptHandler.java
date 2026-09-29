@@ -53,7 +53,7 @@ public class ScriptHandler<T extends IDBSchema> {
         if (method.getName().equals("include")) {
             if (args[0] instanceof Class<?>) {
                 ClassScriptWrapper<T> wrapper = new ClassScriptWrapper<>((Class<? extends T>) args[0], this.schemaClass);
-                wrapper.getDbScript((T) dbProxy);
+                wrapper.applyScript((T) dbProxy);
             } else if (args[0] instanceof Consumer<?>) {
                 Consumer includedScript = (Consumer) args[0];
                 includedScript.accept(ScriptHandler.this.getProxy());
