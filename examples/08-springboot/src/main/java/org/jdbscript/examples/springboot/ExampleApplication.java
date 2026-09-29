@@ -1,6 +1,7 @@
 package org.jdbscript.examples.springboot;
 
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cache.annotation.EnableCaching;
 
 /**
  * Minimal Spring Boot application - it exists only so {@code @SpringBootTest} has a
@@ -8,5 +9,6 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * {@link javax.sql.DataSource} bean Spring already wired up.
  */
 @SpringBootApplication
+@EnableCaching
 public class ExampleApplication {
 }

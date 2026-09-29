@@ -1,5 +1,6 @@
 package org.jdbscript.examples.springboot;
 
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -7,7 +8,8 @@ import java.util.List;
 
 /**
  * The "system under test": an ordinary Spring-managed repository, with no knowledge of jdbscript
- * at all - it just runs a query through the {@link JdbcTemplate} Spring gave it.
+ * at all - it just runs a query through the {@link JdbcTemplate} Spring gave it, and caches the
+ * result like a real application might.
  */
 @Repository
 public class UserRepository {
@@ -18,6 +20,7 @@ public class UserRepository {
         this.jdbcTemplate = jdbcTemplate;
     }
 
+    @Cacheable("activeUsernames")
     public List<String> findActiveUsernames() {
         return jdbcTemplate.queryForList(
                 "SELECT username FROM users WHERE active = TRUE ORDER BY username",
