@@ -88,6 +88,23 @@ engine.resetDB(db -> {
 A script is just Java — loops, `Random` (seed it, e.g. `new Random(42)`, for reproducible bulk
 fixtures), conditionals — nothing special is needed to generate many rows.
 
+For helpers that create several related rows, use a sub-interface with default methods (e.g. local
+to the test class) instead of growing the main schema interface, and run lambdas through `as(...)`:
+
+```java
+interface IOrderScript extends IAppSchema {
+    default IOrderRecord addOrderFor(long userId, long orderId) {
+        users().id(userId).username("user_" + userId);
+        return orders().id(orderId).user_id(userId);
+    }
+}
+
+engine.as(IOrderScript.class).insertDB(db -> db.addOrderFor(1L, 200L).total_amount(99.00));
+```
+
+The view shares everything with the engine (id counters, cleanup, callbacks); the sub-interface may
+only add default methods, not tables. A class script can just implement the sub-interface.
+
 ## Defaults and generators (`RecordTools`)
 
 ```java

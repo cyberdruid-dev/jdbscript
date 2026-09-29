@@ -58,6 +58,17 @@ public interface IJDBEngine <T extends IDBSchema>{
      */
     void updateDB(Class<? extends T> scriptClass);
 
+    /**
+     * Returns a view of this engine whose scripts receive an {@code S} proxy, so lambda scripts can
+     * call {@code S}'s default helper methods. Everything else - id counters, caches, callbacks,
+     * cleanup and schema validation against {@code T} - is shared with this engine.
+     *
+     * @param schemaClass a sub-interface of this engine's schema adding default helper methods
+     * @param <S> the sub-interface type
+     * @return a view of this engine for {@code S}
+     */
+    <S extends T> IJDBEngine<S> as(Class<S> schemaClass);
+
     void assertDBHas(Consumer<T> dbAsserts);
 
     void assertDBHasNot(Consumer<T> dbAsserts);

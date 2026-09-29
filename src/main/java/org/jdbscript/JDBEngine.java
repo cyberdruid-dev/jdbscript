@@ -14,6 +14,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.sql.DataSource;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -112,27 +113,46 @@ public class JDBEngine<T extends IDBSchema> implements IJDBEngine<T>{
 
     @Override
     public void resetDB(Consumer<T> db) {
-        log.debug("resetDb(consumer={})", db);
-        cleanupDBInternal();
-        insertDBInternal(db);
-        notifyDataChange();
+        resetDB(dbSchemaClass, db);
     }
 
     @Override
     public void insertDB(Consumer<T> db) {
-        log.debug("insertDB(consumer={})", db);
-        insertDBInternal(db);
-        notifyDataChange();
+        insertDB(dbSchemaClass, db);
     }
 
     @Override
     public void updateDB(Consumer<T> db) {
+        updateDB(dbSchemaClass, db);
+    }
+
+    @Override
+    public <S extends T> IJDBEngine<S> as(Class<S> schemaClass) {
+        for (Method method : schemaClass.getMethods()) {
+            if (Modifier.isAbstract(method.getModifiers()) && !method.getDeclaringClass().isAssignableFrom(dbSchemaClass)) {
+                throw JDBErrors.SCHEMA_VIEW_ADDS_METHOD.get(schemaClass.getSimpleName(), method.getName(), dbSchemaClass.getSimpleName());
+            }
+        }
+        return new SchemaView<>(schemaClass);
+    }
+
+    private <S extends T> void resetDB(Class<S> proxyClass, Consumer<S> db) {
+        log.debug("resetDb(consumer={})", db);
+        cleanupDBInternal();
+        insertDBInternal(proxyClass, db);
+        notifyDataChange();
+    }
+
+    private <S extends T> void insertDB(Class<S> proxyClass, Consumer<S> db) {
+        log.debug("insertDB(consumer={})", db);
+        insertDBInternal(proxyClass, db);
+        notifyDataChange();
+    }
+
+    private <S extends T> void updateDB(Class<S> proxyClass, Consumer<S> db) {
         log.debug("updateDB(consumer={})", db);
         validateSchema();
-        ScriptHandler<T> handler = new ScriptHandler(dbSchemaClass);
-        db.accept(handler.getProxy());
-        JDBScript script = handler.getDbScript();
-        converter.convertTypes(script);
+        JDBScript script = buildScript(db, new ScriptHandler<>(proxyClass));
         getExecutor().update(script);
         notifyDataChange();
     }
@@ -144,18 +164,25 @@ public class JDBEngine<T extends IDBSchema> implements IJDBEngine<T>{
     }
 
     private void insertDBInternal(Class<? extends T> scriptClass) {
-        insertDBInternal(db -> db.include(scriptClass));
+        insertDBInternal(dbSchemaClass, db -> db.include(scriptClass));
     }
 
-    private void insertDBInternal(Consumer<T> db) {
+    private <S extends T> void insertDBInternal(Class<S> proxyClass, Consumer<S> db) {
         validateSchema();
-        ScriptHandler<T> handler = new ScriptHandler(dbSchemaClass, tableTools);
+        ScriptHandler<S> handler = new ScriptHandler<>(proxyClass, tableTools);
         db.accept(handler.getProxy());
         handler.applyDefaults();
         JDBScript script = handler.getDbScript();
         converter.convertTypes(script);
         sortScript(script);
         getExecutor().insert(script);
+    }
+
+    private <S extends T> JDBScript buildScript(Consumer<S> db, ScriptHandler<S> handler) {
+        db.accept(handler.getProxy());
+        JDBScript script = handler.getDbScript();
+        converter.convertTypes(script);
+        return script;
     }
 
     private void notifyDataChange() {
@@ -220,13 +247,13 @@ public class JDBEngine<T extends IDBSchema> implements IJDBEngine<T>{
 
     @Override
     public void assertDBHasNot(Consumer<T> dbAsserts) {
+        assertDBHasNot(dbSchemaClass, dbAsserts);
+    }
+
+    private <S extends T> void assertDBHasNot(Class<S> proxyClass, Consumer<S> dbAsserts) {
         log.debug("assertDBHasNot(consumer={})", dbAsserts);
         validateSchema();
-        ScriptHandler<T> handler = new ScriptHandler(dbSchemaClass);
-        dbAsserts.accept(handler.getProxy());
-        JDBScript script = handler.getDbScript();
-        converter.convertTypes(script);
-        getExecutor().assertRowsNotExist(script);
+        getExecutor().assertRowsNotExist(buildScript(dbAsserts, new ScriptHandler<>(proxyClass)));
     }
 
     private IMetadataProvider getMetadataProvider() {
@@ -239,13 +266,72 @@ public class JDBEngine<T extends IDBSchema> implements IJDBEngine<T>{
 
     @Override
     public void assertDBHas(Consumer<T> dbAsserts) {
+        assertDBHas(dbSchemaClass, dbAsserts);
+    }
+
+    private <S extends T> void assertDBHas(Class<S> proxyClass, Consumer<S> dbAsserts) {
         log.debug("assertDBHas(consumer={})", dbAsserts);
         validateSchema();
-        ScriptHandler<T> handler = new ScriptHandler(dbSchemaClass);
-        dbAsserts.accept(handler.getProxy());
-        JDBScript script = handler.getDbScript();
-        converter.convertTypes(script);
-        getExecutor().assertRowsExist(script);
+        getExecutor().assertRowsExist(buildScript(dbAsserts, new ScriptHandler<>(proxyClass)));
+    }
+
+    /** A view of this engine whose scripts get an {@code S} proxy; everything else is this engine's. */
+    private final class SchemaView<S extends T> implements IJDBEngine<S> {
+        private final Class<S> viewClass;
+
+        private SchemaView(Class<S> viewClass) {
+            this.viewClass = viewClass;
+        }
+
+        @Override
+        public void resetDB(Class<? extends S> scriptClass) {
+            JDBEngine.this.resetDB(scriptClass);
+        }
+
+        @Override
+        public void insertDB(Class<? extends S> scriptClass) {
+            JDBEngine.this.insertDB(scriptClass);
+        }
+
+        @Override
+        public void resetDB(Consumer<S> db) {
+            JDBEngine.this.resetDB(viewClass, db);
+        }
+
+        @Override
+        public void insertDB(Consumer<S> db) {
+            JDBEngine.this.insertDB(viewClass, db);
+        }
+
+        @Override
+        public void updateDB(Consumer<S> db) {
+            JDBEngine.this.updateDB(viewClass, db);
+        }
+
+        @Override
+        public void updateDB(Class<? extends S> scriptClass) {
+            JDBEngine.this.updateDB(scriptClass);
+        }
+
+        @Override
+        public void cleanupDB() {
+            JDBEngine.this.cleanupDB();
+        }
+
+        @Override
+        public void assertDBHas(Consumer<S> dbAsserts) {
+            JDBEngine.this.assertDBHas(viewClass, dbAsserts);
+        }
+
+        @Override
+        public void assertDBHasNot(Consumer<S> dbAsserts) {
+            JDBEngine.this.assertDBHasNot(viewClass, dbAsserts);
+        }
+
+        @Override
+        public <S2 extends S> IJDBEngine<S2> as(Class<S2> schemaClass) {
+            return JDBEngine.this.as(schemaClass);
+        }
     }
 
     private void sortScript(JDBScript script) {

@@ -207,6 +207,25 @@ engine.resetDB(db -> {
 });
 ```
 
+### Helper Methods (`as`)
+
+Keep setup helpers out of the main schema interface: put them as default methods on a sub-interface (e.g. local to a test class), and run lambda scripts against it with `as(...)`:
+
+```java
+interface IOrderScript extends IAppSchema {
+    default IOrderRecord addOrderFor(long userId, long orderId) {
+        users().id(userId).username("user_" + userId);
+        return orders().id(orderId).user_id(userId);
+    }
+}
+
+engine.as(IOrderScript.class).insertDB(db -> {
+    db.addOrderFor(1L, 200L).total_amount(99.00);
+});
+```
+
+`as(...)` returns a view of the same engine: id counters, caches, callbacks, cleanup and schema validation are shared. The sub-interface may only add default methods, not tables. Class scripts can simply implement the sub-interface.
+
 ### Defaults and Generators (`RecordTools`)
 
 Provide default values directly within your record interfaces using Java default methods. You can also inject `RecordTools` to generate auto-incrementing IDs or template-based strings:

@@ -32,6 +32,18 @@ public class DefaultsTest extends JdbAbstractTest {
         table_with_defaults().int_column_1(15);
     }};
 
+    private interface IPrivateTableWithDefaultsRecord extends IDBRecord {
+        IPrivateTableWithDefaultsRecord id(int value);
+        IPrivateTableWithDefaultsRecord str_column_1(String value);
+        default void defaults(RecordTools tools) {
+            id(tools.nextIntId("id", 1));
+            str_column_1("private default");
+        }
+    }
+    private interface IPrivateDefaultsTestSchema extends IDBSchema {
+        IPrivateTableWithDefaultsRecord table_with_defaults();
+    }
+
     @BeforeMethod
     public void beforeMethod(){
         cleanupTables(TABLE_NAME);
@@ -70,6 +82,16 @@ public class DefaultsTest extends JdbAbstractTest {
         assertTableValues(table(TABLE_NAME,
                 columns("str_column_1", "int_column_1"),
                 row("default value", 15)
+        ));
+    }
+
+    @Test
+    public void defaults_should_work_for_a_private_record_interface() {
+        createEngine(IPrivateDefaultsTestSchema.class).resetDB(db -> db.table_with_defaults());
+
+        assertTableValues(table(TABLE_NAME,
+                columns("str_column_1"),
+                row("private default")
         ));
     }
 }

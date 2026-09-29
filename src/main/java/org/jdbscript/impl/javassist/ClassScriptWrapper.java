@@ -26,14 +26,12 @@ public class ClassScriptWrapper<T extends IDBSchema> {
     private final static Map<Class<?>, Class<?>> implementations = new ConcurrentHashMap<>();
 
     private final Class<? extends T> scriptClass;
-    private final Class<T> schemaClass;
     private final String javassistClassName;
     private final ClassPool classPool = ClassPool.getDefault();
     private Class newClass;
 
-    public ClassScriptWrapper(Class<? extends T> scriptClass, Class<T> schemaClass) {
+    public ClassScriptWrapper(Class<? extends T> scriptClass) {
         this.scriptClass = scriptClass;
-        this.schemaClass = schemaClass;
         this.javassistClassName = this.scriptClass.getName()+IMPLEMENTATION_SUFFIX;
         newClass = implementations.computeIfAbsent(scriptClass, k -> implementScriptClass());
     }
@@ -93,7 +91,9 @@ public class ClassScriptWrapper<T extends IDBSchema> {
             String body = jMethod.getReturnType() == void.class
                     ? "{ ((%s) %s.current()).%s($$); }"
                     : "{ return ((%s) %s.current()).%s($$); }";
-            body = body.formatted(normalizeClassName(schemaClass), ClassScriptContext.class.getName(), jMethod.getName());
+            // Cast to the declaring interface, not the caller's schema: the generated class is cached
+            // per script class, and a script may run under the engine's schema or a sub-interface view.
+            body = body.formatted(normalizeClassName(jMethod.getDeclaringClass()), ClassScriptContext.class.getName(), jMethod.getName());
             log.trace("method body: {}", body);
             CtMethod method = CtNewMethod.make(Modifier.PUBLIC, toCtClass(jMethod.getReturnType()), jMethod.getName(),
                     toCtClasses(jMethod.getParameterTypes()), null, body, cc);
@@ -116,7 +116,7 @@ public class ClassScriptWrapper<T extends IDBSchema> {
     private List<Method> findSchemaMethods() {
         return Arrays.stream(scriptClass.getMethods())
                 .filter(m -> Modifier.isAbstract(m.getModifiers()))
-                .filter(m -> m.getDeclaringClass().isAssignableFrom(schemaClass))
+                .filter(m -> IDBSchema.class.isAssignableFrom(m.getDeclaringClass()))
                 .toList();
     }
 

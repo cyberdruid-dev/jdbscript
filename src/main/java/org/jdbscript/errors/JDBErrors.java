@@ -53,6 +53,9 @@ public enum JDBErrors implements Supplier<JDBScriptException> {
     EMPTY_ASSERTION_RECORD(JDBScriptException.class,
             "assertDBHas/assertDBHasNot requires at least one column to be set to match against, "
                     + "but table '%s' had none set."),
+    /** engine.as(S) with an S that adds an abstract (table) method instead of only default helpers. */
+    SCHEMA_VIEW_ADDS_METHOD(JDBScriptException.class,
+            "%s declares %s(), which isn't part of schema %s: a sub-interface used with as() may only add default methods."),
     /** updateDB found no row with the record's primary key. */
     UPDATE_ROW_NOT_FOUND(JDBScriptException.class,
             "updateDB found no row in table '%s' with primary key %s."),

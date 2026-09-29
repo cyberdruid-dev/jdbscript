@@ -6,6 +6,7 @@ import org.jdbscript.IDBSchema.IDBRecord;
 import org.jdbscript.errors.JDBScriptException;
 import org.jdbscript.impl.javassist.ClassScriptWrapper;
 
+import java.lang.invoke.MethodHandles;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -33,9 +34,23 @@ public class ScriptHandler<T extends IDBSchema> {
 
     private final List<AddedRecord> records = new ArrayList<>();
 
+    // invokeDefault needs the interface to be accessible from here; a private or package-private
+    // one (e.g. nested in a test class) isn't, so go through a private lookup on the interface.
+    private static Object invokeDefault(Object proxy, Method method, Object[] args) throws Throwable {
+        try {
+            return InvocationHandler.invokeDefault(proxy, method, args);
+        } catch (IllegalAccessException e) {
+            Class<?> declaringInterface = method.getDeclaringClass();
+            return MethodHandles.privateLookupIn(declaringInterface, MethodHandles.lookup())
+                    .unreflectSpecial(method, declaringInterface)
+                    .bindTo(proxy)
+                    .invokeWithArguments(args == null ? new Object[0] : args);
+        }
+    }
+
     private final InvocationHandler scriptHandler = (dbProxy, method, args) -> {
         if (method.isDefault()) {
-            return InvocationHandler.invokeDefault(dbProxy, method, args);
+            return invokeDefault(dbProxy, method, args);
         }
         if (method.getDeclaringClass() == Object.class) {
             String name = method.getName();
@@ -52,7 +67,7 @@ public class ScriptHandler<T extends IDBSchema> {
         }
         if (method.getName().equals("include")) {
             if (args[0] instanceof Class<?>) {
-                ClassScriptWrapper<T> wrapper = new ClassScriptWrapper<>((Class<? extends T>) args[0], this.schemaClass);
+                ClassScriptWrapper<T> wrapper = new ClassScriptWrapper<>((Class<? extends T>) args[0]);
                 wrapper.applyScript((T) dbProxy);
             } else if (args[0] instanceof Consumer<?>) {
                 Consumer includedScript = (Consumer) args[0];
@@ -93,9 +108,9 @@ public class ScriptHandler<T extends IDBSchema> {
                         Object decorator = newProxy(type, new NotOverridingInvocationDecorator(record, recordProxy));
                         Optional<Object> tools = getTableTools(m, record, type);
                         if(tools.isEmpty()){
-                            InvocationHandler.invokeDefault(decorator, m);
+                            invokeDefault(decorator, m, new Object[0]);
                         } else {
-                            InvocationHandler.invokeDefault(decorator, m, tools.get());
+                            invokeDefault(decorator, m, new Object[]{tools.get()});
                         }
                     } catch (Throwable e) {
                         String msg = "Fail to call %s() on %s".formatted(DEFAULTS_METHOD_NAME, type.getName());
@@ -180,10 +195,12 @@ public class ScriptHandler<T extends IDBSchema> {
             }
 
             if (method.isDefault()) {
-                return InvocationHandler.invokeDefault(proxy, method, args);
+                return invokeDefault(proxy, method, args);
             }
 
             if (!record.hasValueFor(method.getName())) {
+                // Accessible for a private or package-private record interface, too.
+                method.setAccessible(true);
                 Object result = method.invoke(nextProxy, args);
                 if (result == nextProxy) {
                     return proxy;
