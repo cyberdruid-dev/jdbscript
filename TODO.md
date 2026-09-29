@@ -139,6 +139,7 @@ Grouped summary of completed work - see git history for detail.
 * **Infra**: TeamCity CI across all supported DBMS x JDK 17/21/25; inner non-static script
   classes throw an explaining exception; null-handling tested in the executor
 * **Released**: v1.1.0 published to Maven Central (2026-09-05)
+* **Released**: v1.2.0 published to Maven Central (2026-09-29)
 
 ## Requirements
 * JDK 17+ (uses `InvocationHandler.invokeDefault`, which needs Java 16+; project targets 17)
