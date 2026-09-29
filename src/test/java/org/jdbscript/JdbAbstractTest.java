@@ -262,6 +262,13 @@ public class JdbAbstractTest {
         }
     }
 
+    protected void forAny(Runnable action, DBMSType... types) {
+        DBMSType dbmsType = testConfiguration.getDbmsType();
+        if (Arrays.stream(types).anyMatch(t -> t == dbmsType)) {
+            action.run();
+        }
+    }
+
     protected void skipFor(String featureName, DBMSType... types) {
         for (DBMSType type : types) {
             skipFor(featureName, type, null, null);

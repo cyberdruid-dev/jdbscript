@@ -72,6 +72,14 @@ public interface ISqlExecutorStrategy {
 
     String[] getTableTypes();
 
+    /**
+     * Global temporary tables that {@code getTables()} reports as ordinary tables (Oracle does), to
+     * leave out of the table list: their rows are session-private, so they're never fixture targets.
+     */
+    default Set<String> getTemporaryTables(Connection cnn, String schema) throws SQLException {
+        return Set.of();
+    }
+
     Set<String> getRawTableDependencies(Connection cnn, String catalog, String schema, String tableName) throws SQLException;
 
     Object getColumnValue(ResultSet rs, int columnIndex, String expectedType) throws SQLException;

@@ -1,6 +1,7 @@
 package org.jdbscript;
 
 import org.jdbscript.errors.JDBScriptException;
+import org.jdbscript.liquibase.LiquibaseMigrator;
 import org.testng.SkipException;
 import org.testng.annotations.AfterGroups;
 import org.testng.annotations.BeforeMethod;
@@ -62,6 +63,10 @@ public abstract class MigrationTestBase extends JdbAbstractTest {
      */
     @AfterGroups(groups = "migration", alwaysRun = true)
     public static void restoreStandingSchema() {
+        // Wipe first: the migration tests' own tables (migration_*, ...) must not outlive them.
+        if (testConfiguration.getDbmsType() != DBMSType.DUCKDB) {
+            new LiquibaseMigrator("db/changelog.yaml").reset(testConfiguration.getDataSource());
+        }
         testConfiguration.reinitStandingSchema(testConfiguration.getDataSource());
     }
 

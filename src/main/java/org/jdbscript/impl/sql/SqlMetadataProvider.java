@@ -107,9 +107,13 @@ public class SqlMetadataProvider implements IMetadataProvider {
             String searchCatalog = getStrategy().getSearchCatalog(cnn);
             String searchSchema = getStrategy().getSearchSchema(cnn);
             String[] types = getStrategy().getTableTypes();
+            Set<String> temporaryTables = getStrategy().getTemporaryTables(cnn, searchSchema);
             try (ResultSet rs = metaData.getTables(searchCatalog, searchSchema, "%", types)) {
                 while (rs.next()) {
-                    tables.add(rs.getString("TABLE_NAME"));
+                    String tableName = rs.getString("TABLE_NAME");
+                    if (!temporaryTables.contains(tableName)) {
+                        tables.add(tableName);
+                    }
                 }
             }
         });

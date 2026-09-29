@@ -4,6 +4,7 @@ import java.nio.ByteBuffer;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -76,6 +77,21 @@ class OracleStrategy extends DefaultSqlExecutorStrategy {
                             + "IDs from this sequence may now collide with manually-inserted ones: "
                             + e.getMessage(), e);
         }
+    }
+
+    @Override
+    public Set<String> getTemporaryTables(Connection cnn, String schema) throws SQLException {
+        Set<String> result = new HashSet<>();
+        try (PreparedStatement stmt = cnn.prepareStatement(
+                "SELECT TABLE_NAME FROM ALL_TABLES WHERE OWNER = ? AND TEMPORARY = 'Y'")) {
+            stmt.setString(1, schema != null ? schema : cnn.getMetaData().getUserName());
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    result.add(rs.getString(1));
+                }
+            }
+        }
+        return result;
     }
 
     private List<SequenceInfo> getSequences(Statement stmt) throws SQLException {
