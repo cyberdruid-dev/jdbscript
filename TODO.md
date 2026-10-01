@@ -84,7 +84,7 @@
 
 #### Ecosystem Integration
 * [ ] Generate schema interfaces from an existing DB
-* [ ] Kotlin support? (should already work, but may be improvable)
+* [ ] Introduce a dedicated `jdbscript-kotlin` artifact / module with first-class Kotlin extensions (receiver lambdas, reified `asDSL<T>()`, builder DSLs)
 * [ ] Easy Spring integration - `examples/08-springboot` already proves a plain `DataSource` bean
   is enough with zero extra code; re-scope this if something beyond that is actually wanted
   (e.g. an autoconfiguration starter)

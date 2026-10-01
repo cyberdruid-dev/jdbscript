@@ -34,6 +34,7 @@ mvn test
 | 09 | [`09-liquibase-data-migration`](09-liquibase-data-migration) | Testing what a Liquibase changeset does to *existing rows*, not just that it applies cleanly: `JDBMigrationEngine` seeds data in the pre-migration shape, runs the changelog up to a tag via `LiquibaseMigrator`, applies the changeset under test, then asserts the post-migration shape. |
 | 10 | [`10-flyway-data-migration`](10-flyway-data-migration) | Testing what a Flyway migration does to *existing rows*, not just that it applies cleanly: `JDBMigrationEngine` seeds data in the pre-migration shape, runs migrations up to a version via `FlywayMigrator`, applies the migration under test, then asserts the post-migration shape - no separate tagging convention needed, since Flyway migrations are already individually versioned. |
 | 11 | [`11-domain-dsl-and-helpers`](11-domain-dsl-and-helpers) | Building type-safe Domain DSLs with `engine.as(...)` — sub-interfaces with default helper methods that construct multi-table aggregates (customers, orders, nested order items) in single declarative calls. |
+| 12 | [`12-kotlin-dsl`](12-kotlin-dsl) | Idiomatic Kotlin DSL extensions: receiver lambdas (`engine.insert { ... }`, `update { ... }`, `reset { ... }`), reified `asDSL<T>()`, default arguments, and multi-tenant SaaS quota orchestration. |
 
 See the main [README](../README.md) for the full feature list in prose form.
 

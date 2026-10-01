@@ -90,19 +90,22 @@ engine.resetDB(db -> {
 A script is just Java — loops, `Random` (seed it, e.g. `new Random(42)`, for reproducible bulk
 fixtures), conditionals — nothing special is needed to generate many rows.
 
-For helpers that create several related rows, use a sub-interface with default methods (e.g. local
-to the test class) instead of growing the main schema interface, and run lambdas through `as(...)`:
+For helpers that create several related rows or multi-table aggregates, use a sub-interface with default
+methods (e.g. local to the test class or shared across domain tests) instead of growing the main schema
+interface, and run lambdas through `as(...)`:
 
 ```java
-interface IOrderScript extends IAppSchema {
-    default IOrderRecord addOrderFor(long userId, long orderId) {
-        users().id(userId).username("user_" + userId);
-        return orders().id(orderId).user_id(userId);
+interface ICustomerOrderDSL extends IAppSchema {
+    default void createCustomerWithOrders(long customerId, String name, double... amounts) {
+        customers().id(customerId).name(name);
+        for (int i = 0; i < amounts.length; i++) {
+            orders().id(customerId * 100 + i).customer_id(customerId).total_amount(amounts[i]);
+        }
     }
 }
 
-engine.as(IOrderScript.class).insertDB(db -> {
-    db.addOrderFor(1L, 200L).total_amount(99.00);
+engine.as(ICustomerOrderDSL.class).insertDB(db -> {
+    db.createCustomerWithOrders(101L, "Alice", 29.99, 99.00);
 });
 ```
 
@@ -178,15 +181,37 @@ List every table the schema interface declares, parent-to-child.
 - `.converter(new MyConverter())` to teach jdbscript a domain type it doesn't already handle (see
   `reference/examples.md`).
 
-## Writing good fixtures
+## Writing high-signal fixtures
 
-- A script should read like a DB script: one row per line — wrap only once a line gets too long.
-  Don't split a record's chained setters across lines just because a formatter would.
-- Set only the columns this specific test case actually cares about. Push everything else out of
-  the fixture: irrelevant-but-required columns belong in `defaults(RecordTools)` (see above),
-  and rows shared across tests belong in a common base fixture (see "Reusable / composable
-  scripts" above), not repeated inline. A test's own script should be as short as the behavior
-  it's arranging for — the shorter it is, the more obvious what's actually under test.
+A good JDBScript fixture acts as executable documentation: it should be as short as possible while making the test's intent and boundaries immediately obvious.
+
+### The Contrast Rule (Explicit State vs. Incidental Defaults)
+1. **Explicit Test Variables**: If a column directly influences the System Under Test (SUT) or is checked in an assertion (e.g. `status`, `role`, `active`, `amount`, filter conditions), explicitly set it on **all** rows involved in the test.
+   - **Visual Contrast**: Seeing `status("ACTIVE")` next to `status("INVITED")` immediately communicates the test scenario without needing to inspect external schema definitions.
+   - **Default Decoupling**: Tests remain stable and won't break silently or pass for the wrong reasons when shared defaults evolve.
+   ```java
+   // ✅ GOOD: Contrast is explicit and obvious across all rows under test
+   engine.resetDB(db -> {
+       db.users().id(1L).role("ADMIN").status("ACTIVE");
+       db.users().id(2L).role("MEMBER").status("ACTIVE");
+       db.users().id(3L).role("MEMBER").status("INVITED");
+   });
+
+   // ❌ BAD: Relies on hidden defaults for columns actively under test
+   engine.resetDB(db -> {
+       db.users().id(1L).role("ADMIN");
+       db.users().id(2L); // Status is hidden from the reader
+       db.users().id(3L).status("INVITED");
+   });
+   ```
+2. **Incidental Schema Defaults**: Columns required only to satisfy database constraints (`created_at`, `updated_at`, `uuid`, unique emails, synthetic slugs) belong in `defaults(RecordTools tools)` on the record interface. Do not clutter test scripts with boilerplate values that the test does not care about.
+
+### Prefer In-Place Updates for Edge Cases
+When testing an edge case, failure mode, or state mutation against an existing baseline fixture, use `engine.updateDB(...)` to mutate the relevant column in-place rather than copying and re-seeding an entire multi-table hierarchy.
+
+### Block Formatting & Layout
+- **Always use multiline lambda blocks**: Write `engine.resetDB(db -> { ... });` or `engine.updateDB(db -> { ... });` with explicit `{ ... }` blocks so the setup reads like a structured seeding script.
+- **One row per line**: Chain record setters on a single line per entity (`db.users().id(1L).username("alice").active(true);`). Wrap only when an individual line gets excessively long.
 
 ## Gotchas
 

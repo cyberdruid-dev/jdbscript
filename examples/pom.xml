@@ -30,12 +30,15 @@
         <module>09-liquibase-data-migration</module>
         <module>10-flyway-data-migration</module>
         <module>11-domain-dsl-and-helpers</module>
+        <module>12-kotlin-dsl</module>
     </modules>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+        <kotlin.version>2.1.10</kotlin.version>
 
         <!--
           Matches the version currently under development in the parent jdbscript build
@@ -136,12 +139,33 @@
                 <version>${flyway.version}</version>
                 <scope>test</scope>
             </dependency>
+
+            <!-- Used by 12-kotlin-dsl only. -->
+            <dependency>
+                <groupId>org.jetbrains.kotlin</groupId>
+                <artifactId>kotlin-stdlib</artifactId>
+                <version>${kotlin.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.jetbrains.kotlin</groupId>
+                <artifactId>kotlin-test-junit5</artifactId>
+                <version>${kotlin.version}</version>
+                <scope>test</scope>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
     <build>
         <pluginManagement>
             <plugins>
+                <plugin>
+                    <groupId>org.jetbrains.kotlin</groupId>
+                    <artifactId>kotlin-maven-plugin</artifactId>
+                    <version>${kotlin.version}</version>
+                    <configuration>
+                        <jvmTarget>17</jvmTarget>
+                    </configuration>
+                </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-surefire-plugin</artifactId>
