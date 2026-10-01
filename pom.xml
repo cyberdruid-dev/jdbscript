@@ -6,7 +6,7 @@
 
     <groupId>org.jdbscript</groupId>
     <artifactId>jdbscript</artifactId>
-    <version>1.3.0-SNAPSHOT</version>
+    <version>1.3.0</version>
     <packaging>jar</packaging>
 
     <name>jdbscript</name>
@@ -39,7 +39,7 @@
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <project.build.outputTimestamp>2026-09-28T23:48:29+00:00</project.build.outputTimestamp>
+        <project.build.outputTimestamp>2026-10-01T20:09:00Z</project.build.outputTimestamp>
         <slf4jVersion>2.0.18</slf4jVersion>
         <logbackVersion>1.6.3</logbackVersion>
         <flywayVersion>13.8.0</flywayVersion>
