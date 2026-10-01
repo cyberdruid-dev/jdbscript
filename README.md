@@ -257,7 +257,9 @@ engine.resetDB(db -> {
     db.users(); // id=1, username="user_1", email="user_1@example.com"
     db.users().username("custom_user"); // id=2, username="custom_user", email="custom_user@example.com"
 });
-engine.insertDB(db -> db.users()); // id=3: counters keep counting until the next cleanupDB/resetDB
+engine.insertDB(db -> {
+    db.users(); // id=3: counters keep counting until the next cleanupDB/resetDB
+});
 ```
 
 ### Updating Existing Rows
@@ -265,7 +267,9 @@ engine.insertDB(db -> db.users()); // id=3: counters keep counting until the nex
 Change a few columns of rows that are already in the database, e.g. a shared baseline from `@BeforeMethod`, or data changed mid-test:
 
 ```java
-engine.updateDB(db -> db.users().id(1L).active(false));
+engine.updateDB(db -> {
+    db.users().id(1L).active(false);
+});
 ```
 
 Each record's primary key (read from the database metadata) selects the row; every other column set in the script is updated, and nothing else is touched - defaults are not applied. The call fails if a row isn't found, the table has no primary key, or a record doesn't set every primary key column. Like `insertDB`, each call runs in one transaction, rolled back if any record fails.
@@ -349,7 +353,9 @@ migration.before().insertDB(db -> {
 migration.migrateTo("after-full-name-backfill");
 
 // Assert: check the rows in the new shape
-migration.after().assertDBHas(db -> db.person().id(1).full_name("Ada Lovelace"));
+migration.after().assertDBHas(db -> {
+    db.person().id(1).full_name("Ada Lovelace");
+});
 ```
 
 - **Markers**: `migrateTo(...)` takes a Liquibase tag, or a Flyway version (e.g. `"3"`). There's deliberately no "migrate everything" method: a test bounded by markers keeps testing the same migration as more are added later.

@@ -62,7 +62,9 @@ Prefer `resetDB` for a test's baseline arrange step; use `insertDB` when you nee
 inserts with actions under test (simulating events over time within one test).
 
 ```java
-engine.updateDB(db -> db.users().id(1L).active(false));   // changes only `active` of user 1
+engine.updateDB(db -> {
+    db.users().id(1L).active(false);   // changes only `active` of user 1
+});
 ```
 
 Use `updateDB` to tweak a row of a shared baseline for one test, or to change data between actions
@@ -99,7 +101,9 @@ interface IOrderScript extends IAppSchema {
     }
 }
 
-engine.as(IOrderScript.class).insertDB(db -> db.addOrderFor(1L, 200L).total_amount(99.00));
+engine.as(IOrderScript.class).insertDB(db -> {
+    db.addOrderFor(1L, 200L).total_amount(99.00);
+});
 ```
 
 The view shares everything with the engine (id counters, cleanup, callbacks); the sub-interface may
@@ -133,8 +137,12 @@ string off another column already set on the same record.
 Same fluent API, used to verify rather than insert:
 
 ```java
-engine.assertDBHas(db -> db.users().username("alice").active(true));
-engine.assertDBHasNot(db -> db.users().username("malory"));
+engine.assertDBHas(db -> {
+    db.users().username("alice").active(true);
+});
+engine.assertDBHasNot(db -> {
+    db.users().username("malory");
+});
 ```
 
 Only the columns you set are checked — omitted columns are wildcards, not implied nulls.
@@ -204,6 +212,7 @@ covering each concern below — no network access required:
 | Insert power | `insertDB` interleaved with actions under test |
 | Testcontainers | Same schema/code as quickstart, against a real PostgreSQL container |
 | Spring Boot | Dropped into `@SpringBootTest`, using the auto-configured `DataSource` bean |
+| Domain DSL & helpers | Sub-interface helpers with `engine.as(...)` for multi-table aggregate generation |
 
 For anything beyond that, the upstream project is at
 [github.com/cyberdruid-dev/jdbscript](https://github.com/cyberdruid-dev/jdbscript) (README and

@@ -69,7 +69,9 @@ class UserRepositorySpringBootTest {
     void findActiveUsernames_sees_rows_inserted_after_its_result_was_cached() {
         assertEquals(List.of("alice", "charlie"), userRepository.findActiveUsernames());
 
-        engine.insertDB(db -> db.users().id(4L).username("dave").email("dave@example.com").active(true));
+        engine.insertDB(db -> {
+            db.users().id(4L).username("dave").email("dave@example.com").active(true);
+        });
 
         // Without onDataChange this would still return the cached [alice, charlie].
         assertEquals(List.of("alice", "charlie", "dave"), userRepository.findActiveUsernames());

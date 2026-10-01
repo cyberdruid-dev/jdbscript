@@ -15,9 +15,9 @@ import java.sql.Statement;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * Two ways to run {@link BaseUsersFixture}: directly, and composed with test-specific rows via
- * {@code db.include(...)}. Both tests still follow the arrange/act/assert shape from
- * 01-quickstart — jdbscript only does the arranging.
+ * Demonstrates running a reusable class-based script ({@link BaseUsersFixture}) directly,
+ * composing it with test-specific rows via {@code db.include(...)}, and tweaking rows in-place
+ * with {@code updateDB(...)}.
  */
 class ClassScriptsAndIncludeTest {
 
@@ -82,5 +82,23 @@ class ClassScriptsAndIncludeTest {
 
         assertEquals(59.99, orderService.totalSpentBy("admin"), 0.001);
         assertEquals(0.0, orderService.totalSpentBy("guest"));
+    }
+
+    @Test
+    void updateDB_modifies_existing_user_attributes_without_reinserting() {
+        // Arrange: start with the shared base fixture and an order for 'admin' (id=1L)
+        engine.resetDB(db -> {
+            db.include(BaseUsersFixture.class);
+            db.orders().id(100L).user_id(1L).total_amount(50.00);
+        });
+
+        // Tweak one row in-place: update user 1's username without re-seeding the entire schema
+        engine.updateDB(db -> {
+            db.users().id(1L).username("superadmin");
+        });
+
+        // Act & Assert: OrderService joins on the updated username
+        assertEquals(50.00, orderService.totalSpentBy("superadmin"), 0.001);
+        assertEquals(0.0, orderService.totalSpentBy("admin"), 0.001);
     }
 }

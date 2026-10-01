@@ -48,8 +48,12 @@ only when nothing in your own code exposes the state you need to check (e.g. a D
 side effect):
 
 ```java
-engine.assertDBHas(db -> db.users().username("alice").active(true));
-engine.assertDBHasNot(db -> db.users().username("malory"));
+engine.assertDBHas(db -> {
+    db.users().username("alice").active(true);
+});
+engine.assertDBHasNot(db -> {
+    db.users().username("malory");
+});
 ```
 
 ## Reusable base fixtures + composition
@@ -75,6 +79,60 @@ engine.resetDB(db -> {
     db.include(BaseUsersFixture.class);
     db.orders().id(100L).user_id(1L).total_amount(49.99);
     db.orders().id(101L).user_id(1L).total_amount(10.00);
+});
+```
+
+## In-place row updates (`updateDB`)
+
+Use `updateDB` to modify specific columns of an existing row without re-seeding the entire schema. The primary key columns identify the target row, while other set columns update in-place:
+
+```java
+engine.resetDB(BaseUsersFixture.class);
+
+// Tweak existing row in-place
+engine.updateDB(db -> {
+    db.users().id(1L).active(false);
+});
+```
+
+## Domain DSLs & sub-interface helpers (`engine.as(...)`)
+
+Extend your schema interface with domain helper methods to construct multi-table aggregates or business concepts in expressive calls:
+
+```java
+public interface ICustomerOrderDSL extends IAppSchema {
+    record Item(String productName, int quantity, double unitPrice) {
+        public static Item item(String name, int qty, double price) {
+            return new Item(name, qty, price);
+        }
+    }
+
+    default ICustomerRecord addCustomer(long customerId, String name, String tier) {
+        return customers().id(customerId).name(name).tier(tier);
+    }
+
+    default IOrderRecord addOrderWithItems(long orderId, long customerId, String orderNumber, Item... items) {
+        double total = 0.0;
+        long baseItemId = orderId * 100;
+        for (int i = 0; i < items.length; i++) {
+            Item item = items[i];
+            total += item.quantity() * item.unitPrice();
+            order_items().id(baseItemId + i + 1)
+                    .order_id(orderId)
+                    .product_name(item.productName())
+                    .quantity(item.quantity())
+                    .unit_price(item.unitPrice());
+        }
+        return orders().id(orderId).customer_id(customerId).order_number(orderNumber).total_amount(total);
+    }
+}
+
+engine.as(ICustomerOrderDSL.class).insertDB(db -> {
+    db.addCustomer(1L, "Alice Smith", "VIP");
+    db.addOrderWithItems(101L, 1L, "ORD-101",
+            item("Mechanical Keyboard", 1, 120.00),
+            item("Wireless Mouse", 2, 40.00)
+    );
 });
 ```
 

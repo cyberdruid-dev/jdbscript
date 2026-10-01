@@ -80,8 +80,12 @@ class PersonFullNameBackfillMigrationTest {
 
         // Assert: via the post-migration shape - full_name should be derived from the old rows,
         // not just present as a new empty column.
-        migration.after().assertDBHas(db -> db.person().id(1).full_name("Ada Lovelace"));
-        migration.after().assertDBHas(db -> db.person().id(2).full_name("Alan Turing"));
+        migration.after().assertDBHas(db -> {
+            db.person().id(1).full_name("Ada Lovelace");
+        });
+        migration.after().assertDBHas(db -> {
+            db.person().id(2).full_name("Alan Turing");
+        });
     }
 
     private static <F extends IDBSchema, A extends IDBSchema> JDBMigrationEngine<F, A> createMigrationEngine(

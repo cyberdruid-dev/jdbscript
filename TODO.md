@@ -15,8 +15,8 @@
   identity-column handling (DB2/Oracle/HSQLDB) to the tables actually being cleaned.
 
 #### Release (v1.3.0)
-* [ ] Bump `jdbscript.version` in `examples/pom.xml` to 1.3.0
-* [ ] Add an `updateDB` test to `examples/02-class-scripts-and-include` (reset `BaseUsersFixture`,
+* [x] Bump `jdbscript.version` in `examples/pom.xml` to 1.3.0
+* [x] Add an `updateDB` test to `examples/02-class-scripts-and-include` (reset `BaseUsersFixture`,
   tweak one row, act, assert) and list it in `skill/jdbscript/reference/examples.md`
 
 #### Performance (v1.2.5)
