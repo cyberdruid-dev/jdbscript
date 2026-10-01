@@ -414,18 +414,18 @@ Every release is tested in CI against each database below, and on JDK 17, 21, an
 
 | Database | Tested Versions | Tests |
 | :--- | :--- | :---: |
-| **PostgreSQL** | `9.x`, `12.x`, `16.x`, `17.x`, `18.x` | ![Passed](https://img.shields.io/badge/294-passing-success?style=flat-square) |
-| **MySQL** | `5.x`, `8.x`, `9.x` | ![Passed](https://img.shields.io/badge/291-passing-success?style=flat-square) |
-| **MariaDB** | `10.x`, `11.x`, `12.x` | ![Passed](https://img.shields.io/badge/291-passing-success?style=flat-square) |
-| **Oracle** | `Oracle Free 23c` | ![Passed](https://img.shields.io/badge/293-passing-success?style=flat-square) |
-| **Microsoft SQL Server** | `2022` | ![Passed](https://img.shields.io/badge/291-passing-success?style=flat-square) |
-| **IBM DB2** | Latest | ![Passed](https://img.shields.io/badge/296-passing-success?style=flat-square) |
-| **CockroachDB** | Latest | ![Passed](https://img.shields.io/badge/294-passing-success?style=flat-square) |
-| **Google Cloud Spanner** | Emulator | ![Passed](https://img.shields.io/badge/288-passing-success?style=flat-square) |
-| **H2** | `2.4.x` | ![Passed](https://img.shields.io/badge/291-passing-success?style=flat-square) |
-| **HSQLDB** | `2.7.x` | ![Passed](https://img.shields.io/badge/293-passing-success?style=flat-square) |
-| **SQLite** | `3.53.x` | ![Passed](https://img.shields.io/badge/291-passing-success?style=flat-square) |
-| **DuckDB** | `1.2.x` | ![Passed](https://img.shields.io/badge/253-passing-success?style=flat-square) |
+| **PostgreSQL** | `9.x`, `12.x`, `16.x`, `17.x`, `18.x` | ![Passed](https://img.shields.io/badge/349-passing-success?style=flat-square) |
+| **MySQL** | `5.x`, `8.x`, `9.x` | ![Passed](https://img.shields.io/badge/343-passing-success?style=flat-square) |
+| **MariaDB** | `10.x`, `11.x`, `12.x` | ![Passed](https://img.shields.io/badge/343-passing-success?style=flat-square) |
+| **Oracle** | `Oracle Free 23c` | ![Passed](https://img.shields.io/badge/348-passing-success?style=flat-square) |
+| **Microsoft SQL Server** | `2022` | ![Passed](https://img.shields.io/badge/343-passing-success?style=flat-square) |
+| **IBM DB2** | Latest | ![Passed](https://img.shields.io/badge/350-passing-success?style=flat-square) |
+| **CockroachDB** | Latest | ![Passed](https://img.shields.io/badge/349-passing-success?style=flat-square) |
+| **Google Cloud Spanner** | Emulator | ![Passed](https://img.shields.io/badge/339-passing-success?style=flat-square) |
+| **H2** | `2.4.x` | ![Passed](https://img.shields.io/badge/344-passing-success?style=flat-square) |
+| **HSQLDB** | `2.7.x` | ![Passed](https://img.shields.io/badge/348-passing-success?style=flat-square) |
+| **SQLite** | `3.53.x` | ![Passed](https://img.shields.io/badge/343-passing-success?style=flat-square) |
+| **DuckDB** | `1.2.x` | ![Passed](https://img.shields.io/badge/303-passing-success?style=flat-square) |
 
 ---
 
