@@ -49,7 +49,7 @@ export default defineConfig({
       { text: 'Why JDBScript?', link: '/#why-jdbscript' },
       { text: 'VS DbUnit', link: '/#jdbscript-vs-dbunit' },
       { text: 'Quickstart', link: '/#quickstart' },
-      { text: 'Recipes', link: '/#recipes' },
+      { text: 'Recipes', link: '/#code-recipes-examples' },
       {
         text: 'Maven Central: 1.3.0',
         link: 'https://central.sonatype.com/artifact/org.jdbscript/jdbscript/1.3.0'

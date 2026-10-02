@@ -154,26 +154,26 @@ engine.assertDBHasNot(db -> {
 
 ---
 
-## Recipes
+## Code Recipes & Examples
 
 Runnable, self-contained example projects demonstrating real-world usage patterns across different stacks:
 
-### Frameworks & Ecosystem
-* **[Spring Boot (`08-springboot`)](https://github.com/cyberdruid-dev/jdbscript/blob/main/examples/08-springboot/src/test/java/org/jdbscript/examples/springboot/UserRepositorySpringBootTest.java)** — Using auto-configured `DataSource` and clearing `@Cacheable` caches via `onDataChange`.
-* **[Testcontainers (`07-testcontainers`)](https://github.com/cyberdruid-dev/jdbscript/blob/main/examples/07-testcontainers/src/test/java/org/jdbscript/examples/testcontainers/TestcontainersTest.java)** — Running identical schema fixtures against a real PostgreSQL container.
-* **[Kotlin DSL (`12-kotlin-dsl`)](https://github.com/cyberdruid-dev/jdbscript/blob/main/examples/12-kotlin-dsl/src/test/kotlin/org/jdbscript/examples/kotlindsl/KotlinDslTest.kt)** — Idiomatic Kotlin extensions, receiver lambdas (`engine.insert { ... }`), and reified builders.
+### Core Patterns & Fixture Setup
+* **[Quickstart (`01-quickstart`)](https://github.com/cyberdruid-dev/jdbscript/blob/main/examples/01-quickstart/src/test/java/org/jdbscript/examples/quickstart/QuickstartTest.java)** — Standard JUnit 5 Arrange-Act-Assert lifecycle with type-safe schema fixtures.
+* **[RecordTools & Defaults (`03-recordtools-defaults`)](https://github.com/cyberdruid-dev/jdbscript/blob/main/examples/03-recordtools-defaults/src/test/java/org/jdbscript/examples/defaults/RecordToolsDefaultsTest.java)** — Avoid dummy fixture boilerplate by populating only the columns relevant to your test while smart defaults automatically populate non-essential NOT NULL columns.
+* **[Class Scripts & Composition (`02-class-scripts-and-include`)](https://github.com/cyberdruid-dev/jdbscript/blob/main/examples/02-class-scripts-and-include/src/test/java/org/jdbscript/examples/classscripts/ClassScriptsAndIncludeTest.java)** — Avoid copy-pasting shared test data by composing modular baseline scripts, and perform type-safe state transitions mid-test.
+* **[Scripting Power (`04-scripting-power`)](https://github.com/cyberdruid-dev/jdbscript/blob/main/examples/04-scripting-power/src/test/java/org/jdbscript/examples/scripting/BulkScriptingTest.java)** — Generate large-scale test datasets in a few lines of Java code without bloated fixture files or flaky, non-deterministic random data.
+* **[Interleaved Insertion (`06-insert-power`)](https://github.com/cyberdruid-dev/jdbscript/blob/main/examples/06-insert-power/src/test/java/org/jdbscript/examples/insertpower/InsertPowerTest.java)** — Append new records mid-test with `insertDB` to simulate incoming events and state progressions without wiping existing data.
 
-### Migration Testing
-* **[Liquibase Data Migration (`09-liquibase-data-migration`)](https://github.com/cyberdruid-dev/jdbscript/blob/main/examples/09-liquibase-data-migration/src/test/java/org/jdbscript/examples/liquibasedatamigration/PersonFullNameBackfillMigrationTest.java)** — Testing changeset row transformations by seeding pre-migration shape and asserting post-migration state.
-* **[Flyway Data Migration (`10-flyway-data-migration`)](https://github.com/cyberdruid-dev/jdbscript/blob/main/examples/10-flyway-data-migration/src/test/java/org/jdbscript/examples/flywaydatamigration/PersonFullNameBackfillMigrationTest.java)** — Testing Flyway version migrations with intermediate state assertions.
-
-### Core Patterns & Composition
-* **[Quickstart (`01-quickstart`)](https://github.com/cyberdruid-dev/jdbscript/blob/main/examples/01-quickstart/src/test/java/org/jdbscript/examples/quickstart/QuickstartTest.java)** — Standard JUnit 5 arrange-act-assert pattern against real application code.
-* **[Class Scripts & Composition (`02-class-scripts-and-include`)](https://github.com/cyberdruid-dev/jdbscript/blob/main/examples/02-class-scripts-and-include/src/test/java/org/jdbscript/examples/classscripts/ClassScriptsAndIncludeTest.java)** — Reusable base fixtures, `db.include(...)`, and mid-test `updateDB`.
-* **[RecordTools & Defaults (`03-recordtools-defaults`)](https://github.com/cyberdruid-dev/jdbscript/blob/main/examples/03-recordtools-defaults/src/test/java/org/jdbscript/examples/defaults/RecordToolsDefaultsTest.java)** — Auto-incrementing sequences, templated strings, and smart defaults.
-* **[Scripting Power (`04-scripting-power`)](https://github.com/cyberdruid-dev/jdbscript/blob/main/examples/04-scripting-power/src/test/java/org/jdbscript/examples/scripting/BulkScriptingTest.java)** — Loops, programmatic bulk data generation, and deterministic random seeds.
-* **[Interleaved Insertion (`06-insert-power`)](https://github.com/cyberdruid-dev/jdbscript/blob/main/examples/06-insert-power/src/test/java/org/jdbscript/examples/insertpower/InsertPowerTest.java)** — Simulating multi-step time series and state progressions with `insertDB`.
+### Schema & Data Migration Testing
+* **[Liquibase Data Migration (`09-liquibase-data-migration`)](https://github.com/cyberdruid-dev/jdbscript/blob/main/examples/09-liquibase-data-migration/src/test/java/org/jdbscript/examples/liquibasedatamigration/PersonFullNameBackfillMigrationTest.java)** — Verify column backfills and transformations by seeding pre-migration shape and asserting post-migration state.
+* **[Flyway Data Migration (`10-flyway-data-migration`)](https://github.com/cyberdruid-dev/jdbscript/blob/main/examples/10-flyway-data-migration/src/test/java/org/jdbscript/examples/flywaydatamigration/PersonFullNameBackfillMigrationTest.java)** — Test Flyway version migrations step-by-step with intermediate state assertions.
 
 ### Advanced Modeling
-* **[Domain DSLs & Aggregates (`11-domain-dsl-and-helpers`)](https://github.com/cyberdruid-dev/jdbscript/blob/main/examples/11-domain-dsl-and-helpers/src/test/java/org/jdbscript/examples/domaindsl/DomainDslAndHelpersTest.java)** — Expressive domain helpers with `engine.as(...)` for multi-table hierarchies.
-* **[Custom Converters (`05-custom-converters`)](https://github.com/cyberdruid-dev/jdbscript/blob/main/examples/05-custom-converters/src/test/java/org/jdbscript/examples/converters/CustomConvertersTest.java)** — Mapping rich domain types (e.g. `Money`) via `IJDBTypeConverter`.
+* **[Domain DSLs & Aggregates (`11-domain-dsl-and-helpers`)](https://github.com/cyberdruid-dev/jdbscript/blob/main/examples/11-domain-dsl-and-helpers/src/test/java/org/jdbscript/examples/domaindsl/DomainDslAndHelpersTest.java)** — Seed complex multi-table business entities cleanly by extending schemas with domain helper methods via `engine.as(...)`.
+* **[Custom Converters (`05-custom-converters`)](https://github.com/cyberdruid-dev/jdbscript/blob/main/examples/05-custom-converters/src/test/java/org/jdbscript/examples/converters/CustomConvertersTest.java)** — Mapping domain value objects (e.g., `Money`) to JDBC columns via `IJDBTypeConverter`.
+
+### Frameworks & Ecosystem
+* **[Spring Boot (`08-springboot`)](https://github.com/cyberdruid-dev/jdbscript/blob/main/examples/08-springboot/src/test/java/org/jdbscript/examples/springboot/UserRepositorySpringBootTest.java)** — Seed and reset database state in `@SpringBootTest` integration tests via auto-configured `DataSource`.
+* **[Testcontainers (`07-testcontainers`)](https://github.com/cyberdruid-dev/jdbscript/blob/main/examples/07-testcontainers/src/test/java/org/jdbscript/examples/testcontainers/TestcontainersTest.java)** — Manage fixture state and test data seamlessly in Testcontainers (e.g. PostgreSQL) via standard `DataSource` integration.
+* **[Kotlin DSL (`12-kotlin-dsl`)](https://github.com/cyberdruid-dev/jdbscript/blob/main/examples/12-kotlin-dsl/src/test/kotlin/org/jdbscript/examples/kotlindsl/KotlinDslTest.kt)** — Write concise, type-safe database schemas and test fixtures in Kotlin test suites.
