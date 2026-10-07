@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
+import javax.sql.DataSource;
 
 import static org.jdbscript.examples.domaindsl.ICustomerOrderDSL.Item.item;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -31,44 +32,9 @@ class DomainDslAndHelpersTest {
 
     @BeforeAll
     static void setUpDatabase() throws SQLException {
-        HikariConfig config = new HikariConfig();
-        config.setJdbcUrl("jdbc:h2:mem:domaindsl;DB_CLOSE_DELAY=-1");
-        config.setUsername("sa");
-        config.setPassword("sa");
-        dataSource = new HikariDataSource(config);
-
-        try (Connection cnn = dataSource.getConnection(); Statement stmt = cnn.createStatement()) {
-            stmt.execute("""
-                    CREATE TABLE customers (
-                        id BIGINT PRIMARY KEY,
-                        name VARCHAR(100),
-                        email VARCHAR(255),
-                        tier VARCHAR(50)
-                    )
-                    """);
-            stmt.execute("""
-                    CREATE TABLE orders (
-                        id BIGINT PRIMARY KEY,
-                        customer_id BIGINT REFERENCES customers(id),
-                        order_number VARCHAR(50),
-                        status VARCHAR(50),
-                        total_amount DOUBLE
-                    )
-                    """);
-            stmt.execute("""
-                    CREATE TABLE order_items (
-                        id BIGINT PRIMARY KEY,
-                        order_id BIGINT REFERENCES orders(id),
-                        product_name VARCHAR(100),
-                        quantity INT,
-                        unit_price DOUBLE
-                    )
-                    """);
-        }
-
-        engine = JDBEngine.builder(IAppSchema.class)
-                .dataSource(dataSource)
-                .build();
+        dataSource = createDataSource();
+        createTables(dataSource, SCHEMA_DDL);
+        engine = JDBEngine.builder(IAppSchema.class).dataSource(dataSource).build();
         reportingService = new CustomerReportingService(dataSource);
     }
 
@@ -133,4 +99,41 @@ class DomainDslAndHelpersTest {
         assertEquals(80.00, reportingService.calculateTotalSpent(2L), 0.001);
         assertEquals(3, reportingService.countTotalItemsPurchased(2L));
     }
+
+    private static HikariDataSource createDataSource() {
+        HikariConfig config = new HikariConfig();
+        config.setJdbcUrl("jdbc:h2:mem:domaindsl;DB_CLOSE_DELAY=-1");
+        config.setUsername("sa");
+        config.setPassword("sa");
+        return new HikariDataSource(config);
+    }
+
+    private static void createTables(DataSource dataSource, String ddl) throws SQLException {
+        try (Connection cnn = dataSource.getConnection(); Statement stmt = cnn.createStatement()) {
+            stmt.execute(ddl);
+        }
+    }
+
+    private static final String SCHEMA_DDL = """
+            CREATE TABLE customers (
+                id BIGINT PRIMARY KEY,
+                name VARCHAR(100),
+                email VARCHAR(255),
+                tier VARCHAR(50)
+            );
+            CREATE TABLE orders (
+                id BIGINT PRIMARY KEY,
+                customer_id BIGINT REFERENCES customers(id),
+                order_number VARCHAR(50),
+                status VARCHAR(50),
+                total_amount DOUBLE
+            );
+            CREATE TABLE order_items (
+                id BIGINT PRIMARY KEY,
+                order_id BIGINT REFERENCES orders(id),
+                product_name VARCHAR(100),
+                quantity INT,
+                unit_price DOUBLE
+            )
+            """;
 }

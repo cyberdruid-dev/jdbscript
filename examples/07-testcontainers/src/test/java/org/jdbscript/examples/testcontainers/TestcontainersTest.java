@@ -15,6 +15,7 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.List;
+import javax.sql.DataSource;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -36,26 +37,9 @@ class TestcontainersTest {
 
     @BeforeAll
     static void createSchema() throws SQLException {
-        HikariConfig config = new HikariConfig();
-        config.setJdbcUrl(POSTGRES.getJdbcUrl());
-        config.setUsername(POSTGRES.getUsername());
-        config.setPassword(POSTGRES.getPassword());
-        dataSource = new HikariDataSource(config);
-
-        try (Connection cnn = dataSource.getConnection(); Statement stmt = cnn.createStatement()) {
-            stmt.execute("""
-                    CREATE TABLE users (
-                        id BIGINT PRIMARY KEY,
-                        username VARCHAR(100),
-                        email VARCHAR(255),
-                        active BOOLEAN
-                    )
-                    """);
-        }
-
-        engine = JDBEngine.builder(IAppSchema.class)
-                .dataSource(dataSource)
-                .build();
+        dataSource = createDataSource();
+        createTables(dataSource, SCHEMA_DDL);
+        engine = JDBEngine.builder(IAppSchema.class).dataSource(dataSource).build();
         userRepository = new UserRepository(dataSource);
     }
 
@@ -79,4 +63,27 @@ class TestcontainersTest {
         // Assert: on the SUT's return value.
         assertEquals(List.of("alice", "charlie"), result);
     }
+
+    private static HikariDataSource createDataSource() {
+        HikariConfig config = new HikariConfig();
+        config.setJdbcUrl(POSTGRES.getJdbcUrl());
+        config.setUsername(POSTGRES.getUsername());
+        config.setPassword(POSTGRES.getPassword());
+        return new HikariDataSource(config);
+    }
+
+    private static void createTables(DataSource dataSource, String ddl) throws SQLException {
+        try (Connection cnn = dataSource.getConnection(); Statement stmt = cnn.createStatement()) {
+            stmt.execute(ddl);
+        }
+    }
+
+    private static final String SCHEMA_DDL = """
+            CREATE TABLE users (
+                id BIGINT PRIMARY KEY,
+                username VARCHAR(100),
+                email VARCHAR(255),
+                active BOOLEAN
+            )
+            """;
 }

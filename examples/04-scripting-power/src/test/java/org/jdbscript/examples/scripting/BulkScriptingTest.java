@@ -13,6 +13,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.List;
 import java.util.Random;
+import javax.sql.DataSource;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -32,25 +33,9 @@ class BulkScriptingTest {
 
     @BeforeAll
     static void createSchema() throws SQLException {
-        HikariConfig config = new HikariConfig();
-        config.setJdbcUrl("jdbc:h2:mem:scripting;DB_CLOSE_DELAY=-1");
-        config.setUsername("sa");
-        config.setPassword("sa");
-        dataSource = new HikariDataSource(config);
-
-        try (Connection cnn = dataSource.getConnection(); Statement stmt = cnn.createStatement()) {
-            stmt.execute("""
-                    CREATE TABLE players (
-                        id INT PRIMARY KEY,
-                        username VARCHAR(100),
-                        score INT
-                    )
-                    """);
-        }
-
-        engine = JDBEngine.builder(IAppSchema.class)
-                .dataSource(dataSource)
-                .build();
+        dataSource = createDataSource();
+        createTables(dataSource, SCHEMA_DDL);
+        engine = JDBEngine.builder(IAppSchema.class).dataSource(dataSource).build();
         leaderboard = new LeaderboardService(dataSource);
     }
 
@@ -93,4 +78,26 @@ class BulkScriptingTest {
             db.players().id(i).username(FunNames.next(random) + "_" + i).score(random.nextInt(1000));
         }
     }
+
+    private static HikariDataSource createDataSource() {
+        HikariConfig config = new HikariConfig();
+        config.setJdbcUrl("jdbc:h2:mem:scripting;DB_CLOSE_DELAY=-1");
+        config.setUsername("sa");
+        config.setPassword("sa");
+        return new HikariDataSource(config);
+    }
+
+    private static void createTables(DataSource dataSource, String ddl) throws SQLException {
+        try (Connection cnn = dataSource.getConnection(); Statement stmt = cnn.createStatement()) {
+            stmt.execute(ddl);
+        }
+    }
+
+    private static final String SCHEMA_DDL = """
+            CREATE TABLE players (
+                id INT PRIMARY KEY,
+                username VARCHAR(100),
+                score INT
+            )
+            """;
 }

@@ -12,6 +12,7 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.List;
+import javax.sql.DataSource;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -33,28 +34,12 @@ class QuickstartTest {
 
     @BeforeAll
     static void createSchema() throws SQLException {
-        HikariConfig config = new HikariConfig();
-        config.setJdbcUrl("jdbc:h2:mem:quickstart;DB_CLOSE_DELAY=-1");
-        config.setUsername("sa");
-        config.setPassword("sa");
-        dataSource = new HikariDataSource(config);
-
-        try (Connection cnn = dataSource.getConnection(); Statement stmt = cnn.createStatement()) {
-            stmt.execute("""
-                    CREATE TABLE users (
-                        id BIGINT PRIMARY KEY,
-                        username VARCHAR(100),
-                        email VARCHAR(255),
-                        active BOOLEAN
-                    )
-                    """);
-        }
+        dataSource = createDataSource();
+        createTables(dataSource, SCHEMA_DDL);
 
         // .dataSource(...) also accepts a Supplier<DataSource> for lazy resolution
         // (e.g. from a Spring context) — see the README's "Other Useful Options".
-        engine = JDBEngine.builder(IAppSchema.class)
-                .dataSource(dataSource)
-                .build();
+        engine = JDBEngine.builder(IAppSchema.class).dataSource(dataSource).build();
         userRepository = new UserRepository(dataSource);
     }
 
@@ -93,4 +78,27 @@ class QuickstartTest {
 
         assertEquals(List.of("alice", "dave"), userRepository.findActiveUsernames());
     }
+
+    private static HikariDataSource createDataSource() {
+        HikariConfig config = new HikariConfig();
+        config.setJdbcUrl("jdbc:h2:mem:quickstart;DB_CLOSE_DELAY=-1");
+        config.setUsername("sa");
+        config.setPassword("sa");
+        return new HikariDataSource(config);
+    }
+
+    private static void createTables(DataSource dataSource, String ddl) throws SQLException {
+        try (Connection cnn = dataSource.getConnection(); Statement stmt = cnn.createStatement()) {
+            stmt.execute(ddl);
+        }
+    }
+
+    private static final String SCHEMA_DDL = """
+            CREATE TABLE users (
+                id BIGINT PRIMARY KEY,
+                username VARCHAR(100),
+                email VARCHAR(255),
+                active BOOLEAN
+            )
+            """;
 }

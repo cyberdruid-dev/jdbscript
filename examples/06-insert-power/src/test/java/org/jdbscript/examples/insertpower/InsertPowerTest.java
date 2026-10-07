@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
+import javax.sql.DataSource;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -27,24 +28,9 @@ class InsertPowerTest {
 
     @BeforeAll
     static void createSchema() throws SQLException {
-        HikariConfig config = new HikariConfig();
-        config.setJdbcUrl("jdbc:h2:mem:insertpower;DB_CLOSE_DELAY=-1");
-        config.setUsername("sa");
-        config.setPassword("sa");
-        dataSource = new HikariDataSource(config);
-
-        try (Connection cnn = dataSource.getConnection(); Statement stmt = cnn.createStatement()) {
-            stmt.execute("""
-                    CREATE TABLE notifications (
-                        id INT PRIMARY KEY,
-                        message VARCHAR(200)
-                    )
-                    """);
-        }
-
-        engine = JDBEngine.builder(IAppSchema.class)
-                .dataSource(dataSource)
-                .build();
+        dataSource = createDataSource();
+        createTables(dataSource, SCHEMA_DDL);
+        engine = JDBEngine.builder(IAppSchema.class).dataSource(dataSource).build();
         inbox = new NotificationInbox(dataSource);
     }
 
@@ -74,4 +60,25 @@ class InsertPowerTest {
         assertEquals(3, inbox.countMessages());
         assertEquals("Price drop on an item you viewed!", inbox.latestMessage());
     }
+
+    private static HikariDataSource createDataSource() {
+        HikariConfig config = new HikariConfig();
+        config.setJdbcUrl("jdbc:h2:mem:insertpower;DB_CLOSE_DELAY=-1");
+        config.setUsername("sa");
+        config.setPassword("sa");
+        return new HikariDataSource(config);
+    }
+
+    private static void createTables(DataSource dataSource, String ddl) throws SQLException {
+        try (Connection cnn = dataSource.getConnection(); Statement stmt = cnn.createStatement()) {
+            stmt.execute(ddl);
+        }
+    }
+
+    private static final String SCHEMA_DDL = """
+            CREATE TABLE notifications (
+                id INT PRIMARY KEY,
+                message VARCHAR(200)
+            )
+            """;
 }
