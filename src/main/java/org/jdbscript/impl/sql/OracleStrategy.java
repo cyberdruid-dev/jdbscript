@@ -96,17 +96,13 @@ class OracleStrategy extends DefaultSqlExecutorStrategy {
 
     private List<SequenceInfo> getSequences(Statement stmt) throws SQLException {
         Map<String, IdentityColumn> identityColumnsBySeqName = new HashMap<>();
-        // Oracle names an identity column's implicit sequence 'ISEQ$$_<object_id>' - there's no
-        // catalog column that spells out the sequence name directly, so this rebuilds it from the
-        // owning table's object_id to join identity-column metadata back to user_sequences.
-        String identitySql = """
-                SELECT t.TABLE_NAME, t.COLUMN_NAME, t.GENERATION_TYPE, 'ISEQ$$_' || o.OBJECT_ID AS SEQ_NAME
-                FROM USER_TAB_IDENTITY_COLS t
-                JOIN USER_OBJECTS o ON o.OBJECT_NAME = t.TABLE_NAME AND o.OBJECT_TYPE = 'TABLE'
-                """;
+        // Includes identity columns of dropped tables still in the recycle bin (TABLE_NAME 'BIN$...'):
+        // their ISEQ$$ sequences stay in user_sequences and must be recognized as identity-owned,
+        // never ALTERed as regular sequences (ORA-32793).
+        String identitySql = "SELECT TABLE_NAME, COLUMN_NAME, GENERATION_TYPE, SEQUENCE_NAME FROM USER_TAB_IDENTITY_COLS";
         try (ResultSet rs = stmt.executeQuery(identitySql)) {
             while (rs.next()) {
-                identityColumnsBySeqName.put(rs.getString("SEQ_NAME"),
+                identityColumnsBySeqName.put(rs.getString("SEQUENCE_NAME"),
                         new IdentityColumn(rs.getString("TABLE_NAME"), rs.getString("COLUMN_NAME"),
                                 rs.getString("GENERATION_TYPE")));
             }

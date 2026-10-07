@@ -6,12 +6,16 @@ import org.flywaydb.core.api.Location;
 import org.flywaydb.core.api.MigrationInfo;
 import org.flywaydb.core.api.MigrationVersion;
 import org.flywaydb.core.api.configuration.FluentConfiguration;
+import org.jdbscript.DBMSType;
 import org.jdbscript.MigrationRunner;
 import org.jdbscript.errors.JDBScriptException;
 
 import javax.sql.DataSource;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.sql.Statement;
 
 /**
  * {@link MigrationRunner} backed by Flyway. {@code marker} in {@link #migrateTo} is a Flyway
@@ -50,7 +54,23 @@ public class FlywayMigrator implements MigrationRunner {
 
     @Override
     public void reset(DataSource dataSource) {
+        purgeOracleRecycleBin(dataSource);
         run(configure(dataSource).cleanDisabled(false).load()::clean);
+    }
+
+    private void purgeOracleRecycleBin(DataSource dataSource) {
+        // Flyway's Oracle clean() tries to DROP the identity sequences of tables already sitting in
+        // the recycle bin (dropped earlier without PURGE) and fails with ORA-32794; it only purges
+        // the recycle bin after that.
+        try (Connection connection = dataSource.getConnection()) {
+            if (DBMSType.getType(connection.getMetaData()) == DBMSType.ORACLE) {
+                try (Statement statement = connection.createStatement()) {
+                    statement.execute("PURGE RECYCLEBIN");
+                }
+            }
+        } catch (SQLException e) {
+            throw new JDBScriptException("Flyway clean failed (location '" + location + "'): " + e.getMessage(), e);
+        }
     }
 
     private FluentConfiguration configure(DataSource dataSource) {

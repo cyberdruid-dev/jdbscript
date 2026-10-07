@@ -6,7 +6,7 @@
 
     <groupId>org.jdbscript</groupId>
     <artifactId>jdbscript</artifactId>
-    <version>1.3.0</version>
+    <version>1.3.1-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <name>jdbscript</name>
@@ -413,6 +413,27 @@
                     <groupId>org.postgresql</groupId>
                     <artifactId>postgresql</artifactId>
                     <version>42.7.13</version>
+                    <scope>test</scope>
+                </dependency>
+            </dependencies>
+        </profile>
+        <profile>
+            <id>oracle-18c</id>
+            <properties>
+                <test.jdbc.schema.name>test</test.jdbc.schema.name>
+                <test.dbms.type>ORACLE</test.dbms.type>
+            </properties>
+            <dependencies>
+                <dependency>
+                    <groupId>com.oracle.database.jdbc</groupId>
+                    <artifactId>ojdbc11</artifactId>
+                    <version>23.26.3.0.0</version>
+                    <scope>test</scope>
+                </dependency>
+                <dependency>
+                    <groupId>org.flywaydb</groupId>
+                    <artifactId>flyway-database-oracle</artifactId>
+                    <version>${flywayVersion}</version>
                     <scope>test</scope>
                 </dependency>
             </dependencies>
