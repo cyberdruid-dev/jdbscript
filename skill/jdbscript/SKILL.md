@@ -1,6 +1,6 @@
 ---
 name: jdbscript
-description: Use when writing or editing JVM test code that seeds, resets, or asserts against a relational database with jdbscript (org.jdbscript) — defining IDBSchema/IDBRecord interfaces, building a JDBEngine, or calling resetDB/insertDB/updateDB/cleanupDB/assertDBHas/assertDBHasNot. Covers schema modeling, fixtures, defaults/generators, composition, and multi-DBMS quirks.
+description: Use when writing or editing JVM test code that seeds, resets, or asserts against a relational database with jdbscript (org.jdbscript) — defining IDBSchema/IDBRecord interfaces, building a JDBEngine, or calling resetDB/insertDB/updateDB/cleanupDB/assertDBHas/assertDBHasNot. Also when testing what a Liquibase changeset or Flyway migration does to existing data (JDBMigrationEngine, migrateBefore/migrateTo). Covers schema modeling, fixtures, defaults/generators, composition, data migration tests, and multi-DBMS quirks.
 ---
 
 # jdbscript
@@ -176,8 +176,8 @@ List every table the schema interface declares, parent-to-child.
 
 - `.dataSource(ds)` or `.dataSource(() -> ds)` for lazy resolution.
 - `.cacheStrategy(CacheStrategy.INSTANCE|GLOBAL|NONE)` — use `GLOBAL` when schema is static
-  across the whole suite (faster), `NONE` when schema changes between tests (e.g. dynamic
-  migrations).
+  across the whole suite (faster), `NONE` when schema changes between tests. For testing a
+  migration itself, use `JDBMigrationEngine` instead (see below) — it already handles this.
 - `.converter(new MyConverter())` to teach jdbscript a domain type it doesn't already handle (see
   `reference/examples.md`).
 
@@ -213,6 +213,33 @@ When testing an edge case, failure mode, or state mutation against an existing b
 - **Always use multiline lambda blocks**: Write `engine.resetDB(db -> { ... });` or `engine.updateDB(db -> { ... });` with explicit `{ ... }` blocks so the setup reads like a structured seeding script.
 - **One row per line**: Chain record setters on a single line per entity (`db.users().id(1L).username("alice").active(true);`). Wrap only when an individual line gets excessively long.
 
+## Testing data migrations
+
+Use `JDBMigrationEngine` to test what a Liquibase changeset or Flyway migration does to rows that
+already exist (e.g. a backfill) — not for ordinary fixtures; with a static schema, apply the
+migrations once and use a plain `JDBEngine`. The flow, with the migration under test as marker:
+
+```java
+migration.migrateBefore("003-backfill-full-name");   // Liquibase changeset id, or Flyway version "3"
+migration.before().insertDB(db -> {
+    db.person().id(1).first_name("Ada").last_name("Lovelace");
+});
+migration.migrateTo("003-backfill-full-name");       // runs just that migration
+migration.after().assertDBHas(db -> {
+    db.person().id(1).full_name("Ada Lovelace");
+});
+```
+
+- Before/after schema interfaces are **local and minimal**: private interfaces nested in the test
+  class, never the app's current schema interfaces, declaring only the tables/columns the test
+  seeds or asserts (plus NOT NULL columns and FK parents the inserts need).
+- Run against the **same DBMS as production** (e.g. Testcontainers), not an in-memory stand-in:
+  a migration that passes on H2 can fail on Oracle.
+- Both methods fail if the marker is already applied, so isolate tests with `migration.reset()`
+  in `@BeforeEach`. `reset()` drops everything in the schema — dedicated test database only.
+
+Full example, marker rules and builder options: `reference/migrations.md`.
+
 ## Gotchas
 
 - Column-name mismatches are the most common bug: a method named `userId` will try to write to a
@@ -238,6 +265,12 @@ covering each concern below — no network access required:
 | Testcontainers | Same schema/code as quickstart, against a real PostgreSQL container |
 | Spring Boot | Dropped into `@SpringBootTest`, using the auto-configured `DataSource` bean |
 | Domain DSL & helpers | Sub-interface helpers with `engine.as(...)` for multi-table aggregate generation |
+
+`reference/migrations.md` covers data migration tests (`JDBMigrationEngine`, Liquibase/Flyway).
+
+Kotlin works with the API as is. For receiver-lambda syntax (`engine.insert { ... }`), copy the
+small extensions file from the upstream `examples/12-kotlin-dsl` — those extensions are not part
+of the jdbscript jar.
 
 For anything beyond that, the upstream project is at
 [github.com/cyberdruid-dev/jdbscript](https://github.com/cyberdruid-dev/jdbscript) (README and

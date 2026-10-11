@@ -25,6 +25,12 @@
 * [ ] Fix the table-order comparator's fallback for tables missing from metadata (not transitive)
 
 #### Schema & Column Validation
+* [ ] Add `ValidationStrategy.IGNORE` for unmapped tables. Migration tests deliberately use
+  minimal before/after interfaces (only the tables a test seeds/asserts), so against a real
+  application database the default `LOG_WARN` logs every other table as noise, and
+  `suppressUnmappedTable(...)` would mean listing them all. Then decide whether
+  `JDBMigrationEngine` should default to `IGNORE`, and update the skill's migration guidance
+  (`skill/jdbscript/reference/migrations.md`), which currently says to expect the warnings.
 * [ ] Validate an `IDBRecord` interface's declared column methods against the DB table's actual
   columns - same idea as `SchemaValidator`'s table check, one level deeper. Today a misspelled/
   wrong-case fluent setter surfaces as a raw JDBC `SQLException` at insert time, not a clear
