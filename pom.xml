@@ -439,7 +439,7 @@
             </dependencies>
         </profile>
         <profile>
-            <id>oracle-free</id>
+            <id>oracle-23</id>
             <properties>
                 <test.jdbc.schema.name>test</test.jdbc.schema.name>
                 <test.dbms.type>ORACLE</test.dbms.type>
