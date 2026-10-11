@@ -1,5 +1,6 @@
 package org.jdbscript.usecases;
 
+import org.jdbscript.DBMSType;
 import org.jdbscript.IDBSchema;
 import org.jdbscript.IDBSchema.IDBRecord;
 import org.jdbscript.IJDBEngine;
@@ -201,6 +202,31 @@ public class DbAssertionsTest extends JdbAbstractTest {
         expectFailure(()->{
             engine.assertDBHasNot(db->{
                 db.table_for_assertions().str_column_1("str13").str_column_2(null);
+            });
+        }, new AssertionFailedError("Expected row to NOT exist."));
+    }
+
+    @Test
+    public void assertDBHas__on_oracle_matches_a_varchar_inserted_as_empty_string() {
+        skipUnless("Oracle treats '' as NULL", DBMSType.ORACLE);
+        engine.resetDB(db -> {
+            db.table_for_assertions().id(1).str_column_1("str14").str_column_2("");
+        });
+
+        engine.assertDBHas(db -> {
+            db.table_for_assertions().str_column_1("str14").str_column_2("");
+            db.table_for_assertions().str_column_1("str14").str_column_2(null);
+        });
+    }
+
+    @Test
+    public void assertDBHasNot__on_oracle_FAILS_for_empty_string_if_column_is_null() {
+        skipUnless("Oracle treats '' as NULL", DBMSType.ORACLE);
+        engine.resetDB(AssertionsDatasetWithNull.class);
+
+        expectFailure(() -> {
+            engine.assertDBHasNot(db -> {
+                db.table_for_assertions().str_column_1("str13").str_column_2("");
             });
         }, new AssertionFailedError("Expected row to NOT exist."));
     }

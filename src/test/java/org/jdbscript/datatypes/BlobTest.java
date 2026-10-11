@@ -5,11 +5,15 @@ import org.jdbscript.IDBSchema;
 import org.jdbscript.IDBSchema.IDBRecord;
 import org.jdbscript.IJDBEngine;
 import org.jdbscript.JdbAbstractTest;
+import org.jdbscript.errors.JDBScriptException;
+import org.opentest4j.AssertionFailedError;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @Test
 public class BlobTest extends JdbAbstractTest {
@@ -36,6 +40,15 @@ public class BlobTest extends JdbAbstractTest {
 
         IInputStreamBlobTable blob_table();
 
+    }
+
+    private interface IStringBlobTestSchema extends IDBSchema {
+        IStringBlobTable blob_table();
+
+        interface IStringBlobTable extends IDBRecord {
+            IStringBlobTable id(int value);
+            IStringBlobTable blob_column(String data);
+        }
     }
 
     @BeforeMethod
@@ -130,8 +143,6 @@ public class BlobTest extends JdbAbstractTest {
     }
 
     public void assertDBHas_should_match_bytea_column() {
-        // Comparing binary columns with = isn't portable (e.g. Oracle rejects it for BLOB).
-        skipUnless("bytea equality in assertDBHas", DBMSType.POSTGRESQL, DBMSType.COCKROACHDB);
         byte[] data = new byte[]{1,2,3,4,5};
         engine.resetDB((db)->{
             db.blob_table().id(1).bytea_column(data);
@@ -140,5 +151,37 @@ public class BlobTest extends JdbAbstractTest {
         engine.assertDBHas((db)->{
             db.blob_table().id(1).bytea_column(data);
         });
+        assertThatThrownBy(() -> engine.assertDBHas((db)->{
+            db.blob_table().id(1).bytea_column(new byte[]{1,2,3,4,6});
+        })).isInstanceOf(AssertionFailedError.class);
+    }
+
+    public void assertDBHas_should_match_a_blob_given_as_an_input_stream() {
+        byte[] data = new byte[]{1,2,3,4,5};
+        engine.resetDB((db)->{
+            db.blob_table().id(1).bytea_column(data);
+        });
+
+        inputStreamEngine.assertDBHas((db)->{
+            db.blob_table().id(1).bytea_column(new ByteArrayInputStream(data));
+        });
+        inputStreamEngine.assertDBHasNot((db)->{
+            db.blob_table().id(1).bytea_column(new ByteArrayInputStream(new byte[]{9}));
+        });
+    }
+
+    public void a_string_expected_on_a_blob_column_fails_descriptively() {
+        // The binary column is a plain binary type there (bytea, longblob, varbinary(max), ...), compared in SQL.
+        skipFor("A JDBC BLOB column", DBMSType.MYSQL, DBMSType.MARIADB, DBMSType.POSTGRESQL, DBMSType.COCKROACHDB,
+                DBMSType.MSSQL, DBMSType.SQLITE, DBMSType.DUCKDB, DBMSType.SPANNER);
+        engine.resetDB((db)->{
+            db.blob_table().id(1).blob_column(new byte[]{97});
+        });
+
+        assertThatThrownBy(() -> createEngine(IStringBlobTestSchema.class).assertDBHas((db)->{
+            db.blob_table().id(1).blob_column("a");
+        })).isInstanceOf(JDBScriptException.class)
+                .hasMessageContaining("blob_column")
+                .hasMessageContaining("String");
     }
 }

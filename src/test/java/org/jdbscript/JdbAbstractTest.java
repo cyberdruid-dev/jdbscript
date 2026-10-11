@@ -262,13 +262,6 @@ public class JdbAbstractTest {
         }
     }
 
-    protected void forAny(Runnable action, DBMSType... types) {
-        DBMSType dbmsType = testConfiguration.getDbmsType();
-        if (Arrays.stream(types).anyMatch(t -> t == dbmsType)) {
-            action.run();
-        }
-    }
-
     protected void skipFor(String featureName, DBMSType... types) {
         for (DBMSType type : types) {
             skipFor(featureName, type, null, null);
@@ -276,10 +269,11 @@ public class JdbAbstractTest {
     }
 
     /**
-     * Inverse of {@link #skipFor}: skips unless the current profile is one of {@code types} - for a
-     * test that only makes sense against a specific DBMS or small family of them (e.g. a
-     * DBMS-specific {@link JDBFeature} group, or code one DBMS strategy inherits unchanged from
-     * another) rather than one that applies everywhere except a few.
+     * Inverse of {@link #skipFor}: skips unless the current profile is one of {@code types} - only
+     * for a test of one DBMS's own behaviour or strategy code (e.g. a DBMS-specific
+     * {@link JDBFeature} group, Oracle's '' as NULL). For a feature that some DBMS lack, use
+     * {@link #skipFor} listing those: a newly added DBMS then fails the test until someone decides
+     * it doesn't support the feature, instead of silently skipping it.
      */
     protected void skipUnless(String featureName, DBMSType... types) {
         DBMSType dbmsType = testConfiguration.getDbmsType();

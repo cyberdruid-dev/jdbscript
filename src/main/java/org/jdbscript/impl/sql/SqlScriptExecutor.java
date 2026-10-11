@@ -17,13 +17,17 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.sql.DataSource;
+import java.io.IOException;
 import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Types;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -34,6 +38,7 @@ import static org.jdbscript.DBMSType.UNKNOWN;
 import static org.jdbscript.errors.Checks.checkIsNull;
 import static java.util.stream.Collectors.joining;
 import static org.jdbscript.errors.Checks.checkNotNull;
+import static org.jdbscript.errors.JDBErrors.ASSERTION_UNSUPPORTED_LOB_VALUE;
 import static org.jdbscript.errors.JDBErrors.DATASOURCE_ALREADY_SET;
 import static org.jdbscript.errors.JDBErrors.DATASOURCE_IS_NOT_CONFIGURED;
 import static org.jdbscript.errors.JDBErrors.EMPTY_ASSERTION_RECORD;
@@ -268,10 +273,24 @@ public class SqlScriptExecutor implements IScriptExecutor {
         if (columns.isEmpty()) {
             throw EMPTY_ASSERTION_RECORD.get(record.getTableName());
         }
-        String sql = createSelectAssertSql(record, columns);
+        // Some DBMS (e.g. Oracle) can't compare LOBs with "=", so non-null LOB values are fetched
+        // and compared here instead of in the WHERE clause.
+        Map<String, Integer> lobColumns = metadataProvider.getLobColumns(record.getTableName());
+        List<String> javaCompared = new ArrayList<>();
+        List<String> sqlCompared = new ArrayList<>();
+        for (String column : columns) {
+            boolean comparedInJava = lobColumns.containsKey(column.toUpperCase()) && !isNullValue(record.getColumns().get(column));
+            (comparedInJava ? javaCompared : sqlCompared).add(column);
+        }
+        List<Object> expectedLobs = new ArrayList<>();
+        for (String column : javaCompared) {
+            int lobType = lobColumns.get(column.toUpperCase());
+            expectedLobs.add(toComparableLob(record.getTableName(), column, lobType, record.getColumns().get(column)));
+        }
+        String sql = createSelectAssertSql(record, sqlCompared, javaCompared);
         PreparedStatement stmt = stmtProvider.get(sql);
         int paramIndex = 1;
-        for (String column : columns) {
+        for (String column : sqlCompared) {
             Object value = record.getColumns().get(column);
             if (!isNullValue(value)) {
                 setColumnValue(cnn, record.getTableName(), column, stmt, paramIndex++, value);
@@ -279,11 +298,56 @@ public class SqlScriptExecutor implements IScriptExecutor {
             // A null column is expressed as a literal "IS NULL" in the SQL - nothing to bind.
         }
         try (ResultSet rs = stmt.executeQuery()) {
-            if (!rs.next()) {
-                throw new RuntimeException("Fail to count rows in DB. Unexpectedly empty resultset.");
-            }
-            return rs.getLong(1);
+            return expectedLobs.isEmpty() ? readCount(rs) : countLobMatches(rs, expectedLobs);
         }
+    }
+
+    private long readCount(ResultSet rs) throws SQLException {
+        if (!rs.next()) {
+            throw new RuntimeException("Fail to count rows in DB. Unexpectedly empty resultset.");
+        }
+        return rs.getLong(1);
+    }
+
+    private long countLobMatches(ResultSet rs, List<Object> expectedLobs) throws SQLException {
+        long count = 0;
+        while (rs.next()) {
+            if (lobsMatch(rs, expectedLobs)) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    // An InputStream can be read only once, but is compared against every candidate row.
+    private Object toComparableLob(String tableName, String column, int lobType, Object value) {
+        boolean supported = lobType == Types.BLOB
+                ? value instanceof byte[] || value instanceof InputStream
+                : value instanceof String;
+        if (!supported) {
+            throw ASSERTION_UNSUPPORTED_LOB_VALUE.get(tableName, column, value.getClass().getSimpleName());
+        }
+        if (value instanceof InputStream) {
+            try {
+                return ((InputStream) value).readAllBytes();
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        }
+        return value;
+    }
+
+    private boolean lobsMatch(ResultSet rs, List<Object> expectedLobs) throws SQLException {
+        for (int i = 0; i < expectedLobs.size(); i++) {
+            Object expected = expectedLobs.get(i);
+            boolean matches = expected instanceof byte[]
+                    ? Arrays.equals((byte[]) expected, rs.getBytes(i + 1))
+                    : expected.equals(rs.getString(i + 1));
+            if (!matches) {
+                return false;
+            }
+        }
+        return true;
     }
 
     @Override
@@ -313,12 +377,12 @@ public class SqlScriptExecutor implements IScriptExecutor {
      * but PostgreSQL's extended query protocol can't infer a type for the bare {@code ? IS NULL}
      * parameter, since nothing else pins it to a concrete type, and rejects it at prepare time.)
      */
-    private String createSelectAssertSql(JDBRecord record, List<String> columns) {
-        StringBuilder sql = new StringBuilder("SELECT count(*) FROM ").append(record.getTableName()).append(" WHERE ");
+    private String createSelectAssertSql(JDBRecord record, List<String> columns, List<String> selectedColumns) {
+        StringBuilder sql = new StringBuilder("SELECT ")
+                .append(selectedColumns.isEmpty() ? "count(*)" : String.join(", ", selectedColumns))
+                .append(" FROM ").append(record.getTableName());
         for (int i = 0; i < columns.size(); i++) {
-            if (i > 0) {
-                sql.append(" AND ");
-            }
+            sql.append(i == 0 ? " WHERE " : " AND ");
             String column = columns.get(i);
             Object value = record.getColumns().get(column);
             sql.append(column).append(isNullValue(value) ? " IS NULL" : " = ?");
@@ -327,7 +391,7 @@ public class SqlScriptExecutor implements IScriptExecutor {
     }
 
     private boolean isNullValue(Object value) {
-        return value == null || value instanceof TypedNull;
+        return value == null || value instanceof TypedNull || ("".equals(value) && getStrategy().isEmptyStringNull());
     }
 
     private String createInsertSql(JDBRecord record, List<String> columns) {

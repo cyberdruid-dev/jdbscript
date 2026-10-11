@@ -24,6 +24,11 @@ class OracleStrategy extends DefaultSqlExecutorStrategy {
     }
 
     @Override
+    public boolean isEmptyStringNull() {
+        return true;
+    }
+
+    @Override
     public void setUUID(PreparedStatement stmt, int i, UUID uuid) throws SQLException {
         byte[] bytes = uuid == null? null : toBytes(uuid);
         stmt.setBytes(i, bytes);

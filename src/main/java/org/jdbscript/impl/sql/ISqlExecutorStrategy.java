@@ -36,6 +36,11 @@ public interface ISqlExecutorStrategy {
     default void beforeEachInsert(Connection cnn, JDBRecord record) throws SQLException {
     }
 
+    /** Whether the DBMS stores '' as NULL (Oracle) - assertions then treat an expected "" as null. */
+    default boolean isEmptyStringNull() {
+        return false;
+    }
+
     void setInputStream(PreparedStatement stmt, int i, InputStream value) throws SQLException;
 
     void setUUID(PreparedStatement stmt, int i, UUID uuid) throws SQLException;

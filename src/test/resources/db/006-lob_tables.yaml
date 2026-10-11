@@ -1,0 +1,50 @@
+databaseChangeLog:
+  - changeSet:
+      id: 006-clob_table
+      author: Cyber Druid
+      changes:
+        - createTable:
+            tableName: clob_table
+            columns:
+              - column:
+                  name: id
+                  type: ${pk_type_def}
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: clob_column
+                  type: clob
+  - changeSet:
+      id: 006-clob_table_label
+      author: Cyber Druid
+      changes:
+        - addColumn:
+            tableName: clob_table
+            columns:
+              - column:
+                  name: label
+                  type: varchar(50)
+  - changeSet:
+      # "label" is reserved on DB2 (created there as a quoted, lowercase identifier).
+      id: 006-clob_table_value_column
+      author: Cyber Druid
+      changes:
+        - dropColumn:
+            tableName: clob_table
+            columnName: label
+        - addColumn:
+            tableName: clob_table
+            columns:
+              - column:
+                  name: value_column
+                  type: varchar(50)
+  - changeSet:
+      id: 006-clob_table_nclob_column
+      author: Cyber Druid
+      changes:
+        - addColumn:
+            tableName: clob_table
+            columns:
+              - column:
+                  name: nclob_column
+                  type: nclob

@@ -53,6 +53,10 @@ public enum JDBErrors implements Supplier<JDBScriptException> {
     EMPTY_ASSERTION_RECORD(JDBScriptException.class,
             "assertDBHas/assertDBHasNot requires at least one column to be set to match against, "
                     + "but table '%s' had none set."),
+    /** assertDBHas/assertDBHasNot with a CLOB/NCLOB/BLOB column set to a value it can't compare. */
+    ASSERTION_UNSUPPORTED_LOB_VALUE(JDBScriptException.class,
+            "assertDBHas/assertDBHasNot can't compare LOB column '%s.%s' with a %s value: "
+                    + "use a String for CLOB/NCLOB, a byte[] or InputStream for BLOB."),
     /** engine.as(S) with an S that adds an abstract (table) method instead of only default helpers. */
     SCHEMA_VIEW_ADDS_METHOD(JDBScriptException.class,
             "%s declares %s(), which isn't part of schema %s: a sub-interface used with as() may only add default methods."),

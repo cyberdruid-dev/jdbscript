@@ -38,3 +38,5 @@ databaseChangeLog:
     file: db/004-cleanup_order_tables.yaml
 - include:
     file: db/005-update_tables.yaml
+- include:
+    file: db/006-lob_tables.yaml

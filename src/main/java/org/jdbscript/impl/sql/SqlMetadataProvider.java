@@ -13,6 +13,7 @@ import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Types;
 import java.util.*;
 
 import static java.util.Collections.emptyList;
@@ -30,6 +31,7 @@ public class SqlMetadataProvider implements IMetadataProvider {
     private record AllTablesKey() implements IJDBCacheKey<List<String>> {}
     private record SortedTablesKey() implements IJDBCacheKey<List<String>> {}
     private record PrimaryKeyKey(String tableName) implements IJDBCacheKey<List<String>> {}
+    private record LobColumnsKey(String tableName) implements IJDBCacheKey<Map<String, Integer>> {}
     private static final DBMSTypeKey DBMS_TYPE_KEY = new DBMSTypeKey();
     private static final AllTablesKey ALL_TABLES_KEY = new AllTablesKey();
     private static final SortedTablesKey SORTED_TABLES_KEY = new SortedTablesKey();
@@ -124,12 +126,8 @@ public class SqlMetadataProvider implements IMetadataProvider {
         return cache.getOrCompute(new PrimaryKeyKey(tableName.toUpperCase()), k -> fetchPrimaryKeyColumns(tableName));
     }
 
-    // getPrimaryKeys matches the table name exactly, so use the DBMS's own spelling of it.
     private List<String> fetchPrimaryKeyColumns(String tableName) {
-        String dbTableName = getAllTables().stream()
-                .filter(t -> t.equalsIgnoreCase(tableName))
-                .findFirst()
-                .orElse(tableName);
+        String dbTableName = toDbTableName(tableName);
         List<String> columns = new ArrayList<>();
         withConnection(cnn -> {
             String searchCatalog = getStrategy().getSearchCatalog(cnn);
@@ -141,6 +139,40 @@ public class SqlMetadataProvider implements IMetadataProvider {
             }
         });
         return columns;
+    }
+
+    /**
+     * The table's CLOB/NCLOB/BLOB columns - the ones a DBMS like Oracle can't compare with
+     * {@code =} - as upper-cased name to {@link Types} constant.
+     */
+    public Map<String, Integer> getLobColumns(String tableName) {
+        return cache.getOrCompute(new LobColumnsKey(tableName.toUpperCase()), k -> fetchLobColumns(tableName));
+    }
+
+    private Map<String, Integer> fetchLobColumns(String tableName) {
+        String dbTableName = toDbTableName(tableName);
+        Map<String, Integer> columns = new HashMap<>();
+        withConnection(cnn -> {
+            String searchCatalog = getStrategy().getSearchCatalog(cnn);
+            String searchSchema = getStrategy().getSearchSchema(cnn);
+            try (ResultSet rs = cnn.getMetaData().getColumns(searchCatalog, searchSchema, dbTableName, null)) {
+                while (rs.next()) {
+                    int type = rs.getInt("DATA_TYPE");
+                    if (type == Types.CLOB || type == Types.NCLOB || type == Types.BLOB) {
+                        columns.put(rs.getString("COLUMN_NAME").toUpperCase(), type);
+                    }
+                }
+            }
+        });
+        return columns;
+    }
+
+    // DatabaseMetaData lookups match the table name exactly, so use the DBMS's own spelling of it.
+    private String toDbTableName(String tableName) {
+        return getAllTables().stream()
+                .filter(t -> t.equalsIgnoreCase(tableName))
+                .findFirst()
+                .orElse(tableName);
     }
 
     @Override

@@ -16,7 +16,11 @@ public class TemporaryTableDiscoveryTest extends JdbAbstractTest {
 
     private static final String TEMP_TABLE = "tmp_discovery_check";
     // Only these accept this exact CREATE GLOBAL TEMPORARY TABLE syntax.
-    private static final DBMSType[] WITH_GLOBAL_TEMPORARY_TABLES = {DBMSType.ORACLE, DBMSType.H2, DBMSType.HSQLDB};
+    private static final DBMSType[] WITHOUT_GLOBAL_TEMPORARY_TABLES = {DBMSType.MYSQL, DBMSType.MARIADB,
+            DBMSType.POSTGRESQL, DBMSType.COCKROACHDB, DBMSType.MSSQL, DBMSType.DB2, DBMSType.SQLITE,
+            DBMSType.DUCKDB, DBMSType.SPANNER};
+
+    private boolean tempTableCreated;
 
     private interface ITable extends IDBRecord {
     }
@@ -32,6 +36,7 @@ public class TemporaryTableDiscoveryTest extends JdbAbstractTest {
         ITable timestamp_table();
         ITable uuid_table();
         ITable blob_table();
+        ITable clob_table();
         ITable generated_int_id_table();
         ITable table_for_assertions();
         ITable customers();
@@ -43,14 +48,18 @@ public class TemporaryTableDiscoveryTest extends JdbAbstractTest {
 
     @BeforeMethod
     public void beforeMethod() {
-        skipUnless("global temporary tables", WITH_GLOBAL_TEMPORARY_TABLES);
+        skipFor("global temporary tables", WITHOUT_GLOBAL_TEMPORARY_TABLES);
         cleanupTables("table_1");
         executeUpdate("CREATE GLOBAL TEMPORARY TABLE " + TEMP_TABLE + " (id INT)");
+        tempTableCreated = true;
     }
 
     @AfterMethod(alwaysRun = true)
     public void afterMethod() {
-        forAny(() -> executeUpdate("DROP TABLE " + TEMP_TABLE), WITH_GLOBAL_TEMPORARY_TABLES);
+        if (tempTableCreated) {
+            executeUpdate("DROP TABLE " + TEMP_TABLE);
+            tempTableCreated = false;
+        }
     }
 
     // After the migration tests: until their group ends, their migration_* tables are in the schema.

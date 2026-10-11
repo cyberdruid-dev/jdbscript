@@ -64,6 +64,13 @@ CREATE TABLE IF NOT EXISTS blob_table (
     bytea_column BLOB
 );
 
+CREATE TABLE IF NOT EXISTS clob_table (
+    id BIGINT PRIMARY KEY,
+    clob_column TEXT,
+    value_column VARCHAR(50),
+    nclob_column TEXT
+);
+
 CREATE SEQUENCE IF NOT EXISTS generated_int_id_seq;
 CREATE TABLE IF NOT EXISTS generated_int_id_table (
     generated_id_column INTEGER PRIMARY KEY DEFAULT nextval('generated_int_id_seq'),
@@ -109,5 +116,6 @@ CREATE TABLE IF NOT EXISTS composite_pk_table (
 
 CREATE TABLE IF NOT EXISTS no_pk_table (
     id INTEGER,
-    value_column VARCHAR(50)
+    value_column VARCHAR(50),
+    nclob_column TEXT
 );
