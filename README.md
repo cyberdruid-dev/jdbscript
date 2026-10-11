@@ -343,14 +343,14 @@ JDBMigrationEngine<IBeforeSchema, IAfterSchema> migration =
         .migrations("db/changelog.yaml")   // Liquibase changelog, or a Flyway location
         .build();
 
-// Arrange: migrate up to the point right before the migration under test, seed old-shape rows
-migration.migrateTo("before-full-name-backfill");
+// Arrange: migrate up to the migration under test, seed old-shape rows
+migration.migrateBefore("004-backfill-full-name");
 migration.before().insertDB(db -> {
     db.person().id(1).first_name("Ada").last_name("Lovelace");
 });
 
 // Act: run just the migration under test
-migration.migrateTo("after-full-name-backfill");
+migration.migrateTo("004-backfill-full-name");
 
 // Assert: check the rows in the new shape
 migration.after().assertDBHas(db -> {
@@ -358,7 +358,8 @@ migration.after().assertDBHas(db -> {
 });
 ```
 
-- **Markers**: `migrateTo(...)` takes a Liquibase tag, or a Flyway version (e.g. `"3"`). There's deliberately no "migrate everything" method: a test bounded by markers keeps testing the same migration as more are added later.
+- **Markers**: `migrateBefore(marker)` stops right before the marked migration, `migrateTo(marker)` right after it. A marker is a Flyway version (e.g. `"3"`), or for Liquibase a tag or a changeset: `id`, `id::author` or `path::id::author`, whichever is unique. If a name is both a tag and a changeset id, prefix it with `tag:` or `changeset:`. There's deliberately no "migrate everything" method: a test bounded by markers keeps testing the same migration as more are added later.
+- **Already applied**: both methods fail if the marked migration has already run, since then the test wouldn't exercise it.
 - **Tool detection**: `.migrations(path)` picks Liquibase or Flyway, whichever is on the classpath. If both are, use `.migrator(new LiquibaseMigrator(path))` or `.migrator(new FlywayMigrator(path))` instead.
 - **Dependencies**: `liquibase-core` and `flyway-core` are optional dependencies of jdbscript, so add the one you use to your project yourself.
 - **Engines**: `before()` and `after()` are regular engines sharing the builder's settings, always with `CacheStrategy.NONE` since the schema changes between them. Use `.beforeEngine(...)`/`.afterEngine(...)` to configure one side only.
