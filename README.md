@@ -56,7 +56,7 @@ Add the dependency to your `pom.xml`:
 <dependency>
     <groupId>org.jdbscript</groupId>
     <artifactId>jdbscript</artifactId>
-    <version>1.3.0</version>
+    <version>1.3.1</version>
     <scope>test</scope>
 </dependency>
 ```
@@ -65,12 +65,12 @@ Add the dependency to your `pom.xml`:
 
 **Groovy DSL** (`build.gradle`):
 ```groovy
-testImplementation 'org.jdbscript:jdbscript:1.3.0'
+testImplementation 'org.jdbscript:jdbscript:1.3.1'
 ```
 
 **Kotlin DSL** (`build.gradle.kts`):
 ```kotlin
-testImplementation("org.jdbscript:jdbscript:1.3.0")
+testImplementation("org.jdbscript:jdbscript:1.3.1")
 ```
 
 ### Requirements
@@ -344,13 +344,13 @@ JDBMigrationEngine<IBeforeSchema, IAfterSchema> migration =
         .build();
 
 // Arrange: migrate up to the migration under test, seed old-shape rows
-migration.migrateBefore("004-backfill-full-name");
+migration.migrateBefore("003-backfill-full-name");
 migration.before().insertDB(db -> {
     db.person().id(1).first_name("Ada").last_name("Lovelace");
 });
 
 // Act: run just the migration under test
-migration.migrateTo("004-backfill-full-name");
+migration.migrateTo("003-backfill-full-name");
 
 // Assert: check the rows in the new shape
 migration.after().assertDBHas(db -> {

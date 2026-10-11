@@ -18,15 +18,14 @@ import org.junit.jupiter.api.Test;
  * <p>
  * To test that, jdbscript needs to seed rows in the PRE-migration shape - hence
  * {@link IPersonBeforeSchema}, narrower than {@link IPersonAfterSchema} used for the assertion.
- * {@code JDBMigrationEngine} gets the database to that exact in-between state: Flyway migrations
- * are already individually versioned, so the version number of the migration right before/after
- * the one under test *is* the marker - no separate tagging convention needed.
+ * {@code JDBMigrationEngine} gets the database to that exact in-between state: the version of the
+ * migration under test is the marker, so the test can stop right before V3 to seed data, then run
+ * just V3 to assert.
  */
 class PersonFullNameBackfillMigrationTest {
 
     private static final String LOCATION = "classpath:db/migration";
-    private static final String VERSION_BEFORE_BACKFILL = "1";
-    private static final String VERSION_AFTER_BACKFILL = "3";
+    private static final String BACKFILL_VERSION = "3";
 
     private interface IPersonBeforeSchema extends IDBSchema {
         IPersonBeforeRecord person();
@@ -69,14 +68,14 @@ class PersonFullNameBackfillMigrationTest {
                 createMigrationEngine(IPersonBeforeSchema.class, IPersonAfterSchema.class);
 
         // Arrange: bring the DB to the state right before the migration under test.
-        migration.migrateTo(VERSION_BEFORE_BACKFILL);
+        migration.migrateBefore(BACKFILL_VERSION);
         migration.before().insertDB(db -> {
             db.person().id(1).first_name("Ada").last_name("Lovelace");
             db.person().id(2).first_name("Alan").last_name("Turing");
         });
 
-        // Act: resume to the version right after the backfill under test - not "everything else".
-        migration.migrateTo(VERSION_AFTER_BACKFILL);
+        // Act: run just the migration under test - not "everything else".
+        migration.migrateTo(BACKFILL_VERSION);
 
         // Assert: via the post-migration shape - full_name should be derived from the old rows,
         // not just present as a new empty column.

@@ -13,22 +13,20 @@ import org.junit.jupiter.api.Test;
 /**
  * Demonstrates testing what a migration does to existing data, not just that it applies without
  * error - the harder case Liquibase/Flyway's own tooling doesn't cover. {@code changelog.yaml}
- * models a realistic case: changeset 004 backfills a new {@code full_name} column from
+ * models a realistic case: changeset 003 backfills a new {@code full_name} column from
  * {@code first_name}/{@code last_name} on rows that already exist.
  * <p>
  * To test that, jdbscript needs to seed rows in the PRE-migration shape - hence
  * {@link IPersonBeforeSchema}, narrower than {@link IPersonAfterSchema} used for the assertion.
- * {@code JDBMigrationEngine} gets the database to that exact in-between state:
- * {@code changelog.yaml} tags the changelog on both sides of changeset 004 (before and after), so
- * the test can stop precisely there to seed data, then resume precisely to there to assert - never
- * running "everything else," which would silently pull in whatever gets appended to the changelog
- * later.
+ * {@code JDBMigrationEngine} gets the database to that exact in-between state: the changeset id
+ * is the marker, so the test can stop right before changeset 003 to seed data, then run just that
+ * changeset to assert - never running "everything else," which would silently pull in whatever
+ * gets appended to the changelog later.
  */
 class PersonFullNameBackfillMigrationTest {
 
     private static final String CHANGELOG = "db/changelog.yaml";
-    private static final String TAG_BEFORE_BACKFILL = "before-full-name-backfill";
-    private static final String TAG_AFTER_BACKFILL = "after-full-name-backfill";
+    private static final String BACKFILL_CHANGESET = "003-backfill-full-name";
 
     private interface IPersonBeforeSchema extends IDBSchema {
         IPersonBeforeRecord person();
@@ -71,14 +69,14 @@ class PersonFullNameBackfillMigrationTest {
                 createMigrationEngine(IPersonBeforeSchema.class, IPersonAfterSchema.class);
 
         // Arrange: bring the DB to the state right before the migration under test.
-        migration.migrateTo(TAG_BEFORE_BACKFILL);
+        migration.migrateBefore(BACKFILL_CHANGESET);
         migration.before().insertDB(db -> {
             db.person().id(1).first_name("Ada").last_name("Lovelace");
             db.person().id(2).first_name("Alan").last_name("Turing");
         });
 
-        // Act: resume to the tag right after the backfill under test - not "everything else".
-        migration.migrateTo(TAG_AFTER_BACKFILL);
+        // Act: run just the changeset under test - not "everything else".
+        migration.migrateTo(BACKFILL_CHANGESET);
 
         // Assert: via the post-migration shape - full_name should be derived from the old rows,
         // not just present as a new empty column.

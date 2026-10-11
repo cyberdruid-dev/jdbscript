@@ -51,8 +51,8 @@ export default defineConfig({
       { text: 'Quickstart', link: '/#quickstart' },
       { text: 'Recipes', link: '/#code-recipes-examples' },
       {
-        text: 'Maven Central: 1.3.0',
-        link: 'https://central.sonatype.com/artifact/org.jdbscript/jdbscript/1.3.0'
+        text: 'Maven Central: 1.3.1',
+        link: 'https://central.sonatype.com/artifact/org.jdbscript/jdbscript/1.3.1'
       }
     ],
     socialLinks: [

@@ -7,8 +7,8 @@ hero:
   tagline: "Type-safe, zero-boilerplate database test fixtures for modern Java."
   actions:
     - theme: brand
-      text: Maven Central (v1.3.0)
-      link: https://central.sonatype.com/artifact/org.jdbscript/jdbscript/1.3.0
+      text: Maven Central (v1.3.1)
+      link: https://central.sonatype.com/artifact/org.jdbscript/jdbscript/1.3.1
     - theme: alt
       text: GitHub Repository
       link: https://github.com/cyberdruid-dev/jdbscript
@@ -40,6 +40,9 @@ Setting up and verifying relational database fixtures in Java tests has traditio
 - **Multi-DBMS Compatibility**
   - *Problem*: Raw SQL fixtures and DB-specific tools break when running tests across different DBMSs (e.g., in-memory databases locally vs PostgreSQL/Oracle in CI).
   - *Solution*: A single unified Java fixture runs transparently across 12+ supported databases including PostgreSQL, MySQL, Oracle, SQL Server, SQLite, DuckDB, and H2 with automatic dialect and sequence handling.
+- **Data Migration Testing**
+  - *Problem*: Liquibase and Flyway check that a migration applies, not what it does to the rows already in the table. A broken backfill passes on an empty test database and surfaces in production.
+  - *Solution*: Migrate to right before the migration under test, seed rows in the old schema shape, run just that migration, and assert the new shape: `migrateBefore(...)`, `insertDB(...)`, `migrateTo(...)`, `assertDBHas(...)`.
 
 ---
 
@@ -67,17 +70,17 @@ Add the `jdbscript` dependency to your project's test scope:
 <dependency>
     <groupId>org.jdbscript</groupId>
     <artifactId>jdbscript</artifactId>
-    <version>1.3.0</version>
+    <version>1.3.1</version>
     <scope>test</scope>
 </dependency>
 ```
 
 ```kotlin [Gradle (build.gradle.kts)]
-testImplementation("org.jdbscript:jdbscript:1.3.0")
+testImplementation("org.jdbscript:jdbscript:1.3.1")
 ```
 
 ```groovy [Gradle (build.gradle)]
-testImplementation 'org.jdbscript:jdbscript:1.3.0'
+testImplementation 'org.jdbscript:jdbscript:1.3.1'
 ```
 
 :::
@@ -166,8 +169,8 @@ Runnable, self-contained example projects demonstrating real-world usage pattern
 * **[Interleaved Insertion (`06-insert-power`)](https://github.com/cyberdruid-dev/jdbscript/blob/main/examples/06-insert-power/src/test/java/org/jdbscript/examples/insertpower/InsertPowerTest.java)** — Append new records mid-test with `insertDB` to simulate incoming events and state progressions without wiping existing data.
 
 ### Schema & Data Migration Testing
-* **[Liquibase Data Migration (`09-liquibase-data-migration`)](https://github.com/cyberdruid-dev/jdbscript/blob/main/examples/09-liquibase-data-migration/src/test/java/org/jdbscript/examples/liquibasedatamigration/PersonFullNameBackfillMigrationTest.java)** — Verify column backfills and transformations by seeding pre-migration shape and asserting post-migration state.
-* **[Flyway Data Migration (`10-flyway-data-migration`)](https://github.com/cyberdruid-dev/jdbscript/blob/main/examples/10-flyway-data-migration/src/test/java/org/jdbscript/examples/flywaydatamigration/PersonFullNameBackfillMigrationTest.java)** — Test Flyway version migrations step-by-step with intermediate state assertions.
+* **[Liquibase Data Migration (`09-liquibase-data-migration`)](https://github.com/cyberdruid-dev/jdbscript/blob/main/examples/09-liquibase-data-migration/src/test/java/org/jdbscript/examples/liquibasedatamigration/PersonFullNameBackfillMigrationTest.java)** — Verify a changeset's effect on existing rows: `migrateBefore("003-backfill-full-name")`, seed the pre-migration shape, `migrateTo(...)`, assert the post-migration state. No tags needed: the changeset id is the marker.
+* **[Flyway Data Migration (`10-flyway-data-migration`)](https://github.com/cyberdruid-dev/jdbscript/blob/main/examples/10-flyway-data-migration/src/test/java/org/jdbscript/examples/flywaydatamigration/PersonFullNameBackfillMigrationTest.java)** — Verify a single versioned migration's effect on existing rows: `migrateBefore("3")`, seed the pre-migration shape, `migrateTo("3")`, assert the post-migration state.
 
 ### Advanced Modeling
 * **[Domain DSLs & Aggregates (`11-domain-dsl-and-helpers`)](https://github.com/cyberdruid-dev/jdbscript/blob/main/examples/11-domain-dsl-and-helpers/src/test/java/org/jdbscript/examples/domaindsl/DomainDslAndHelpersTest.java)** — Seed complex multi-table business entities cleanly by extending schemas with domain helper methods via `engine.as(...)`.

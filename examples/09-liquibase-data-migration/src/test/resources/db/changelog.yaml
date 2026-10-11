@@ -18,13 +18,7 @@ databaseChangeLog:
                   name: last_name
                   type: varchar(100)
   - changeSet:
-      id: 002-tag-before-full-name-backfill
-      author: jdbscript-examples
-      changes:
-        - tagDatabase:
-            tag: before-full-name-backfill
-  - changeSet:
-      id: 003-add-full-name-column
+      id: 002-add-full-name-column
       author: jdbscript-examples
       changes:
         - addColumn:
@@ -34,14 +28,8 @@ databaseChangeLog:
                   name: full_name
                   type: varchar(200)
   - changeSet:
-      id: 004-backfill-full-name
+      id: 003-backfill-full-name
       author: jdbscript-examples
       changes:
         - sql:
             sql: UPDATE person SET full_name = first_name || ' ' || last_name
-  - changeSet:
-      id: 005-tag-after-full-name-backfill
-      author: jdbscript-examples
-      changes:
-        - tagDatabase:
-            tag: after-full-name-backfill
