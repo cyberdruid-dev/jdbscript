@@ -1,0 +1,22 @@
+databaseChangeLog:
+  # Same id and author as a changeset in the including changelog - only the path tells them apart.
+  - changeSet:
+      id: add-column
+      author: alice
+      changes:
+        - addColumn:
+            tableName: widget
+            columns:
+              - column:
+                  name: gamma
+                  type: int
+  - changeSet:
+      id: only-in-included
+      author: carol
+      changes:
+        - addColumn:
+            tableName: widget
+            columns:
+              - column:
+                  name: delta
+                  type: int

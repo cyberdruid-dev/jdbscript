@@ -16,12 +16,21 @@ public interface MigrationRunner {
 
     /**
      * Runs the migration up to and including the given marker, then stops - even if more
-     * migrations are pending beyond it.
+     * migrations are pending beyond it. Fails if the marked migration is already applied.
      *
      * @param dataSource the target database
      * @param marker the tool-specific stopping point (e.g. a Liquibase tag)
      */
     void migrateTo(DataSource dataSource, String marker);
+
+    /**
+     * Runs the migration up to, but not including, the given marker, then stops. Fails if the
+     * marked migration is already applied.
+     *
+     * @param dataSource the target database
+     * @param marker the tool-specific migration to stop right before
+     */
+    void migrateBefore(DataSource dataSource, String marker);
 
     /**
      * Runs every pending migration, with no stopping point.

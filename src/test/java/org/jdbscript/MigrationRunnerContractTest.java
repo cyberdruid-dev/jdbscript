@@ -22,6 +22,10 @@ public abstract class MigrationRunnerContractTest extends MigrationTestBase {
 
     protected abstract String unknownMarker();
 
+    protected abstract String markerCreateWidget();
+
+    protected abstract String markerAddWidgetDescription();
+
     protected abstract MigrationRunner createMigratorWithInvalidSource();
 
     protected abstract String invalidSourceIdentifier();
@@ -44,6 +48,51 @@ public abstract class MigrationRunnerContractTest extends MigrationTestBase {
     }
 
     @Test
+    public void migrateBefore_stops_right_before_the_given_marker() throws Exception {
+        createMigrator().migrateBefore(dataSource, markerAddWidgetDescription());
+
+        assertThat(tableExists("widget")).isTrue();
+        assertThat(columnExists("widget", "description")).isFalse();
+    }
+
+    @Test
+    public void migrateBefore_the_first_migration_applies_nothing() throws Exception {
+        createMigrator().migrateBefore(dataSource, markerCreateWidget());
+
+        assertThat(tableExists("widget")).isFalse();
+    }
+
+    @Test
+    public void migrateTo_stops_right_after_the_given_marker() throws Exception {
+        createMigrator().migrateTo(dataSource, markerAddWidgetDescription());
+
+        assertThat(columnExists("widget", "description")).isTrue();
+        assertThat(tableExists("migration_person")).isFalse();
+    }
+
+    @Test
+    public void migrateBefore_called_again_with_the_same_marker_changes_nothing() throws Exception {
+        MigrationRunner migrator = createMigrator();
+
+        migrator.migrateBefore(dataSource, markerAddWidgetDescription());
+        migrator.migrateBefore(dataSource, markerAddWidgetDescription());
+
+        assertThat(tableExists("widget")).isTrue();
+        assertThat(columnExists("widget", "description")).isFalse();
+    }
+
+    @Test
+    public void migrateTo_after_migrateBefore_applies_only_the_marked_migration() throws Exception {
+        MigrationRunner migrator = createMigrator();
+
+        migrator.migrateBefore(dataSource, markerAddWidgetDescription());
+        migrator.migrateTo(dataSource, markerAddWidgetDescription());
+
+        assertThat(columnExists("widget", "description")).isTrue();
+        assertThat(tableExists("migration_person")).isFalse();
+    }
+
+    @Test
     public void migrate_runs_every_pending_change() throws Exception {
         createMigrator().migrate(dataSource);
 
@@ -52,10 +101,54 @@ public abstract class MigrationRunnerContractTest extends MigrationTestBase {
     }
 
     @Test
-    public void migrateTo_with_unknown_marker_fails_with_a_clear_error() {
+    public void migrateTo_with_unknown_marker_fails_with_a_clear_error_and_applies_nothing() throws Exception {
         assertThatThrownBy(() -> createMigrator().migrateTo(dataSource, unknownMarker()))
                 .isInstanceOf(JDBScriptException.class)
                 .hasMessageContaining(unknownMarker());
+
+        assertThat(tableExists("widget")).isFalse();
+    }
+
+    @Test
+    public void migrateBefore_with_unknown_marker_fails_with_a_clear_error_and_applies_nothing() throws Exception {
+        assertThatThrownBy(() -> createMigrator().migrateBefore(dataSource, unknownMarker()))
+                .isInstanceOf(JDBScriptException.class)
+                .hasMessageContaining(unknownMarker());
+
+        assertThat(tableExists("widget")).isFalse();
+    }
+
+    @Test
+    public void migrateBefore_an_already_applied_marker_fails_with_a_clear_error() {
+        MigrationRunner migrator = createMigrator();
+        migrator.migrateTo(dataSource, markerAddWidgetDescription());
+
+        assertThatThrownBy(() -> migrator.migrateBefore(dataSource, markerAddWidgetDescription()))
+                .isInstanceOf(JDBScriptException.class)
+                .hasMessageContaining(markerAddWidgetDescription())
+                .hasMessageContaining("already applied");
+    }
+
+    @Test
+    public void migrateTo_a_marker_the_database_is_already_at_fails_with_a_clear_error() {
+        MigrationRunner migrator = createMigrator();
+        migrator.migrateTo(dataSource, markerAddWidgetDescription());
+
+        assertThatThrownBy(() -> migrator.migrateTo(dataSource, markerAddWidgetDescription()))
+                .isInstanceOf(JDBScriptException.class)
+                .hasMessageContaining(markerAddWidgetDescription())
+                .hasMessageContaining("already applied");
+    }
+
+    @Test
+    public void migrateTo_a_marker_the_database_is_already_past_fails_with_a_clear_error() {
+        MigrationRunner migrator = createMigrator();
+        migrator.migrateTo(dataSource, markerAddWidgetDescription());
+
+        assertThatThrownBy(() -> migrator.migrateTo(dataSource, markerCreateWidget()))
+                .isInstanceOf(JDBScriptException.class)
+                .hasMessageContaining(markerCreateWidget())
+                .hasMessageContaining("already applied");
     }
 
     @Test

@@ -25,6 +25,8 @@ public abstract class JDBMigrationEngineContractTest extends MigrationTestBase {
 
     protected abstract String markerAfterFullNameBackfill();
 
+    protected abstract String markerFullNameBackfill();
+
     protected abstract String markerBeforeOrderTable();
 
     protected abstract String markerAfterOrderTable();
@@ -108,10 +110,30 @@ public abstract class JDBMigrationEngineContractTest extends MigrationTestBase {
                 migrationBuilder(IPersonBeforeSchema.class, IPersonAfterSchema.class).build();
 
         migration.migrateTo(markerBeforeFullNameBackfill());
-        migration.before().insertDB(db -> db.migration_person().id(1).first_name("Ada").last_name("Lovelace"));
+        migration.before().insertDB(db -> {
+            db.migration_person().id(1).first_name("Ada").last_name("Lovelace");
+        });
 
         migration.migrateTo(markerAfterFullNameBackfill());
-        migration.after().assertDBHas(db -> db.migration_person().id(1).full_name("Ada Lovelace"));
+        migration.after().assertDBHas(db -> {
+            db.migration_person().id(1).full_name("Ada Lovelace");
+        });
+    }
+
+    @Test
+    public void backfill_tested_by_migrating_before_and_then_to_the_same_marker() {
+        JDBMigrationEngine<IPersonBeforeSchema, IPersonAfterSchema> migration =
+                migrationBuilder(IPersonBeforeSchema.class, IPersonAfterSchema.class).build();
+
+        migration.migrateBefore(markerFullNameBackfill());
+        migration.before().insertDB(db -> {
+            db.migration_person().id(1).first_name("Ada").last_name("Lovelace");
+        });
+
+        migration.migrateTo(markerFullNameBackfill());
+        migration.after().assertDBHas(db -> {
+            db.migration_person().id(1).full_name("Ada Lovelace");
+        });
     }
 
     @Test
@@ -120,7 +142,9 @@ public abstract class JDBMigrationEngineContractTest extends MigrationTestBase {
                 migrationBuilder(IPersonBeforeSchema.class, IPersonAfterSchema.class).build();
 
         migration.migrateTo(markerBeforeFullNameBackfill());
-        migration.before().insertDB(db -> db.migration_person().id(1).first_name("Ada").last_name("Lovelace"));
+        migration.before().insertDB(db -> {
+            db.migration_person().id(1).first_name("Ada").last_name("Lovelace");
+        });
 
         migration.reset();
 
@@ -144,11 +168,17 @@ public abstract class JDBMigrationEngineContractTest extends MigrationTestBase {
                 migrationBuilder(IPersonBeforeSchema.class, IPersonAfterSchema.class).build();
 
         migration.migrateTo(markerBeforeFullNameBackfill());
-        migration.before().insertDB(db -> db.migration_person().id(1).first_name("Ada").last_name("Lovelace"));
+        migration.before().insertDB(db -> {
+            db.migration_person().id(1).first_name("Ada").last_name("Lovelace");
+        });
 
         migration.migrateTo(markerAfterFullNameBackfill());
 
-        migration.after().assertDBHas(db -> db.migration_person().id(1).full_name("Ada Lovelace"));
+        migration.after().assertDBHas(db -> {
+
+            db.migration_person().id(1).full_name("Ada Lovelace");
+
+        });
     }
 
     @Test
@@ -157,7 +187,9 @@ public abstract class JDBMigrationEngineContractTest extends MigrationTestBase {
                 migrationBuilder(IPersonBeforeSchema.class, IPersonAfterSchema.class).build();
 
         migration.migrateTo(markerBeforeFullNameBackfill());
-        migration.before().insertDB(db -> db.migration_person().id(1).first_name("Ada").last_name("Lovelace"));
+        migration.before().insertDB(db -> {
+            db.migration_person().id(1).first_name("Ada").last_name("Lovelace");
+        });
 
         try (Connection cnn = dataSource.getConnection();
              ResultSet rs = cnn.createStatement().executeQuery("SELECT first_name FROM migration_person WHERE id = 1")) {
@@ -181,7 +213,9 @@ public abstract class JDBMigrationEngineContractTest extends MigrationTestBase {
                 migrationBuilder(ICustomerOnlySchema.class, ICustomerAndOrderSchema.class).build();
 
         migration.migrateTo(markerBeforeOrderTable());
-        migration.before().insertDB(db -> db.migration_customer().id(1).name("Acme"));
+        migration.before().insertDB(db -> {
+            db.migration_customer().id(1).name("Acme");
+        });
 
         migration.migrateTo(markerAfterOrderTable());
         migration.after().insertDB(db -> {
@@ -189,7 +223,11 @@ public abstract class JDBMigrationEngineContractTest extends MigrationTestBase {
             db.migration_order().id(100).customer_id(2);
         });
 
-        migration.after().assertDBHas(db -> db.migration_order().id(100).customer_id(2));
+        migration.after().assertDBHas(db -> {
+
+            db.migration_order().id(100).customer_id(2);
+
+        });
     }
 
     @Test
@@ -213,7 +251,9 @@ public abstract class JDBMigrationEngineContractTest extends MigrationTestBase {
                     .build();
 
             migration.migrateTo(markerBeforeOrderTable());
-            migration.before().insertDB(db -> db.migration_customer().id(1).name("Acme"));
+            migration.before().insertDB(db -> {
+                db.migration_customer().id(1).name("Acme");
+            });
 
             migration.migrateTo(markerAfterOrderTable());
 
@@ -232,10 +272,14 @@ public abstract class JDBMigrationEngineContractTest extends MigrationTestBase {
                         .build();
 
         migration.migrateTo(markerBeforeFullNameBackfill());
-        migration.before().insertDB(db -> db.migration_person().id(1).first_name("Ada").last_name("Lovelace"));
+        migration.before().insertDB(db -> {
+            db.migration_person().id(1).first_name("Ada").last_name("Lovelace");
+        });
 
         migration.migrateTo(markerAfterFullNameBackfill());
-        migration.after().insertDB(db -> db.migration_person().id(2).full_name("Beta"));
+        migration.after().insertDB(db -> {
+            db.migration_person().id(2).full_name("Beta");
+        });
 
         assertThat(queryString("SELECT first_name FROM migration_person WHERE id = 1")).isEqualTo("adA");
         assertThat(queryString("SELECT full_name FROM migration_person WHERE id = 2")).isEqualTo("ateB");

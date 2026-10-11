@@ -24,6 +24,11 @@ public class JDBMigrationEngineLiquibaseTest extends JDBMigrationEngineContractT
     }
 
     @Override
+    protected String markerFullNameBackfill() {
+        return "008-backfill-full-name";
+    }
+
+    @Override
     protected String markerBeforeOrderTable() {
         return "before-migration_order-table";
     }

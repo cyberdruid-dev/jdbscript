@@ -25,4 +25,12 @@ public class FlywayVersionNormalizationTest extends MigrationTestBase {
 
         assertThat(columnExists("widget", "description")).isFalse();
     }
+
+    @Test
+    public void migrateBefore_accepts_a_version_equivalent_but_differently_formatted_marker() throws Exception {
+        createMigrator().migrateBefore(dataSource, "2.0");
+
+        assertThat(tableExists("widget")).isTrue();
+        assertThat(columnExists("widget", "description")).isFalse();
+    }
 }

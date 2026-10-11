@@ -1,7 +1,10 @@
 package org.jdbscript.liquibase;
 
 import liquibase.Contexts;
+import liquibase.LabelExpression;
 import liquibase.Liquibase;
+import liquibase.change.core.TagDatabaseChange;
+import liquibase.changelog.ChangeSet;
 import liquibase.database.Database;
 import liquibase.database.DatabaseFactory;
 import liquibase.database.jvm.JdbcConnection;
@@ -16,13 +19,21 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+
+import static java.util.stream.Collectors.joining;
+import static java.util.stream.Collectors.toSet;
 
 /**
- * {@link MigrationRunner} backed by Liquibase. {@code marker} in {@link #migrateTo} is a
- * Liquibase tag - place a {@code tagDatabase} changeset at each point in your changelog you want
- * to stop at for a test.
+ * {@link MigrationRunner} backed by Liquibase. A marker is a changeset or a tag (standing for its
+ * {@code tagDatabase} changeset). A changeset is referenced as {@code id}, {@code id::author} or
+ * {@code path::id::author}, whichever is unique in the changelog. A marker that matches both a tag
+ * and a changeset must be prefixed with {@code tag:} or {@code changeset:}.
  */
 public class LiquibaseMigrator implements MigrationRunner {
+
+    private static final String TAG_PREFIX = "tag:";
+    private static final String CHANGESET_PREFIX = "changeset:";
 
     private final String changeLogFile;
 
@@ -36,15 +47,90 @@ public class LiquibaseMigrator implements MigrationRunner {
 
     @Override
     public void migrateTo(DataSource dataSource, String marker) {
-        run(dataSource, liquibase -> {
-            liquibase.update(marker, new Contexts());
-            // Liquibase silently applies zero changesets for an unknown tag rather than erroring -
-            // a typo would otherwise leave the DB silently at the wrong state.
-            if (!liquibase.tagExists(marker)) {
-                throw new JDBScriptException(
-                        "Liquibase tag '" + marker + "' not found in changelog '" + changeLogFile + "'.");
+        run(dataSource, liquibase -> updateUpTo(liquibase, marker, true));
+    }
+
+    @Override
+    public void migrateBefore(DataSource dataSource, String marker) {
+        run(dataSource, liquibase -> updateUpTo(liquibase, marker, false));
+    }
+
+    // update(count) applies the next count unrun changesets in changelog order.
+    private void updateUpTo(Liquibase liquibase, String marker, boolean includingMarker) throws Exception {
+        List<ChangeSet> changeSets = liquibase.getDatabaseChangeLog().getChangeSets();
+        int index = indexOf(changeSets, marker);
+        Set<String> unrun = liquibase.listUnrunChangeSets(new Contexts(), new LabelExpression()).stream()
+                .map(ChangeSet::toString)
+                .collect(toSet());
+        if (!unrun.contains(changeSets.get(index).toString())) {
+            throw new JDBScriptException("Liquibase changeset '" + changeSets.get(index) + "' (marker '" + marker
+                    + "') is already applied (changelog '" + changeLogFile + "').");
+        }
+        int count = (int) changeSets.subList(0, includingMarker ? index + 1 : index).stream()
+                .filter(changeSet -> unrun.contains(changeSet.toString()))
+                .count();
+        liquibase.update(count, new Contexts(), new LabelExpression());
+    }
+
+    private int indexOf(List<ChangeSet> changeSets, String marker) {
+        if (marker.startsWith(TAG_PREFIX)) {
+            String tag = marker.substring(TAG_PREFIX.length());
+            return requireFound(findTag(changeSets, tag), "tag '" + tag + "'");
+        }
+        if (marker.startsWith(CHANGESET_PREFIX)) {
+            String reference = marker.substring(CHANGESET_PREFIX.length());
+            return requireFound(findChangeSet(changeSets, reference), "changeset '" + reference + "'");
+        }
+        int byTag = findTag(changeSets, marker);
+        int byChangeSet = findChangeSet(changeSets, marker);
+        if (byTag >= 0 && byChangeSet >= 0) {
+            throw new JDBScriptException("Liquibase marker '" + marker + "' matches both a tag and a changeset in changelog '"
+                    + changeLogFile + "'. Use '" + TAG_PREFIX + marker + "' or '" + CHANGESET_PREFIX + marker + "' to choose.");
+        }
+        return requireFound(Math.max(byTag, byChangeSet), "tag or changeset '" + marker + "'");
+    }
+
+    private int requireFound(int index, String description) {
+        if (index < 0) {
+            throw new JDBScriptException("Liquibase " + description + " not found in changelog '" + changeLogFile + "'.");
+        }
+        return index;
+    }
+
+    private int findTag(List<ChangeSet> changeSets, String tag) {
+        for (int i = 0; i < changeSets.size(); i++) {
+            if (isTaggedWith(changeSets.get(i), tag)) {
+                return i;
             }
-        });
+        }
+        return -1;
+    }
+
+    private int findChangeSet(List<ChangeSet> changeSets, String reference) {
+        List<Integer> matches = new ArrayList<>();
+        for (int i = 0; i < changeSets.size(); i++) {
+            if (isReferencedBy(changeSets.get(i), reference)) {
+                matches.add(i);
+            }
+        }
+        if (matches.size() > 1) {
+            throw new JDBScriptException("Liquibase changeset '" + reference + "' is ambiguous in changelog '" + changeLogFile
+                    + "': " + matches.stream().map(i -> changeSets.get(i).toString()).collect(joining(", "))
+                    + ". Use 'id::author' or 'path::id::author' to choose.");
+        }
+        return matches.isEmpty() ? -1 : matches.get(0);
+    }
+
+    // ChangeSet.toString() is "path::id::author".
+    private boolean isReferencedBy(ChangeSet changeSet, String reference) {
+        return reference.equals(changeSet.getId())
+                || reference.equals(changeSet.getId() + "::" + changeSet.getAuthor())
+                || reference.equals(changeSet.toString());
+    }
+
+    private boolean isTaggedWith(ChangeSet changeSet, String tag) {
+        return changeSet.getChanges().stream()
+                .anyMatch(change -> change instanceof TagDatabaseChange tagChange && tag.equals(tagChange.getTag()));
     }
 
     @Override

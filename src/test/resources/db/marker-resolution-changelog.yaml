@@ -1,0 +1,54 @@
+databaseChangeLog:
+  - changeSet:
+      id: create-widget
+      author: alice
+      changes:
+        - createTable:
+            tableName: widget
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  constraints:
+                    primaryKey: true
+  # The tag deliberately has the same name as the next changeset's id.
+  - changeSet:
+      id: tag-before-add-description
+      author: alice
+      changes:
+        - tagDatabase:
+            tag: add-description
+  - changeSet:
+      id: add-description
+      author: alice
+      changes:
+        - addColumn:
+            tableName: widget
+            columns:
+              - column:
+                  name: description
+                  type: varchar(200)
+  # Same id, different authors.
+  - changeSet:
+      id: add-column
+      author: alice
+      changes:
+        - addColumn:
+            tableName: widget
+            columns:
+              - column:
+                  name: alpha
+                  type: int
+  - changeSet:
+      id: add-column
+      author: bob
+      changes:
+        - addColumn:
+            tableName: widget
+            columns:
+              - column:
+                  name: beta
+                  type: int
+  - include:
+      file: marker-resolution-included.yaml
+      relativeToChangelogFile: true

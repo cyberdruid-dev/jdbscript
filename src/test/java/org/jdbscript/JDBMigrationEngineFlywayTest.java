@@ -27,6 +27,11 @@ public class JDBMigrationEngineFlywayTest extends JDBMigrationEngineContractTest
     }
 
     @Override
+    protected String markerFullNameBackfill() {
+        return "5";
+    }
+
+    @Override
     protected String markerBeforeOrderTable() {
         return "6";
     }

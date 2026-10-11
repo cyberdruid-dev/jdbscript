@@ -29,13 +29,15 @@ import static org.jdbscript.errors.JDBErrors.TO_SCHEMA_IS_NULL;
  * both sides despite the risk, build the two {@link JDBEngine}s yourself instead of using this
  * class.
  * <p>
- * Deliberately exposes {@link #migrateTo(String)} only, not a bare "migrate everything" method -
- * that would silently pull in whatever gets appended to the migration tool's changelog/history
- * later, defeating the point of a test scoped to one specific migration. Bound both ends by
- * marker (e.g. a tag placed right before and right after the migration under test).
+ * Deliberately exposes {@link #migrateBefore(String)}/{@link #migrateTo(String)} only, not a bare
+ * "migrate everything" method - that would silently pull in whatever gets appended to the
+ * migration tool's changelog/history later, defeating the point of a test scoped to one specific
+ * migration. Typically {@code migrateBefore(m)}, seed, {@code migrateTo(m)}, assert - for the
+ * migration {@code m} under test.
  * <p>
  * {@link #reset()} wipes the datasource back to blank - an explicit opt-in for starting a test
- * from scratch, never invoked automatically by {@link #migrateTo(String)}.
+ * from scratch, never invoked automatically by {@link #migrateBefore(String)}/
+ * {@link #migrateTo(String)}.
  *
  * @param <F> the schema interface modeling the pre-migration shape
  * @param <A> the schema interface modeling the post-migration shape
@@ -134,9 +136,23 @@ public class JDBMigrationEngine<F extends IDBSchema, A extends IDBSchema> {
     }
 
     /**
-     * Runs the configured {@link MigrationRunner} up to and including {@code marker}, then stops.
+     * Runs the configured {@link MigrationRunner} up to, but not including, {@code marker}, then
+     * stops - the state for seeding data in the shape right before the migration under test.
+     * Fails if {@code marker} is already applied.
      *
-     * @param marker the tool-specific stopping point (e.g. a Liquibase tag)
+     * @param marker the tool-specific migration to stop before (e.g. a Liquibase changeset id or
+     *               tag, a Flyway version)
+     */
+    public void migrateBefore(String marker) {
+        migrator.migrateBefore(getDataSource(), marker);
+    }
+
+    /**
+     * Runs the configured {@link MigrationRunner} up to and including {@code marker}, then stops.
+     * Fails if {@code marker} is already applied - the migration under test would then never run.
+     *
+     * @param marker the tool-specific stopping point (e.g. a Liquibase changeset id or tag, a
+     *               Flyway version)
      */
     public void migrateTo(String marker) {
         migrator.migrateTo(getDataSource(), marker);
@@ -144,7 +160,8 @@ public class JDBMigrationEngine<F extends IDBSchema, A extends IDBSchema> {
 
     /**
      * Wipes everything the configured {@link MigrationRunner} manages on this engine's datasource
-     * - an explicit opt-in, never invoked automatically by {@link #migrateTo(String)}.
+     * - an explicit opt-in, never invoked automatically by {@link #migrateBefore(String)}/
+     * {@link #migrateTo(String)}.
      */
     public void reset() {
         migrator.reset(getDataSource());
@@ -205,8 +222,8 @@ public class JDBMigrationEngine<F extends IDBSchema, A extends IDBSchema> {
         }
 
         /**
-         * The migration tool adapter used by {@link JDBMigrationEngine#migrateTo(String)} (e.g. a
-         * {@code LiquibaseMigrator}).
+         * The migration tool adapter used by {@link JDBMigrationEngine#migrateBefore(String)}/
+         * {@link JDBMigrationEngine#migrateTo(String)} (e.g. a {@code LiquibaseMigrator}).
          */
         public Builder<F, A> migrator(MigrationRunner migrator) {
             this.migrator = migrator;

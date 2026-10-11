@@ -16,12 +16,12 @@ import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.function.Supplier;
 
 /**
- * {@link MigrationRunner} backed by Flyway. {@code marker} in {@link #migrateTo} is a Flyway
- * version (e.g. {@code "3"} for {@code V3__some_description.sql}) - migrations are already
- * individually versioned, so no separate tagging convention is needed the way Liquibase's tags
- * are.
+ * {@link MigrationRunner} backed by Flyway. A marker is a Flyway version (e.g. {@code "3"} for
+ * {@code V3__some_description.sql}) - migrations are already individually versioned, so no
+ * separate tagging convention is needed the way Liquibase's tags are.
  */
 public class FlywayMigrator implements MigrationRunner {
 
@@ -36,14 +36,38 @@ public class FlywayMigrator implements MigrationRunner {
 
     @Override
     public void migrateTo(DataSource dataSource, String marker) {
-        Flyway flyway = configure(dataSource).target(marker).load();
-        run(flyway::migrate);
-        MigrationInfo current = flyway.info().current();
-        // migrate() silently no-ops if marker is already behind the current version, so check
-        // explicitly. Compare parsed versions, not raw strings: "1" and "1.0" are equal to Flyway.
-        if (current == null || !MigrationVersion.fromVersion(marker).equals(current.getVersion())) {
+        migrateUpTo(dataSource, marker, true);
+    }
+
+    @Override
+    public void migrateBefore(DataSource dataSource, String marker) {
+        migrateUpTo(dataSource, marker, false);
+    }
+
+    // Versions are compared parsed, not as raw strings: "1" and "1.0" are equal to Flyway.
+    private void migrateUpTo(DataSource dataSource, String marker, boolean includingMarker) {
+        Flyway flyway = configure(dataSource).load();
+        MigrationVersion version = call(() -> MigrationVersion.fromVersion(marker));
+        MigrationVersion previous = null;
+        MigrationInfo target = null;
+        for (MigrationInfo info : call(() -> flyway.info().all())) {
+            if (version.equals(info.getVersion())) {
+                target = info;
+                break;
+            }
+            previous = info.getVersion();
+        }
+        if (target == null) {
             throw new JDBScriptException(
                     "Flyway version '" + marker + "' not found in location '" + location + "'.");
+        }
+        if (target.getState().isApplied()) {
+            throw new JDBScriptException(
+                    "Flyway version '" + marker + "' is already applied (location '" + location + "').");
+        }
+        MigrationVersion last = includingMarker ? version : previous;
+        if (last != null) {
+            run(configure(dataSource).target(last).load()::migrate);
         }
     }
 
@@ -108,8 +132,15 @@ public class FlywayMigrator implements MigrationRunner {
     }
 
     private void run(Runnable action) {
-        try {
+        call(() -> {
             action.run();
+            return null;
+        });
+    }
+
+    private <T> T call(Supplier<T> action) {
+        try {
+            return action.get();
         } catch (FlywayException e) {
             throw new JDBScriptException(
                     "Flyway migration failed (location '" + location + "'): " + e.getMessage(), e);
