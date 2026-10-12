@@ -35,6 +35,9 @@
   tweak one row, act, assert) and list it in `skill/jdbscript/reference/examples.md`
 
 #### Performance (v1.2.5)
+* [ ] Performance improvement, measurement first: benchmark seed / cleanup / assert against the
+  other tools in `java-db-testing-compared`, then prioritize the items below by what the numbers
+  show
 * [ ] Reduce round trips during cleanup (especially on Oracle)
 * [ ] Batch inserts
 * [ ] Fix the table-order comparator's fallback for tables missing from metadata (not transitive)
@@ -67,8 +70,6 @@
 * [ ] Custom types - needs a dedicated test
 * [ ] Per-field custom converters (e.g. a UUID stored differently in different columns) - check
   how much of this `.converter(...)` already covers before starting
-* [ ] Annotation-based conversion option - reconsider whether this is still needed now that
-  `.converter(...)` / `.disableDefaultConverters()` cover custom mapping without annotations
 
 #### Defaults & Generated IDs
 * [x] `defaults()` should work from class-based scripts too, not just lambdas
@@ -97,7 +98,6 @@
 
 #### Scripts & API
 * [x] `updateDB` - update specific columns on a known row id, not just insert/reset
-* [ ] Parametrized scripts?
 * [ ] Split a schema across multiple interfaces
 * [ ] Single-table inserts (useful for inline updates)
 * [ ] Cache parsed scripts inside the engine (with an option to disable)
@@ -110,14 +110,10 @@
 * [ ] Easy Spring integration - `examples/08-springboot` already proves a plain `DataSource` bean
   is enough with zero extra code; re-scope this if something beyond that is actually wanted
   (e.g. an autoconfiguration starter)
-* [ ] Future DBMS ideas:
-  * [ ] Snowflake?
-  * [ ] Google BigQuery?
 
 #### Naming, Design Questions & Housekeeping
 * [x] CI: add JDK 27 to the JDK Check matrix once `eclipse-temurin:27-jdk-jammy` is published
 * [x] `skill/jdbscript/SKILL.md`: describe migration testing (`JDBMigrationEngine`, Liquibase/Flyway)
-* [ ] What exceptions should be thrown, as a general policy? (open design question)
 * [ ] Ensure tests pass with `autocommit=true|false`
 * [ ] `DBMSType` capability flags - e.g. a `HAS_SEQUENCE` marker (or a small `features`/`EnumSet`
   on the enum constant), with a `skipUnless(reason, DBMSFeature)` test helper overload, instead of
