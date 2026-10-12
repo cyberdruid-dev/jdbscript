@@ -14,6 +14,9 @@
 * [x] Quoted mixed-case table and column names (`TableNameCaseTest`, `ColumnNameCaseTest`)
 * [x] Extract metadata caching into a `CachingMetadataProvider` proxy: `SqlMetadataProvider` only
   fetches, derived lookups are `IMetadataProvider` default methods, strategies use the provider
+* [ ] `assertDBHas` / `assertDBHasNot` failure message: today only "Expected row to exist." Name the
+  table and the expected column values, ideally with the closest actual rows. The migration article
+  shows this failure (`~/workspaces/articles/untested-migration/`).
 * [ ] Skill versioning: decide the workflow for keeping the installed skill in step with the
   released library (e.g. pin the plugin's `git-subdir` source in `site/public/marketplace.json` to
   the release tag and set `version`, vs tracking `main`, which can describe unreleased API)

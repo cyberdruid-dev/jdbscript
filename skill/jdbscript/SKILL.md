@@ -237,9 +237,10 @@ migration.after().assertDBHas(db -> {
 });
 ```
 
-- Before/after schema interfaces are **local and minimal**: private interfaces nested in the test
-  class, never the app's current schema interfaces, declaring only the tables/columns the test
-  seeds or asserts (plus NOT NULL columns and FK parents the inserts need).
+- Before/after schema interfaces are **local**: private interfaces nested in the test class, never
+  the app's current schema interfaces. They declare only the tables the test seeds or asserts
+  (plus FK parents the inserts need), each with **all** its columns at that point in history.
+  Keep the scripts minimal instead: set only the values the test depends on.
 - Run against the **same DBMS as production** (e.g. Testcontainers), not an in-memory stand-in:
   a migration that passes on H2 can fail on Oracle.
 - Both methods fail if the marker is already applied, so isolate tests with `migration.reset()`

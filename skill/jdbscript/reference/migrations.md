@@ -120,9 +120,12 @@ migration under test as marker: `migrateBefore("3")` / `migrateTo("3")` for
   interfaces keep changing with later migrations (a later rename would break or tempt edits to
   an old migration's test), and their `defaults()` may fill columns that didn't exist yet at
   that point. The duplication is intentional.
-- **Minimal**: only the tables and columns the test seeds (before) or asserts (after) — don't
-  copy the whole schema. Two exceptions on the "before" side: NOT NULL columns without a DB
-  default on a seeded table, and FK parent tables of seeded rows, or the insert fails.
+- **Only the tables the test touches, each with all its columns**: declare the tables the test
+  seeds (before) or asserts (after), plus FK parent tables of seeded rows — don't copy the whole
+  schema. Each declared table gets its full shape at that point in history, so the interface reads
+  as the schema at that version; a column left out looks as if the migration had dropped it.
+- **Minimal scripts**: set only the values the test depends on (and NOT NULL columns without a
+  DB default, or the insert fails); assert only the columns the migration changes.
 - Expect `unmappedTableStrategy`'s default `LOG_WARN` to log every other table in the database
   as unmapped. That's normal for minimal interfaces — don't add tables to silence it.
 
