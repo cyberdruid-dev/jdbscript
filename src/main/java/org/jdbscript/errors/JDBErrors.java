@@ -44,6 +44,8 @@ public enum JDBErrors implements Supplier<JDBScriptException> {
     MISSING_TABLE_IN_DB(JDBScriptException.class, "Table '%s' defined in interface %s but missing from DB"),
     /** A schema table name matches several DB tables case-insensitively and none exactly. */
     AMBIGUOUS_TABLE_NAME(JDBScriptException.class, "Table '%s' matches several DB tables ignoring case: %s. Rename the schema method to match one exactly."),
+    /** A record column name matches several DB columns case-insensitively and none exactly. */
+    AMBIGUOUS_COLUMN_NAME(JDBScriptException.class, "Column '%s' matches several columns of table '%s' ignoring case: %s. Rename the record method to match one exactly."),
     /** Table found in DB but missing from schema interface. */
     UNMAPPED_TABLE_IN_DB(JDBScriptException.class, "Table '%s' found in DB but missing from schema interface %s"),
     /** Script classes must have a no-args constructor and no other constructors. */

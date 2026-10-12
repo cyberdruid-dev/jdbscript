@@ -156,9 +156,9 @@ public class SqlScriptExecutor implements IScriptExecutor {
         Class<?> argumentType = detectValueType(value);
         value = (value instanceof TypedNull)? null : value;
         if (InputStream.class.isAssignableFrom(argumentType)) {
-            getStrategy().setInputStream(cnn, tableName, columnName, stmt, columnIndex, (InputStream) value);
+            getStrategy().setInputStream(cnn, metadataProvider.toDbTableName(tableName), columnName, stmt, columnIndex, (InputStream) value);
         } else if(byte[].class.isAssignableFrom(argumentType)) {
-            getStrategy().setByteArray(cnn, tableName, columnName, stmt, columnIndex, (byte[])value);
+            getStrategy().setByteArray(cnn, metadataProvider.toDbTableName(tableName), columnName, stmt, columnIndex, (byte[])value);
         } else if (UUID.class.isAssignableFrom(argumentType)) {
             getStrategy().setUUID(stmt, columnIndex, (UUID)value);
         } else {
@@ -226,8 +226,8 @@ public class SqlScriptExecutor implements IScriptExecutor {
             throw UPDATE_NOTHING_TO_SET.get(record.getTableName());
         }
         String sql = "UPDATE " + metadataProvider.quoteTableName(record.getTableName())
-                + " SET " + setColumns.stream().map(c -> c + " = ?").collect(joining(", "))
-                + " WHERE " + keyColumns.stream().map(c -> c + " = ?").collect(joining(" AND "));
+                + " SET " + setColumns.stream().map(c -> quotedColumn(record, c) + " = ?").collect(joining(", "))
+                + " WHERE " + keyColumns.stream().map(c -> quotedColumn(record, c) + " = ?").collect(joining(" AND "));
         PreparedStatement stmt = stmtProvider.get(sql);
         int paramIndex = 1;
         for (String column : setColumns) {
@@ -379,13 +379,15 @@ public class SqlScriptExecutor implements IScriptExecutor {
      */
     private String createSelectAssertSql(JDBRecord record, List<String> columns, List<String> selectedColumns) {
         StringBuilder sql = new StringBuilder("SELECT ")
-                .append(selectedColumns.isEmpty() ? "count(*)" : String.join(", ", selectedColumns))
+                .append(selectedColumns.isEmpty() ? "count(*)" : selectedColumns.stream()
+                        .map(c -> quotedColumn(record, c))
+                        .collect(joining(", ")))
                 .append(" FROM ").append(metadataProvider.quoteTableName(record.getTableName()));
         for (int i = 0; i < columns.size(); i++) {
             sql.append(i == 0 ? " WHERE " : " AND ");
             String column = columns.get(i);
             Object value = record.getColumns().get(column);
-            sql.append(column).append(isNullValue(value) ? " IS NULL" : " = ?");
+            sql.append(quotedColumn(record, column)).append(isNullValue(value) ? " IS NULL" : " = ?");
         }
         return sql.toString();
     }
@@ -394,9 +396,13 @@ public class SqlScriptExecutor implements IScriptExecutor {
         return value == null || value instanceof TypedNull || ("".equals(value) && getStrategy().isEmptyStringNull());
     }
 
+    private String quotedColumn(JDBRecord record, String column) {
+        return metadataProvider.quoteColumnName(record.getTableName(), column);
+    }
+
     private String createInsertSql(JDBRecord record, List<String> columns) {
         String sql = "INSERT INTO " + metadataProvider.quoteTableName(record.getTableName());
-        sql += " ( "+ String.join(",", columns) + " )";
+        sql += " ( " + columns.stream().map(c -> quotedColumn(record, c)).collect(joining(",")) + " )";
         sql += " VALUES ";
         String params = ",?".repeat(columns.size()).substring(1);
         sql += " ( "+ params + " )";

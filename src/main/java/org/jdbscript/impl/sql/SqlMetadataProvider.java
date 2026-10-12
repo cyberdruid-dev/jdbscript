@@ -1,7 +1,9 @@
 package org.jdbscript.impl.sql;
 
 import org.jdbscript.DBMSType;
+import org.jdbscript.errors.JDBErrors;
 import org.jdbscript.impl.IMetadataProvider;
+import org.jdbscript.impl.Utils;
 import org.jdbscript.impl.cache.IJDBCache;
 import org.jdbscript.impl.cache.IJDBCache.IJDBCacheKey;
 import org.jdbscript.impl.cache.NoCache;
@@ -32,6 +34,7 @@ public class SqlMetadataProvider implements IMetadataProvider {
     private record SortedTablesKey() implements IJDBCacheKey<List<String>> {}
     private record PrimaryKeyKey(String tableName) implements IJDBCacheKey<List<String>> {}
     private record LobColumnsKey(String tableName) implements IJDBCacheKey<Map<String, Integer>> {}
+    private record ColumnsKey(String dbTableName) implements IJDBCacheKey<List<String>> {}
     private record IdentifierQuoteKey() implements IJDBCacheKey<String> {}
     private static final DBMSTypeKey DBMS_TYPE_KEY = new DBMSTypeKey();
     private static final AllTablesKey ALL_TABLES_KEY = new AllTablesKey();
@@ -163,6 +166,35 @@ public class SqlMetadataProvider implements IMetadataProvider {
                     if (type == Types.CLOB || type == Types.NCLOB || type == Types.BLOB) {
                         columns.put(rs.getString("COLUMN_NAME").toUpperCase(), type);
                     }
+                }
+            }
+        });
+        return columns;
+    }
+
+    public String quoteColumnName(String tableName, String columnName) {
+        String quote = getIdentifierQuote();
+        return quote + toDbColumnName(tableName, columnName) + quote;
+    }
+
+    private String toDbColumnName(String tableName, String columnName) {
+        return Utils.resolveIdentifier(columnName, getColumns(tableName),
+                matches -> JDBErrors.AMBIGUOUS_COLUMN_NAME.get(columnName, toDbTableName(tableName), String.join(", ", matches)));
+    }
+
+    private List<String> getColumns(String tableName) {
+        String dbTableName = toDbTableName(tableName);
+        return cache.getOrCompute(new ColumnsKey(dbTableName), k -> fetchColumns(dbTableName));
+    }
+
+    private List<String> fetchColumns(String dbTableName) {
+        List<String> columns = new ArrayList<>();
+        withConnection(cnn -> {
+            String searchCatalog = getStrategy().getSearchCatalog(cnn);
+            String searchSchema = getStrategy().getSearchSchema(cnn);
+            try (ResultSet rs = cnn.getMetaData().getColumns(searchCatalog, searchSchema, dbTableName, null)) {
+                while (rs.next()) {
+                    columns.add(rs.getString("COLUMN_NAME"));
                 }
             }
         });

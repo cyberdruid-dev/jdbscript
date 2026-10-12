@@ -73,8 +73,7 @@ class PostgreSQLStrategy extends  DefaultSqlExecutorStrategy{
         }
     }
 
-    // pg_table_is_visible + lower() resolves the name exactly as the unquoted INSERT will (search_path,
-    // case folding), and a missing table just yields no rows, so the INSERT reports it as usual.
+    // pg_table_is_visible applies the search_path. A missing table yields no rows, so the INSERT reports it.
     // Not to_regclass: it takes cstring before 9.6 and text from 9.6 on, so no one call fits both.
     private Map<String, String> findColumnTypes(Connection cnn, String tableName) throws SQLException {
         Map<String, String> result = new HashMap<>();
@@ -82,7 +81,7 @@ class PostgreSQLStrategy extends  DefaultSqlExecutorStrategy{
                 SELECT a.attname, t.typname FROM pg_attribute a
                 JOIN pg_class c ON c.oid = a.attrelid
                 JOIN pg_type t ON t.oid = a.atttypid
-                WHERE c.relname = lower(?) AND pg_table_is_visible(c.oid) AND a.attnum > 0 AND NOT a.attisdropped
+                WHERE c.relname = ? AND pg_table_is_visible(c.oid) AND a.attnum > 0 AND NOT a.attisdropped
                 """;
         try (PreparedStatement stmt = cnn.prepareStatement(sql)) {
             stmt.setString(1, tableName);

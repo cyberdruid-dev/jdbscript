@@ -32,6 +32,15 @@ public class TableNameCaseTest extends JdbAbstractTest {
         IOrderItemsRecord orderitems();
     }
 
+    private interface IBinaryItemsRecord extends IDBRecord {
+        IBinaryItemsRecord id(int value);
+        IBinaryItemsRecord data(byte[] value);
+    }
+
+    private interface IBinarySchema extends IDBSchema {
+        IBinaryItemsRecord BinaryItems();
+    }
+
     private interface IExactCaseSchema extends IDBSchema {
         IOrderItemsRecord dup();
     }
@@ -171,6 +180,25 @@ public class TableNameCaseTest extends JdbAbstractTest {
         } finally {
             dropTable("dup");
             dropTable("DUP");
+        }
+    }
+
+    public void postgres_byte_array_into_bytea_column_of_mixed_case_table() {
+        skipUnless("bytea detection", DBMSType.POSTGRESQL);
+        executeUpdate("CREATE TABLE %s (id INT NOT NULL PRIMARY KEY, data BYTEA)", quoted("BinaryItems"));
+        try {
+            JDBEngine<IBinarySchema> engine = engineBuilder(IBinarySchema.class).cacheStrategy(CacheStrategy.NONE).build();
+
+            engine.insertDB(db -> {
+                db.BinaryItems().id(1).data(new byte[]{1, 2, 3});
+            });
+
+            assertTableValues(table(quoted("BinaryItems"),
+                    columns("id", "data:blob"),
+                    row(1, new byte[]{1, 2, 3})
+            ));
+        } finally {
+            dropTable("BinaryItems");
         }
     }
 

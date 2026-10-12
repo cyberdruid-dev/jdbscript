@@ -24,7 +24,7 @@
   Shares the metadata lookup with "Validate an `IDBRecord` interface's declared column methods"
   below.
   * [x] tables (`TableNameCaseTest`)
-  * [ ] columns
+  * [x] columns (`ColumnNameCaseTest`)
 * [ ] Extract metadata caching into a `CachingMetadataProvider` proxy (extending
   `AbstractMetadataProviderProxy`), so `SqlMetadataProvider` only fetches. Today every lookup there
   wraps itself in `cache.getOrCompute(...)` with its own key record, and `toDbTableName` (table name
