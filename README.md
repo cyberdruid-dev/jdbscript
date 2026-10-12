@@ -14,6 +14,8 @@
 
 Instead of writing verbose raw SQL scripts or maintaining fragile DbUnit-style XML/JSON datasets, JDBScript lets you model your database tables and columns using standard Java interfaces. You can define test fixtures fluently with full IDE auto-completion, compile-time safety, dynamic defaults, and cross-DBMS compatibility.
 
+The approach isn't new: it has been the in-house fixture layer of two long-lived production systems for about 10 years; the second adopted it after it proved itself on the first. It was extracted into this library in 2026, and the second system, with thousands of tests, now runs on it. See the [CHANGELOG](CHANGELOG.md) for release history.
+
 ## Contents
 
 - [Key Features](#key-features)
@@ -148,7 +150,7 @@ The builder provides several other methods for fine-tuning the engine:
 
 ## Usage Examples
 
-Runnable example projects (JUnit, Testcontainers, Spring Boot, Liquibase/Flyway migrations) are in [`examples/`](examples).
+jdbscript needs only a `DataSource`, so it works with any test framework; in a `@SpringBootTest`, build the engine from the autowired `DataSource` ([example](examples/08-springboot)). Runnable example projects (JUnit, Testcontainers, Spring Boot, Liquibase/Flyway migrations) are in [`examples/`](examples).
 
 ### Inline Scripts (Lambdas)
 
@@ -264,7 +266,7 @@ engine.insertDB(db -> {
 
 ### Updating Existing Rows
 
-Change a few columns of rows that are already in the database, e.g. a shared baseline from `@BeforeMethod`, or data changed mid-test:
+Change a few columns of rows that are already in the database, e.g. a shared baseline from `@BeforeEach`, or data changed mid-test:
 
 ```java
 engine.updateDB(db -> {

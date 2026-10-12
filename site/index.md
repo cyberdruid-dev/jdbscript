@@ -30,7 +30,7 @@ Setting up and verifying relational database fixtures in Java tests has traditio
 
 - **Compile-Time Checking**
   - *Problem*: Raw SQL strings and XML/JSON datasets fail at runtime when schemas change, offering zero compiler feedback or IDE safety.
-  - *Solution*: Schemas are defined as typed Java interfaces. Renaming a column or changing a type triggers compile errors immediately.
+  - *Solution*: Schemas are defined as typed Java interfaces. Typos and type mismatches in fixtures are compile errors; renaming a column in the interface updates every fixture through the IDE. A rename on the database side fails on the first test run.
 - **No XML or Raw SQL**
   - *Problem*: DbUnit-style XML datasets are tedious to maintain, difficult to refactor, and decouple data definitions from your code.
   - *Solution*: Construct test datasets using fluent Java syntax, full IDE autocomplete, reusable fixtures, and smart default generators.
@@ -52,7 +52,7 @@ While DbUnit established dataset-driven testing in Java, maintaining external XM
 
 | Dimension | DbUnit Datasets | JDBScript |
 | :--- | :--- | :--- |
-| **Schema Drift** | Silent failures at test runtime | Immediate compile errors in the IDE |
+| **Schema Drift** | Failures at test runtime, one dataset file at a time | Fixture typos are compile errors; DB-side changes fail on the first test run |
 | **Refactoring** | Fragile text search across external files | Automated IDE rename and reference updates |
 | **Fixture Boilerplate** | Must specify all non-null columns per row | Smart defaults generate IDs and non-essential columns |
 | **Type Safety** | Stringly-typed data; manual converters for Enums/UUIDs | Native Java types, Enums, and automatic JDBC conversion |
