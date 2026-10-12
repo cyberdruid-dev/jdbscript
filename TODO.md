@@ -9,14 +9,25 @@
 
 ## Open
 
-#### URGENT: quoted mixed-case columns can't be mapped
-* [ ] Column names go into the SQL unquoted (`SqlScriptExecutor.createInsertSql`), so the DBMS
-  case-folds them. A column created quoted, e.g. Postgres/H2 `"firstName"`, keeps its exact case,
-  and `firstName(...)` fails with `Column "FIRSTNAME" not found` (reproduced on H2). Be as lenient
-  as possible instead: resolve each method name against the table's actual columns from metadata
-  (exact match first, then case-insensitive), and emit the resolved name quoted. Applies to
-  insert, update and assert SQL; table names likely have the same issue. Shares the metadata
-  lookup with "Validate an `IDBRecord` interface's declared column methods" below.
+#### Release (v1.3.2)
+* [x] LOB columns in `assertDBHas` / `assertDBHasNot`
+* [ ] **Quoted mixed-case column and table names can't be mapped.** Column names go into the SQL
+  unquoted (`SqlScriptExecutor.createInsertSql`), so the DBMS case-folds them. A column created
+  quoted, e.g. Postgres/H2 `"firstName"`, keeps its exact case, and `firstName(...)` fails with
+  `Column "FIRSTNAME" not found` (reproduced on H2). Be as lenient as possible instead: resolve each
+  method name against the table's actual columns from metadata (exact match first, then
+  case-insensitive), and emit the resolved name quoted. Applies to insert, update, assert and
+  delete SQL.
+  Table names have the same problem, and validation hides it: `SchemaValidator.validate()` matches
+  tables case-insensitively, so a quoted `"OrderItems"` passes validation and then fails at the
+  first INSERT. Resolve table names the same way, so validation and SQL agree on what matches.
+  Shares the metadata lookup with "Validate an `IDBRecord` interface's declared column methods"
+  below.
+* [ ] Skill versioning: decide the workflow for keeping the installed skill in step with the
+  released library (e.g. pin the plugin's `git-subdir` source in `site/public/marketplace.json` to
+  the release tag and set `version`, vs tracking `main`, which can describe unreleased API)
+* [ ] Bump the version in `examples/pom.xml` and in the skill's dependency coordinates
+  (`skill/jdbscript/SKILL.md`, "Adding to a project")
 
 #### Release (v1.3.0)
 * [x] Bump `jdbscript.version` in `examples/pom.xml` to 1.3.0
@@ -49,10 +60,6 @@
     not a `DatabaseMetaData.getColumns()` call per insert
   * supersedes the old, vaguer "`engine.verifySchema()`" idea - table-level validation already
     ships automatically on first use; this is the column-level counterpart
-* [ ] Explore table/column name case sensitivity - generated SQL inserts identifiers unquoted, so
-  an exact match already depends on each DBMS's own case-folding rules; decide if/how jdbscript
-  should help here beyond documenting it (done for columns - see `IDBRecord`'s javadoc)
-
 #### Type Conversion
 * [ ] Warn (or leave to the DBMS) when a Java value has more precision than the DB column
   supports (e.g. `Date` vs a DB `DATE` column; MariaDB + `assertDBHas()` on timestamps)
@@ -64,7 +71,7 @@
   `.converter(...)` / `.disableDefaultConverters()` cover custom mapping without annotations
 
 #### Defaults & Generated IDs
-* [ ] `defaults()` should work from class-based scripts too, not just lambdas
+* [x] `defaults()` should work from class-based scripts too, not just lambdas
 * [ ] Defaults: templating
 * [ ] Gotcha (found while writing examples/03-recordtools-defaults): `RecordTools.nextIntId`/
   `nextLongId` advances its counter every time `defaults()` runs for a record, even when the
@@ -78,9 +85,14 @@
 #### Sequences
 * [ ] Reset sequences on demand via an explicit script command, not just during cleanup
 * [ ] Give scripts direct access to sequences
-* [ ] Dedicated tests for sequence resets (beyond the per-DBMS strategy tests that exist today)
+* [x] Dedicated tests for sequence resets (beyond the per-DBMS strategy tests that exist today)
 
 #### Cleanup & Table Order
+* [ ] Accept a partial `tableDependencyOrder(...)`: today it must list every table in the schema
+  interface (`TABLE_MISSING_FROM_DEPENDENCY_ORDER`), so fixing the order of 2 tables out of 40
+  means writing all 40. Use the listed order for those tables and auto-detect the rest. Open
+  question: how the partial list merges with the FK-derived order (e.g. listed tables as extra
+  ordering constraints on top of the FK graph, and a clear error if they contradict it).
 * [ ] `disableConstraintsDuringCleanup()` option (not applicable to Oracle)
 
 #### Scripts & API
@@ -90,7 +102,7 @@
 * [ ] Single-table inserts (useful for inline updates)
 * [ ] Cache parsed scripts inside the engine (with an option to disable)
 * [ ] `JdbsUtils`: `today(+-nDays)` (use time units?), `midnight(+-nDays)`
-* [ ] add a callback for db modification? (e.g. for app's cache reset)
+* [x] add a callback for db modification? (e.g. for app's cache reset) - `onDataChange` (v1.2.0)
 
 #### Ecosystem Integration
 * [ ] Generate schema interfaces from an existing DB
@@ -103,8 +115,8 @@
   * [ ] Google BigQuery?
 
 #### Naming, Design Questions & Housekeeping
-* [ ] CI: add JDK 27 to the JDK Check matrix once `eclipse-temurin:27-jdk-jammy` is published
-* [ ] `skill/jdbscript/SKILL.md`: describe migration testing (`JDBMigrationEngine`, Liquibase/Flyway)
+* [x] CI: add JDK 27 to the JDK Check matrix once `eclipse-temurin:27-jdk-jammy` is published
+* [x] `skill/jdbscript/SKILL.md`: describe migration testing (`JDBMigrationEngine`, Liquibase/Flyway)
 * [ ] What exceptions should be thrown, as a general policy? (open design question)
 * [ ] Ensure tests pass with `autocommit=true|false`
 * [ ] `DBMSType` capability flags - e.g. a `HAS_SEQUENCE` marker (or a small `features`/`EnumSet`
