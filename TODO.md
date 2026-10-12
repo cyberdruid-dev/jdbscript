@@ -9,10 +9,14 @@
 
 ## Open
 
-  Postgres/CockroachDB's `setval(...,10000,true)` was off by one (should be `false`); and moving
-  reset to every `cleanupDB()` call exposed DB2's identity-owned-sequence scan as schema-wide,
-  which now needs `resetSequences(Connection, List<String> tableNames)` to scope identity-owned/
-  identity-column handling (DB2/Oracle/HSQLDB) to the tables actually being cleaned.
+#### URGENT: quoted mixed-case columns can't be mapped
+* [ ] Column names go into the SQL unquoted (`SqlScriptExecutor.createInsertSql`), so the DBMS
+  case-folds them. A column created quoted, e.g. Postgres/H2 `"firstName"`, keeps its exact case,
+  and `firstName(...)` fails with `Column "FIRSTNAME" not found` (reproduced on H2). Be as lenient
+  as possible instead: resolve each method name against the table's actual columns from metadata
+  (exact match first, then case-insensitive), and emit the resolved name quoted. Applies to
+  insert, update and assert SQL; table names likely have the same issue. Shares the metadata
+  lookup with "Validate an `IDBRecord` interface's declared column methods" below.
 
 #### Release (v1.3.0)
 * [x] Bump `jdbscript.version` in `examples/pom.xml` to 1.3.0

@@ -9,6 +9,13 @@ Type-safe, fluent database seeding for JVM tests. Schema is modeled as plain Jav
 `JDBEngine` executes fluent "scripts" against them to seed, reset, or assert on real database
 state — no XML/JSON fixtures, no raw SQL strings.
 
+## Adding to a project
+
+Test-scoped dependency `org.jdbscript:jdbscript:1.3.1` (Java 17+; check Maven Central for the
+latest version). It needs only a `javax.sql.DataSource`, so it works with JUnit, TestNG, Spring Boot
+or Testcontainers alike. For a minimal schema, engine and test, start from the Quickstart in
+`reference/examples.md`.
+
 ## Core model
 
 1. **Schema interface** extends `IDBSchema`, with one no-arg method per table returning that
@@ -246,8 +253,13 @@ Full example, marker rules and builder options: `reference/migrations.md`.
   column literally called `userId`, not `user_id`.
 - `resetDB` wipes tables in the schema interface, not the whole database — tables absent from the
   schema interface are untouched.
-- Sequence values are reset to a high number (10000+) after insertion on Postgres, Oracle, DB2,
-  and HSQLDB, specifically to avoid clashing with manually assigned IDs in later `insertDB` calls.
+- Cleanup (`cleanupDB`, and so `resetDB`) restarts sequences and identity columns at exactly 10000
+  on PostgreSQL, CockroachDB, Oracle, DB2, HSQLDB and DuckDB, so manually assigned low IDs (1, 2, ...)
+  never collide with generated ones.
+- Cleanup deletes **all rows** from the schema's tables, so tests running in parallel against the
+  same database interfere with each other. Before enabling parallel execution (JUnit
+  `junit.jupiter.execution.parallel.enabled`, Surefire/Gradle forks), give each fork its own
+  database or schema (e.g. one Testcontainers container per fork), or keep DB tests sequential.
 
 ## Runnable references
 
