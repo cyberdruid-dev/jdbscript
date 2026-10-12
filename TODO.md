@@ -11,20 +11,7 @@
 
 #### Release (v1.3.2)
 * [x] LOB columns in `assertDBHas` / `assertDBHasNot`
-* [ ] **Quoted mixed-case column and table names can't be mapped.** Column names go into the SQL
-  unquoted (`SqlScriptExecutor.createInsertSql`), so the DBMS case-folds them. A column created
-  quoted, e.g. Postgres/H2 `"firstName"`, keeps its exact case, and `firstName(...)` fails with
-  `Column "FIRSTNAME" not found` (reproduced on H2). Be as lenient as possible instead: resolve each
-  method name against the table's actual columns from metadata (exact match first, then
-  case-insensitive), and emit the resolved name quoted. Applies to insert, update, assert and
-  delete SQL.
-  Table names have the same problem, and validation hides it: `SchemaValidator.validate()` matches
-  tables case-insensitively, so a quoted `"OrderItems"` passes validation and then fails at the
-  first INSERT. Resolve table names the same way, so validation and SQL agree on what matches.
-  Shares the metadata lookup with "Validate an `IDBRecord` interface's declared column methods"
-  below.
-  * [x] tables (`TableNameCaseTest`)
-  * [x] columns (`ColumnNameCaseTest`)
+* [x] Quoted mixed-case table and column names (`TableNameCaseTest`, `ColumnNameCaseTest`)
 * [x] Extract metadata caching into a `CachingMetadataProvider` proxy: `SqlMetadataProvider` only
   fetches, derived lookups are `IMetadataProvider` default methods, strategies use the provider
 * [ ] Skill versioning: decide the workflow for keeping the installed skill in step with the

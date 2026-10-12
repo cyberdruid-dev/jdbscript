@@ -10,6 +10,11 @@ Notable changes per release. Full notes for each version are on [GitHub Releases
 
 ### Changed
 - `JDBMigrationEngine` defaults to `ValidationStrategy.IGNORE`, so tables its before/after interfaces leave out no longer log a warning.
+- Generated SQL quotes table and column names, using the database's own spelling of each.
+
+### Fixed
+- Tables and columns created with a quoted mixed-case name (e.g. `"OrderItems"`, `"firstName"`) can be mapped. Names match exactly first, then case-insensitively; several case-insensitive matches fail with a descriptive error.
+- PostgreSQL: `byte[]` / `InputStream` values into a `bytea` column of a mixed-case table.
 
 ## [1.3.1] - 2026-10-12
 
