@@ -28,6 +28,10 @@ public class TestDataSource implements DataSource {
         trackedConnections.clear();
     }
 
+    public int getAcquiredConnectionCount() {
+        return trackedConnections.size();
+    }
+
     public DataSource getBase() {
         return base;
     }

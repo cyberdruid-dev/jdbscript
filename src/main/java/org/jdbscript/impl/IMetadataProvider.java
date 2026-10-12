@@ -34,8 +34,8 @@ public interface IMetadataProvider {
      */
     List<String> getAllTables();
 
-    /** @return upper-cased names of the tables {@code tableName} references through foreign keys */
-    Set<String> getTableDependencies(String tableName);
+    /** @return each table to the upper-cased names of the tables it references through foreign keys */
+    Map<String, Set<String>> getTableDependencies(Collection<String> tableNames);
 
     List<String> getPrimaryKeyColumns(String dbTableName);
 
@@ -119,10 +119,11 @@ public interface IMetadataProvider {
             normalizedNames.put(name.toUpperCase(), name);
         }
 
+        Map<String, Set<String>> rawDependencies = getTableDependencies(namesList);
         Map<String, Set<String>> dependencies = new HashMap<>();
         for (String tableName : namesList) {
             Set<String> tableDeps = new HashSet<>();
-            for (String rawDep : getTableDependencies(tableName)) {
+            for (String rawDep : rawDependencies.get(tableName)) {
                 String normalizedParent = normalizedNames.get(rawDep);
                 if (normalizedParent != null && !normalizedParent.equalsIgnoreCase(tableName)) {
                     tableDeps.add(normalizedParent);

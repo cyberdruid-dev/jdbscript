@@ -2,6 +2,7 @@ package org.jdbscript.impl;
 
 import org.jdbscript.DBMSType;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -30,8 +31,8 @@ public abstract class AbstractMetadataProviderProxy implements IMetadataProvider
     }
 
     @Override
-    public Set<String> getTableDependencies(String tableName) {
-        return delegate.getTableDependencies(tableName);
+    public Map<String, Set<String>> getTableDependencies(Collection<String> tableNames) {
+        return delegate.getTableDependencies(tableNames);
     }
 
     @Override

@@ -5,6 +5,9 @@ import org.jdbscript.impl.cache.IJDBCache;
 import org.jdbscript.impl.cache.IJDBCache.IJDBCacheKey;
 import org.jdbscript.impl.cache.NoCache;
 
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -54,9 +57,23 @@ public class CachingMetadataProvider extends AbstractMetadataProviderProxy {
         return cache.getOrCompute(ALL_TABLES_KEY, k -> super.getAllTables());
     }
 
+    // Cached per table, but the first miss fetches it and all remaining tables in one batch, i.e. over one connection.
     @Override
-    public Set<String> getTableDependencies(String tableName) {
-        return cache.getOrCompute(new TableDependencyKey(tableName), k -> super.getTableDependencies(tableName));
+    public Map<String, Set<String>> getTableDependencies(Collection<String> tableNames) {
+        List<String> names = List.copyOf(tableNames);
+        Map<String, Set<String>> fetched = new HashMap<>();
+        Map<String, Set<String>> result = new LinkedHashMap<>();
+        for (int i = 0; i < names.size(); i++) {
+            String name = names.get(i);
+            List<String> remaining = names.subList(i, names.size());
+            result.put(name, cache.getOrCompute(new TableDependencyKey(name), k -> {
+                if (!fetched.containsKey(name)) {
+                    fetched.putAll(super.getTableDependencies(remaining));
+                }
+                return fetched.get(name);
+            }));
+        }
+        return result;
     }
 
     @Override

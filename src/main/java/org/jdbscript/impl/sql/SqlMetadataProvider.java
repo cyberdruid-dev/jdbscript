@@ -61,10 +61,12 @@ public class SqlMetadataProvider implements IMetadataProvider {
     }
 
     @Override
-    public Set<String> getTableDependencies(String tableName) {
-        Set<String> dependencies = new HashSet<>();
+    public Map<String, Set<String>> getTableDependencies(Collection<String> tableNames) {
+        Map<String, Set<String>> dependencies = new HashMap<>();
         withConnection(cnn -> {
-            dependencies.addAll(getStrategy().getRawTableDependencies(cnn, cnn.getCatalog(), cnn.getSchema(), tableName));
+            for (String tableName : tableNames) {
+                dependencies.put(tableName, getStrategy().getRawTableDependencies(cnn, cnn.getCatalog(), cnn.getSchema(), tableName));
+            }
         });
         return dependencies;
     }

@@ -2,6 +2,8 @@ package org.jdbscript.utils;
 
 import org.jdbscript.impl.IMetadataProvider;
 
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -10,8 +12,10 @@ import java.util.Set;
 public abstract class StubMetadataProvider implements IMetadataProvider {
 
     @Override
-    public Set<String> getTableDependencies(String tableName) {
-        return Set.of();
+    public Map<String, Set<String>> getTableDependencies(Collection<String> tableNames) {
+        Map<String, Set<String>> dependencies = new HashMap<>();
+        tableNames.forEach(t -> dependencies.put(t, Set.of()));
+        return dependencies;
     }
 
     @Override
