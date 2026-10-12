@@ -85,7 +85,7 @@ testImplementation("org.jdbscript:jdbscript:1.3.1")
 An [agent skill](skill/jdbscript/SKILL.md) teaches coding agents to model schemas and write jdbscript fixtures correctly. In Claude Code:
 
 ```
-/plugin marketplace add cyberdruid-dev/jdbscript
+/plugin marketplace add https://jdbscript.org/marketplace.json
 /plugin install jdbscript@jdbscript
 ```
 

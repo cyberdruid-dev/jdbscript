@@ -5,7 +5,7 @@
   "plugins": [
     {
       "name": "jdbscript",
-      "source": "./skill/jdbscript",
+      "source": { "source": "git-subdir", "url": "cyberdruid-dev/jdbscript", "path": "skill/jdbscript" },
       "description": "Seed, reset and assert relational test databases, and test Liquibase/Flyway migrations, with jdbscript"
     }
   ]
