@@ -225,7 +225,7 @@ public class SqlScriptExecutor implements IScriptExecutor {
         if (setColumns.isEmpty()) {
             throw UPDATE_NOTHING_TO_SET.get(record.getTableName());
         }
-        String sql = "UPDATE " + record.getTableName()
+        String sql = "UPDATE " + metadataProvider.quoteTableName(record.getTableName())
                 + " SET " + setColumns.stream().map(c -> c + " = ?").collect(joining(", "))
                 + " WHERE " + keyColumns.stream().map(c -> c + " = ?").collect(joining(" AND "));
         PreparedStatement stmt = stmtProvider.get(sql);
@@ -380,7 +380,7 @@ public class SqlScriptExecutor implements IScriptExecutor {
     private String createSelectAssertSql(JDBRecord record, List<String> columns, List<String> selectedColumns) {
         StringBuilder sql = new StringBuilder("SELECT ")
                 .append(selectedColumns.isEmpty() ? "count(*)" : String.join(", ", selectedColumns))
-                .append(" FROM ").append(record.getTableName());
+                .append(" FROM ").append(metadataProvider.quoteTableName(record.getTableName()));
         for (int i = 0; i < columns.size(); i++) {
             sql.append(i == 0 ? " WHERE " : " AND ");
             String column = columns.get(i);
@@ -395,7 +395,7 @@ public class SqlScriptExecutor implements IScriptExecutor {
     }
 
     private String createInsertSql(JDBRecord record, List<String> columns) {
-        String sql = "INSERT INTO " + record.getTableName();
+        String sql = "INSERT INTO " + metadataProvider.quoteTableName(record.getTableName());
         sql += " ( "+ String.join(",", columns) + " )";
         sql += " VALUES ";
         String params = ",?".repeat(columns.size()).substring(1);
@@ -404,7 +404,7 @@ public class SqlScriptExecutor implements IScriptExecutor {
     }
 
     private String createDeleteAllSql(String tableName) {
-        String sql = "DELETE FROM " + tableName + " WHERE 1=1";
+        String sql = "DELETE FROM " + metadataProvider.quoteTableName(tableName) + " WHERE 1=1";
         return sql;
     }
 

@@ -32,6 +32,14 @@ public class SchemaValidationTest extends JdbAbstractTest {
         interface ITableRecord extends IDBRecord {}
     }
 
+    private interface ILowerCaseSchema extends IDBSchema {
+        ITestSchema.ITableRecord orderitems();
+    }
+
+    private interface IExactCaseSchema extends IDBSchema {
+        ITestSchema.ITableRecord dup();
+    }
+
     @BeforeClass
     public void setupCleanDataSource() {
         skipIfNotH2(SchemaValidationTest.class);
@@ -79,7 +87,7 @@ public class SchemaValidationTest extends JdbAbstractTest {
             }
             for (String table : tables) {
                 try {
-                    cnn.createStatement().execute("DROP TABLE " + table + " CASCADE");
+                    cnn.createStatement().execute("DROP TABLE \"" + table + "\" CASCADE");
                 } catch (SQLException e) {
                     // Ignore
                 }
@@ -263,5 +271,35 @@ public class SchemaValidationTest extends JdbAbstractTest {
 
         assertThatThrownBy(() -> builder.cacheStrategy(null))
                 .isInstanceOf(JDBScriptException.class);
+    }
+
+    @Test
+    public void should_report_table_differing_only_in_case_from_mapped_one_as_unmapped() {
+        executeUpdate("CREATE TABLE \"dup\" (id INT)");
+        executeUpdate("CREATE TABLE \"DUP\" (id INT)");
+
+        JDBEngine<IExactCaseSchema> engine = JDBEngine.builder(IExactCaseSchema.class)
+                .dataSource(() -> cleanDataSource)
+                .executor(testConfiguration.getScriptExecutor())
+                .unmappedTableStrategy(ValidationStrategy.FAIL)
+                .build();
+
+        assertThatThrownBy(() -> engine.insertDB(db -> {}))
+                .isInstanceOf(JDBScriptException.class)
+                .hasMessageContaining("Table 'DUP' found in DB but missing from schema interface IExactCaseSchema");
+    }
+
+    @Test
+    public void should_map_quoted_mixed_case_table_case_insensitively() {
+        executeUpdate("CREATE TABLE \"OrderItems\" (id INT)");
+
+        JDBEngine<ILowerCaseSchema> engine = JDBEngine.builder(ILowerCaseSchema.class)
+                .dataSource(() -> cleanDataSource)
+                .executor(testConfiguration.getScriptExecutor())
+                .unmappedTableStrategy(ValidationStrategy.FAIL)
+                .build();
+
+        assertThatCode(() -> engine.insertDB(db -> {}))
+                .doesNotThrowAnyException();
     }
 }

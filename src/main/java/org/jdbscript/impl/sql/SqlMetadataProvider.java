@@ -32,9 +32,11 @@ public class SqlMetadataProvider implements IMetadataProvider {
     private record SortedTablesKey() implements IJDBCacheKey<List<String>> {}
     private record PrimaryKeyKey(String tableName) implements IJDBCacheKey<List<String>> {}
     private record LobColumnsKey(String tableName) implements IJDBCacheKey<Map<String, Integer>> {}
+    private record IdentifierQuoteKey() implements IJDBCacheKey<String> {}
     private static final DBMSTypeKey DBMS_TYPE_KEY = new DBMSTypeKey();
     private static final AllTablesKey ALL_TABLES_KEY = new AllTablesKey();
     private static final SortedTablesKey SORTED_TABLES_KEY = new SortedTablesKey();
+    private static final IdentifierQuoteKey IDENTIFIER_QUOTE_KEY = new IdentifierQuoteKey();
 
     public SqlMetadataProvider(SqlConnectionProvider connectionProvider) {
         this.connectionProvider = connectionProvider;
@@ -167,12 +169,17 @@ public class SqlMetadataProvider implements IMetadataProvider {
         return columns;
     }
 
-    // DatabaseMetaData lookups match the table name exactly, so use the DBMS's own spelling of it.
-    private String toDbTableName(String tableName) {
-        return getAllTables().stream()
-                .filter(t -> t.equalsIgnoreCase(tableName))
-                .findFirst()
-                .orElse(tableName);
+    public String quoteTableName(String tableName) {
+        String quote = getIdentifierQuote();
+        return quote + toDbTableName(tableName) + quote;
+    }
+
+    private String getIdentifierQuote() {
+        return cache.getOrCompute(IDENTIFIER_QUOTE_KEY, k -> {
+            final String[] quote = new String[1];
+            withConnection(cnn -> quote[0] = cnn.getMetaData().getIdentifierQuoteString().trim());
+            return quote[0];
+        });
     }
 
     @Override

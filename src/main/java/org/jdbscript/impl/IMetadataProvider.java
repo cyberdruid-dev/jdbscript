@@ -1,6 +1,7 @@
 package org.jdbscript.impl;
  
 import org.jdbscript.DBMSType;
+import org.jdbscript.errors.JDBErrors;
 
 import java.util.Collection;
 import java.util.Comparator;
@@ -21,6 +22,26 @@ public interface IMetadataProvider {
      * @return list of table names
      */
     List<String> getAllTables();
+
+    /**
+     * Returns the DBMS's own spelling of a table name: an exact match if there is one, otherwise a
+     * the only case-insensitive one. Metadata lookups and quoted identifiers need the exact spelling.
+     * @param tableName the table name, e.g. a schema interface method name
+     * @return the matching table name from {@link #getAllTables()}, or {@code tableName} if none matches
+     */
+    default String toDbTableName(String tableName) {
+        List<String> allTables = getAllTables();
+        if (allTables.contains(tableName)) {
+            return tableName;
+        }
+        List<String> matches = allTables.stream()
+                .filter(t -> t.equalsIgnoreCase(tableName))
+                .toList();
+        if (matches.size() > 1) {
+            throw JDBErrors.AMBIGUOUS_TABLE_NAME.get(tableName, String.join(", ", matches));
+        }
+        return matches.isEmpty() ? tableName : matches.get(0);
+    }
 
     /**
      * Returns all discovered tables sorted by their dependencies (parents before children).

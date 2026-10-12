@@ -344,15 +344,16 @@ public class JDBEngine<T extends IDBSchema> implements IJDBEngine<T>{
     }
 
     private List<String> getTableNamesCleanupOrder() {
+        IMetadataProvider provider = getMetadataProvider();
         Set<String> interfaceTables = SchemaValidator.findRecordMethods(dbSchemaClass).stream()
-                .map(m -> m.getName().toUpperCase())
+                .map(m -> provider.toDbTableName(m.getName()))
                 .collect(toSet());
 
-        List<String> sorted = new ArrayList<>(getMetadataProvider().getSortedTables());
+        List<String> sorted = new ArrayList<>(provider.getSortedTables());
         Collections.reverse(sorted);
 
         return sorted.stream()
-                .filter(t -> interfaceTables.contains(t.toUpperCase()))
+                .filter(interfaceTables::contains)
                 .toList();
     }
 

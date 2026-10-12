@@ -67,18 +67,16 @@ public class SchemaValidator {
         }
 
         List<String> dbTables = provider.getAllTables();
-        Set<String> interfaceTables = findRecordMethods(dbSchemaClass).stream()
-                .map(m -> m.getName().toUpperCase())
-                .collect(Collectors.toSet());
-
-        Set<String> dbTableSet = dbTables.stream()
-                .map(String::toUpperCase)
+        List<String> interfaceTables = findRecordMethods(dbSchemaClass).stream()
+                .map(Method::getName)
+                .toList();
+        Set<String> mappedDbTables = interfaceTables.stream()
+                .map(provider::toDbTableName)
                 .collect(Collectors.toSet());
 
         for (String dbTable : dbTables) {
-            String dbTableUpper = dbTable.toUpperCase();
-            if (!interfaceTables.contains(dbTableUpper)) {
-                if (isSuppressed(dbTableUpper)) {
+            if (!mappedDbTables.contains(dbTable)) {
+                if (isSuppressed(dbTable.toUpperCase())) {
                     continue;
                 }
                 String msg = "Table '%s' found in DB but missing from schema interface %s".formatted(dbTable, dbSchemaClass.getSimpleName());
@@ -91,8 +89,8 @@ public class SchemaValidator {
         }
 
         for (String interfaceTable : interfaceTables) {
-            if (!dbTableSet.contains(interfaceTable)) {
-                throw JDBErrors.MISSING_TABLE_IN_DB.get(interfaceTable, dbSchemaClass.getSimpleName());
+            if (!dbTables.contains(provider.toDbTableName(interfaceTable))) {
+                throw JDBErrors.MISSING_TABLE_IN_DB.get(interfaceTable.toUpperCase(), dbSchemaClass.getSimpleName());
             }
         }
         schemaValidated = true;

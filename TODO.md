@@ -23,6 +23,8 @@
   first INSERT. Resolve table names the same way, so validation and SQL agree on what matches.
   Shares the metadata lookup with "Validate an `IDBRecord` interface's declared column methods"
   below.
+  * [x] tables (`TableNameCaseTest`)
+  * [ ] columns
 * [ ] Skill versioning: decide the workflow for keeping the installed skill in step with the
   released library (e.g. pin the plugin's `git-subdir` source in `site/public/marketplace.json` to
   the release tag and set `version`, vs tracking `main`, which can describe unreleased API)
