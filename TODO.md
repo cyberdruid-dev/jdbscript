@@ -25,6 +25,19 @@
   below.
   * [x] tables (`TableNameCaseTest`)
   * [ ] columns
+* [ ] Extract metadata caching into a `CachingMetadataProvider` proxy (extending
+  `AbstractMetadataProviderProxy`), so `SqlMetadataProvider` only fetches. Today every lookup there
+  wraps itself in `cache.getOrCompute(...)` with its own key record, and `toDbTableName` (table name
+  resolution) isn't cached at all - it scans `getAllTables()` on every call. Plan:
+  * move the lookups the executor and strategies use onto `IMetadataProvider`:
+    `SqlMetadataProvider`'s `getPrimaryKeyColumns`/`getLobColumns`/`quoteTableName`, and the
+    strategies' own cached lookups (MSSQL identity column, Postgres column types) - ideally together
+    with the column-name resolution above, which needs the same per-table column metadata
+  * self-calls must go through the proxy: `getSortedTables()` and `toDbTableName()` call
+    `getAllTables()` on the raw provider, which would bypass the cache (give the raw provider a
+    reference to the outer provider, or let the proxy compose those results)
+  * keep per-table dependency caching inside `sortTablesByDependencies(...)`: caching the whole
+    call by its collection argument would reuse far less
 * [ ] Skill versioning: decide the workflow for keeping the installed skill in step with the
   released library (e.g. pin the plugin's `git-subdir` source in `site/public/marketplace.json` to
   the release tag and set `version`, vs tracking `main`, which can describe unreleased API)
