@@ -1,0 +1,25 @@
+# jdbscript
+
+> Type-safe database fixtures for JVM tests: seed, reset and assert relational database state from typed Java interfaces, with no XML or SQL scripts. Also tests what a Liquibase or Flyway migration does to existing data. Maven: `org.jdbscript:jdbscript`.
+
+Record method names are used verbatim as column names (`user_id`, not `userId`).
+
+## Docs
+
+- [README](https://raw.githubusercontent.com/cyberdruid-dev/jdbscript/main/README.md): installation, API, assertions, migration testing, supported databases, known limitations
+- [CHANGELOG](https://raw.githubusercontent.com/cyberdruid-dev/jdbscript/main/CHANGELOG.md): release history
+
+## Agent skill
+
+- [SKILL.md](https://raw.githubusercontent.com/cyberdruid-dev/jdbscript/main/skill/jdbscript/SKILL.md): how to model schemas and write fixtures correctly. Claude Code: `/plugin marketplace add cyberdruid-dev/jdbscript`, then `/plugin install jdbscript@jdbscript`. Other agents: copy `skill/jdbscript/` into the agent's skills directory
+- [Example patterns](https://raw.githubusercontent.com/cyberdruid-dev/jdbscript/main/skill/jdbscript/reference/examples.md): condensed snippets from the example projects
+- [Migration testing](https://raw.githubusercontent.com/cyberdruid-dev/jdbscript/main/skill/jdbscript/reference/migrations.md): testing Liquibase/Flyway migrations against existing data
+
+## Examples
+
+- [Examples overview](https://raw.githubusercontent.com/cyberdruid-dev/jdbscript/main/examples/README.md): runnable Maven projects, one per topic
+- [Quickstart (JUnit)](https://github.com/cyberdruid-dev/jdbscript/tree/main/examples/01-quickstart)
+- [Testcontainers](https://github.com/cyberdruid-dev/jdbscript/tree/main/examples/07-testcontainers)
+- [Spring Boot](https://github.com/cyberdruid-dev/jdbscript/tree/main/examples/08-springboot)
+- [Liquibase data migration](https://github.com/cyberdruid-dev/jdbscript/tree/main/examples/09-liquibase-data-migration)
+- [Flyway data migration](https://github.com/cyberdruid-dev/jdbscript/tree/main/examples/10-flyway-data-migration)

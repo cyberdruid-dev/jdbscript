@@ -80,6 +80,17 @@ testImplementation("org.jdbscript:jdbscript:1.3.1")
 - **Java 17** or higher
 - Standard JDBC `DataSource`
 
+### AI Coding Agents
+
+An [agent skill](skill/jdbscript/SKILL.md) teaches coding agents to model schemas and write jdbscript fixtures correctly. In Claude Code:
+
+```
+/plugin marketplace add cyberdruid-dev/jdbscript
+/plugin install jdbscript@jdbscript
+```
+
+For other agents, copy `skill/jdbscript/` into the agent's skills directory.
+
 ---
 
 ## Quick Start

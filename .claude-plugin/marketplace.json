@@ -1,0 +1,12 @@
+{
+  "name": "jdbscript",
+  "description": "Agent skill for jdbscript, type-safe database fixtures for JVM tests",
+  "owner": { "name": "CyberDruidDev" },
+  "plugins": [
+    {
+      "name": "jdbscript",
+      "source": "./skill/jdbscript",
+      "description": "Seed, reset and assert relational test databases, and test Liquibase/Flyway migrations, with jdbscript"
+    }
+  ]
+}
