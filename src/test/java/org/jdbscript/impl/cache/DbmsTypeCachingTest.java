@@ -2,6 +2,7 @@ package org.jdbscript.impl.cache;
 
 import org.jdbscript.DBMSType;
 import org.jdbscript.impl.sql.SqlConnectionProvider;
+import org.jdbscript.impl.CachingMetadataProvider;
 import org.jdbscript.impl.sql.SqlMetadataProvider;
 import org.testng.annotations.Test;
 
@@ -33,7 +34,7 @@ public class DbmsTypeCachingTest {
             return null;
         }).when(connectionProvider).withConnection(any());
 
-        SqlMetadataProvider provider = new SqlMetadataProvider(connectionProvider);
+        CachingMetadataProvider provider = new CachingMetadataProvider(new SqlMetadataProvider(connectionProvider));
         InstanceCache cache = new InstanceCache();
         provider.setCache(cache);
 
@@ -48,7 +49,7 @@ public class DbmsTypeCachingTest {
         assertThat(connectionCalls.get()).isEqualTo(1);
 
         // New provider with SAME cache should use cached value
-        SqlMetadataProvider provider2 = new SqlMetadataProvider(connectionProvider);
+        CachingMetadataProvider provider2 = new CachingMetadataProvider(new SqlMetadataProvider(connectionProvider));
         provider2.setCache(cache);
         DBMSType type3 = provider2.getDbmsType();
         assertThat(type3).isEqualTo(DBMSType.H2);

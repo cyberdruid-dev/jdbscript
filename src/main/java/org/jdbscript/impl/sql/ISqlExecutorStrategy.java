@@ -3,14 +3,16 @@ package org.jdbscript.impl.sql;
 import org.jdbscript.JDBFeatureSet;
 import org.jdbscript.impl.JDBRecord;
 import org.jdbscript.impl.JDBScript;
-import org.jdbscript.impl.cache.IJDBCache;
+import org.jdbscript.impl.IMetadataProvider;
 
 import java.io.InputStream;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -98,6 +100,17 @@ public interface ISqlExecutorStrategy {
     default void setFeatures(JDBFeatureSet features) {
     }
 
-    default void setCache(IJDBCache cache) {
+    default void setMetadataProvider(IMetadataProvider metadataProvider) {
+    }
+
+    /** Backs {@link IMetadataProvider#getColumnTypes}; call that instead, it's cached. */
+    default Map<String, String> findColumnTypes(Connection cnn, String dbTableName) throws SQLException {
+        Map<String, String> result = new HashMap<>();
+        try (ResultSet rs = cnn.getMetaData().getColumns(getSearchCatalog(cnn), getSearchSchema(cnn), dbTableName, null)) {
+            while (rs.next()) {
+                result.put(rs.getString("COLUMN_NAME").toLowerCase(), rs.getString("TYPE_NAME"));
+            }
+        }
+        return result;
     }
 }

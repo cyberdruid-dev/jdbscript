@@ -1,5 +1,6 @@
 package org.jdbscript.usecases;
 
+import org.jdbscript.utils.StubMetadataProvider;
 import org.jdbscript.db.IOrderSchema;
 import org.jdbscript.*;
 import org.jdbscript.impl.IMetadataProvider;
@@ -75,7 +76,7 @@ public class InsertOrderTest extends JdbAbstractTest {
             }
             @Override
             public IMetadataProvider getMetadataProvider() {
-                return new IMetadataProvider() {
+                return new StubMetadataProvider() {
                     @Override
                     public DBMSType getDbmsType() {
                         return DBMSType.H2;

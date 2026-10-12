@@ -1,5 +1,6 @@
 package org.jdbscript.usecases;
 
+import org.jdbscript.utils.StubMetadataProvider;
 import org.jdbscript.db.IOrderSchema;
 import org.jdbscript.*;
 import org.jdbscript.errors.JDBScriptException;
@@ -27,7 +28,7 @@ public class TableDependencyOrderTest extends JdbAbstractTest {
      * happening to agree with it.
      */
     private static IMetadataProvider poisonedAutoDetectionProvider() {
-        return new IMetadataProvider() {
+        return new StubMetadataProvider() {
             @Override
             public DBMSType getDbmsType() {
                 return DBMSType.H2;

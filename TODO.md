@@ -25,19 +25,8 @@
   below.
   * [x] tables (`TableNameCaseTest`)
   * [x] columns (`ColumnNameCaseTest`)
-* [ ] Extract metadata caching into a `CachingMetadataProvider` proxy (extending
-  `AbstractMetadataProviderProxy`), so `SqlMetadataProvider` only fetches. Today every lookup there
-  wraps itself in `cache.getOrCompute(...)` with its own key record, and `toDbTableName` (table name
-  resolution) isn't cached at all - it scans `getAllTables()` on every call. Plan:
-  * move the lookups the executor and strategies use onto `IMetadataProvider`:
-    `SqlMetadataProvider`'s `getPrimaryKeyColumns`/`getLobColumns`/`quoteTableName`, and the
-    strategies' own cached lookups (MSSQL identity column, Postgres column types) - ideally together
-    with the column-name resolution above, which needs the same per-table column metadata
-  * self-calls must go through the proxy: `getSortedTables()` and `toDbTableName()` call
-    `getAllTables()` on the raw provider, which would bypass the cache (give the raw provider a
-    reference to the outer provider, or let the proxy compose those results)
-  * keep per-table dependency caching inside `sortTablesByDependencies(...)`: caching the whole
-    call by its collection argument would reuse far less
+* [x] Extract metadata caching into a `CachingMetadataProvider` proxy: `SqlMetadataProvider` only
+  fetches, derived lookups are `IMetadataProvider` default methods, strategies use the provider
 * [ ] Skill versioning: decide the workflow for keeping the installed skill in step with the
   released library (e.g. pin the plugin's `git-subdir` source in `site/public/marketplace.json` to
   the release tag and set `version`, vs tracking `main`, which can describe unreleased API)
@@ -55,6 +44,8 @@
   show
 * [ ] Reduce round trips during cleanup (especially on Oracle)
 * [ ] Batch inserts
+* [ ] One `DatabaseMetaData.getColumns()` round trip per table instead of four: `getColumns`,
+  `getLobColumns`, `getColumnTypes` (default strategy) and `getIdentityColumn` each fetch it separately
 * [ ] Fix the table-order comparator's fallback for tables missing from metadata (not transitive)
 
 #### Schema & Column Validation

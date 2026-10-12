@@ -2,9 +2,7 @@ package org.jdbscript.impl.sql;
 
 import org.jdbscript.impl.JDBRecord;
 import org.jdbscript.impl.JDBScript;
-import org.jdbscript.impl.cache.IJDBCache;
-import org.jdbscript.impl.cache.IJDBCache.IJDBCacheKey;
-import org.jdbscript.impl.cache.NoCache;
+import org.jdbscript.impl.IMetadataProvider;
 
 import java.io.InputStream;
 import java.sql.*;
@@ -12,14 +10,12 @@ import java.util.Objects;
 import java.util.UUID;
 
 class MssqlStrategy extends DefaultSqlExecutorStrategy {
-    private record IdentityColumnKey(String tableName) implements IJDBCacheKey<String> {}
-
-    private IJDBCache cache = new NoCache();
+    private IMetadataProvider metadataProvider;
     private String identityInsertOnTable;
 
     @Override
-    public void setCache(IJDBCache cache) {
-        this.cache = cache != null ? cache : new NoCache();
+    public void setMetadataProvider(IMetadataProvider metadataProvider) {
+        this.metadataProvider = metadataProvider;
     }
 
     @Override
@@ -30,9 +26,9 @@ class MssqlStrategy extends DefaultSqlExecutorStrategy {
     @Override
     public void beforeEachInsert(Connection cnn, JDBRecord record) throws SQLException {
         String tableName = record.getTableName();
-        String identityColumn = identityColumn(cnn, tableName);
-        boolean suppliesIdentityColumn = identityColumn != null
-                && record.getColumns().keySet().stream().anyMatch(c -> c.equalsIgnoreCase(identityColumn));
+        boolean suppliesIdentityColumn = metadataProvider.getIdentityColumn(metadataProvider.toDbTableName(tableName))
+                .map(identityColumn -> record.getColumns().keySet().stream().anyMatch(c -> c.equalsIgnoreCase(identityColumn)))
+                .orElse(false);
         String desiredTable = suppliesIdentityColumn ? tableName : null;
         if (Objects.equals(desiredTable, identityInsertOnTable)) {
             return;
@@ -70,34 +66,6 @@ class MssqlStrategy extends DefaultSqlExecutorStrategy {
         } else {
             super.setByteArray(stmt, columnIndex, bytes);
         }
-    }
-
-    private String identityColumn(Connection cnn, String tableName) throws SQLException {
-        try {
-            return cache.getOrCompute(new IdentityColumnKey(tableName), k -> {
-                try {
-                    return findIdentityColumn(cnn, k.tableName());
-                } catch (SQLException e) {
-                    throw new RuntimeException(e);
-                }
-            });
-        } catch (RuntimeException e) {
-            if (e.getCause() instanceof SQLException) {
-                throw (SQLException) e.getCause();
-            }
-            throw e;
-        }
-    }
-
-    private String findIdentityColumn(Connection cnn, String tableName) throws SQLException {
-        try (ResultSet rs = cnn.getMetaData().getColumns(null, null, tableName, "%")) {
-            while (rs.next()) {
-                if ("YES".equals(rs.getString("IS_AUTOINCREMENT"))) {
-                    return rs.getString("COLUMN_NAME");
-                }
-            }
-        }
-        return null;
     }
 
     private void identityInsertOn(Connection cnn, String tableName) throws SQLException {

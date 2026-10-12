@@ -5,6 +5,7 @@ import org.jdbscript.impl.cache.IJDBCache;
 import org.jdbscript.impl.cache.InstanceCache;
 import org.jdbscript.impl.cache.NoCache;
 import org.jdbscript.impl.sql.SqlConnectionProvider;
+import org.jdbscript.impl.CachingMetadataProvider;
 import org.jdbscript.impl.sql.SqlMetadataProvider;
 import org.mockito.ArgumentCaptor;
 import org.testng.annotations.Test;
@@ -102,7 +103,7 @@ public class MetadataCachingTest {
         }).when(provider).withConnection(any());
 
         IJDBCache cache = spy(new InstanceCache());
-        SqlMetadataProvider sorter = new SqlMetadataProvider(provider);
+        CachingMetadataProvider sorter = new CachingMetadataProvider(new SqlMetadataProvider(provider));
         sorter.setCache(cache);
 
         List<String> tables = List.of("T1");
@@ -135,7 +136,7 @@ public class MetadataCachingTest {
         }).when(provider).withConnection(any());
 
         IJDBCache cache = new InstanceCache();
-        SqlMetadataProvider sorter = new SqlMetadataProvider(provider);
+        CachingMetadataProvider sorter = new CachingMetadataProvider(new SqlMetadataProvider(provider));
         sorter.setCache(cache);
 
         List<String> tables = List.of("T1");
@@ -176,7 +177,7 @@ public class MetadataCachingTest {
         // the same cache - exactly the shape this test's two-table discovery+sort would hit if
         // table discovery were cached naively.
         IJDBCache cache = new InstanceCache();
-        SqlMetadataProvider metadataProvider = new SqlMetadataProvider(provider);
+        CachingMetadataProvider metadataProvider = new CachingMetadataProvider(new SqlMetadataProvider(provider));
         metadataProvider.setCache(cache);
 
         assertEquals(metadataProvider.getAllTables(), List.of("T1", "T2"));
@@ -222,7 +223,7 @@ public class MetadataCachingTest {
         // own getOrCompute(SORTED_TABLES_KEY, ...) - this only works because InstanceCache is
         // required to support nested calls on the same thread.
         IJDBCache cache = new InstanceCache();
-        SqlMetadataProvider metadataProvider = new SqlMetadataProvider(provider);
+        CachingMetadataProvider metadataProvider = new CachingMetadataProvider(new SqlMetadataProvider(provider));
         metadataProvider.setCache(cache);
 
         List<String> sorted1 = metadataProvider.getSortedTables();

@@ -1,52 +1,21 @@
 package org.jdbscript.impl.sql;
 
 import org.jdbscript.DBMSType;
-import org.jdbscript.errors.JDBErrors;
 import org.jdbscript.impl.IMetadataProvider;
-import org.jdbscript.impl.Utils;
-import org.jdbscript.impl.cache.IJDBCache;
-import org.jdbscript.impl.cache.IJDBCache.IJDBCacheKey;
-import org.jdbscript.impl.cache.NoCache;
 import org.jdbscript.impl.sql.SqlConnectionProvider.JdbcConnectionConsumer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.sql.Types;
 import java.util.*;
 
-import static java.util.Collections.emptyList;
-
 public class SqlMetadataProvider implements IMetadataProvider {
-    private static final Logger log = LoggerFactory.getLogger(SqlMetadataProvider.class);
 
     private final SqlConnectionProvider connectionProvider;
-    private IJDBCache cache = new NoCache();
-    private DBMSType dbmsType;
     private volatile ISqlExecutorStrategy strategy;
-
-    private record DBMSTypeKey() implements IJDBCacheKey<DBMSType> {}
-    private record TableDependencyKey(String tableName) implements IJDBCacheKey<Set<String>> {}
-    private record AllTablesKey() implements IJDBCacheKey<List<String>> {}
-    private record SortedTablesKey() implements IJDBCacheKey<List<String>> {}
-    private record PrimaryKeyKey(String tableName) implements IJDBCacheKey<List<String>> {}
-    private record LobColumnsKey(String tableName) implements IJDBCacheKey<Map<String, Integer>> {}
-    private record ColumnsKey(String dbTableName) implements IJDBCacheKey<List<String>> {}
-    private record IdentifierQuoteKey() implements IJDBCacheKey<String> {}
-    private static final DBMSTypeKey DBMS_TYPE_KEY = new DBMSTypeKey();
-    private static final AllTablesKey ALL_TABLES_KEY = new AllTablesKey();
-    private static final SortedTablesKey SORTED_TABLES_KEY = new SortedTablesKey();
-    private static final IdentifierQuoteKey IDENTIFIER_QUOTE_KEY = new IdentifierQuoteKey();
 
     public SqlMetadataProvider(SqlConnectionProvider connectionProvider) {
         this.connectionProvider = connectionProvider;
-    }
-
-    public void setCache(IJDBCache cache) {
-        this.cache = cache != null ? cache : new NoCache();
     }
 
     public void setStrategy(ISqlExecutorStrategy strategy) {
@@ -63,51 +32,15 @@ public class SqlMetadataProvider implements IMetadataProvider {
 
     @Override
     public DBMSType getDbmsType() {
-        if (dbmsType == null) {
-            dbmsType = cache.getOrCompute(DBMS_TYPE_KEY, k -> {
-                final DBMSType[] detected = new DBMSType[1];
-                withConnection(cnn -> {
-                    detected[0] = DBMSType.getType(cnn.getMetaData());
-                });
-                return detected[0];
-            });
-        }
-        return dbmsType;
+        final DBMSType[] detected = new DBMSType[1];
+        withConnection(cnn -> {
+            detected[0] = DBMSType.getType(cnn.getMetaData());
+        });
+        return detected[0];
     }
 
     @Override
     public List<String> getAllTables() {
-        return cache.getOrCompute(ALL_TABLES_KEY, k -> fetchAllTables());
-    }
-
-    @Override
-    public List<String> getSortedTables() {
-        return cache.getOrCompute(SORTED_TABLES_KEY, k -> sortTablesByDependencies(getAllTables()));
-    }
-
-    @Override
-    public Comparator<String> getParentChildTableComparator() {
-        List<String> sorted = getSortedTables();
-        return (t1, t2) -> {
-            int i1 = findIndex(sorted, t1);
-            int i2 = findIndex(sorted, t2);
-            if (i1 == -1 || i2 == -1) {
-                return t1.compareToIgnoreCase(t2);
-            }
-            return Integer.compare(i1, i2);
-        };
-    }
-
-    private int findIndex(List<String> list, String name) {
-        for (int i = 0; i < list.size(); i++) {
-            if (list.get(i).equalsIgnoreCase(name)) {
-                return i;
-            }
-        }
-        return -1;
-    }
-
-    private List<String> fetchAllTables() {
         List<String> tables = new ArrayList<>();
         withConnection(cnn -> {
             DatabaseMetaData metaData = cnn.getMetaData();
@@ -127,12 +60,17 @@ public class SqlMetadataProvider implements IMetadataProvider {
         return tables;
     }
 
-    public List<String> getPrimaryKeyColumns(String tableName) {
-        return cache.getOrCompute(new PrimaryKeyKey(tableName.toUpperCase()), k -> fetchPrimaryKeyColumns(tableName));
+    @Override
+    public Set<String> getTableDependencies(String tableName) {
+        Set<String> dependencies = new HashSet<>();
+        withConnection(cnn -> {
+            dependencies.addAll(getStrategy().getRawTableDependencies(cnn, cnn.getCatalog(), cnn.getSchema(), tableName));
+        });
+        return dependencies;
     }
 
-    private List<String> fetchPrimaryKeyColumns(String tableName) {
-        String dbTableName = toDbTableName(tableName);
+    @Override
+    public List<String> getPrimaryKeyColumns(String dbTableName) {
         List<String> columns = new ArrayList<>();
         withConnection(cnn -> {
             String searchCatalog = getStrategy().getSearchCatalog(cnn);
@@ -146,16 +84,23 @@ public class SqlMetadataProvider implements IMetadataProvider {
         return columns;
     }
 
-    /**
-     * The table's CLOB/NCLOB/BLOB columns - the ones a DBMS like Oracle can't compare with
-     * {@code =} - as upper-cased name to {@link Types} constant.
-     */
-    public Map<String, Integer> getLobColumns(String tableName) {
-        return cache.getOrCompute(new LobColumnsKey(tableName.toUpperCase()), k -> fetchLobColumns(tableName));
+    @Override
+    public List<String> getColumns(String dbTableName) {
+        List<String> columns = new ArrayList<>();
+        withConnection(cnn -> {
+            String searchCatalog = getStrategy().getSearchCatalog(cnn);
+            String searchSchema = getStrategy().getSearchSchema(cnn);
+            try (ResultSet rs = cnn.getMetaData().getColumns(searchCatalog, searchSchema, dbTableName, null)) {
+                while (rs.next()) {
+                    columns.add(rs.getString("COLUMN_NAME"));
+                }
+            }
+        });
+        return columns;
     }
 
-    private Map<String, Integer> fetchLobColumns(String tableName) {
-        String dbTableName = toDbTableName(tableName);
+    @Override
+    public Map<String, Integer> getLobColumns(String dbTableName) {
         Map<String, Integer> columns = new HashMap<>();
         withConnection(cnn -> {
             String searchCatalog = getStrategy().getSearchCatalog(cnn);
@@ -172,126 +117,34 @@ public class SqlMetadataProvider implements IMetadataProvider {
         return columns;
     }
 
-    public String quoteColumnName(String tableName, String columnName) {
-        String quote = getIdentifierQuote();
-        return quote + toDbColumnName(tableName, columnName) + quote;
-    }
-
-    private String toDbColumnName(String tableName, String columnName) {
-        return Utils.resolveIdentifier(columnName, getColumns(tableName),
-                matches -> JDBErrors.AMBIGUOUS_COLUMN_NAME.get(columnName, toDbTableName(tableName), String.join(", ", matches)));
-    }
-
-    private List<String> getColumns(String tableName) {
-        String dbTableName = toDbTableName(tableName);
-        return cache.getOrCompute(new ColumnsKey(dbTableName), k -> fetchColumns(dbTableName));
-    }
-
-    private List<String> fetchColumns(String dbTableName) {
-        List<String> columns = new ArrayList<>();
-        withConnection(cnn -> {
-            String searchCatalog = getStrategy().getSearchCatalog(cnn);
-            String searchSchema = getStrategy().getSearchSchema(cnn);
-            try (ResultSet rs = cnn.getMetaData().getColumns(searchCatalog, searchSchema, dbTableName, null)) {
-                while (rs.next()) {
-                    columns.add(rs.getString("COLUMN_NAME"));
-                }
-            }
-        });
-        return columns;
-    }
-
-    public String quoteTableName(String tableName) {
-        String quote = getIdentifierQuote();
-        return quote + toDbTableName(tableName) + quote;
-    }
-
-    private String getIdentifierQuote() {
-        return cache.getOrCompute(IDENTIFIER_QUOTE_KEY, k -> {
-            final String[] quote = new String[1];
-            withConnection(cnn -> quote[0] = cnn.getMetaData().getIdentifierQuoteString().trim());
-            return quote[0];
-        });
+    @Override
+    public Map<String, String> getColumnTypes(String dbTableName) {
+        Map<String, String> types = new HashMap<>();
+        withConnection(cnn -> types.putAll(getStrategy().findColumnTypes(cnn, dbTableName)));
+        return types;
     }
 
     @Override
-    public List<String> sortTablesByDependencies(Collection<String> tableNames) {
-        if (tableNames == null || tableNames.isEmpty()) {
-            return emptyList();
-        }
-
-        List<String> namesList = new ArrayList<>(tableNames);
-        Map<String, String> normalizedNames = new HashMap<>();
-        for (String name : namesList) {
-            normalizedNames.put(name.toUpperCase(), name);
-        }
-
-        Map<String, Set<String>> dependencies = new HashMap<>();
+    public Optional<String> getIdentityColumn(String dbTableName) {
+        final String[] identityColumn = new String[1];
         withConnection(cnn -> {
-            DatabaseMetaData metaData = cnn.getMetaData();
-            String catalog = cnn.getCatalog();
-            String schema = cnn.getSchema();
-            for (String tableName : namesList) {
-                Set<String> rawDeps;
-                try {
-                    rawDeps = cache.getOrCompute(new TableDependencyKey(tableName), k -> {
-                        try {
-                            return getRawTableDependencies(cnn, catalog, schema, k.tableName());
-                        } catch (SQLException e) {
-                            throw new RuntimeException(e);
-                        }
-                    });
-                } catch (RuntimeException e) {
-                    if (e.getCause() instanceof SQLException) {
-                        throw (SQLException) e.getCause();
-                    }
-                    throw e;
-                }
-
-                Set<String> tableDeps = new HashSet<>();
-                for (String rawDep : rawDeps) {
-                    String normalizedParent = normalizedNames.get(rawDep);
-                    if (normalizedParent != null && !normalizedParent.equalsIgnoreCase(tableName)) {
-                        tableDeps.add(normalizedParent);
+            try (ResultSet rs = cnn.getMetaData().getColumns(null, null, dbTableName, "%")) {
+                while (rs.next() && identityColumn[0] == null) {
+                    if ("YES".equals(rs.getString("IS_AUTOINCREMENT"))) {
+                        identityColumn[0] = rs.getString("COLUMN_NAME");
                     }
                 }
-                dependencies.put(tableName, tableDeps);
             }
         });
-
-        List<String> sorted = new ArrayList<>();
-        Set<String> visited = new HashSet<>();
-        Set<String> visiting = new HashSet<>();
-
-        for (String table : namesList) {
-            sortRecursive(table, dependencies, visited, visiting, sorted);
-        }
-
-        return sorted;
+        return Optional.ofNullable(identityColumn[0]);
     }
 
-    private Set<String> getRawTableDependencies(Connection cnn, String catalog, String schema, String tableName) throws SQLException {
-        return getStrategy().getRawTableDependencies(cnn, catalog, schema, tableName);
+    @Override
+    public String getIdentifierQuote() {
+        final String[] quote = new String[1];
+        withConnection(cnn -> quote[0] = cnn.getMetaData().getIdentifierQuoteString().trim());
+        return quote[0];
     }
-
-    private void sortRecursive(String table, Map<String, Set<String>> dependencies,
-                               Set<String> visited, Set<String> visiting, List<String> sorted) {
-        if (visited.contains(table)) return;
-        if (visiting.contains(table)) {
-            throw new IllegalStateException("Circular dependency detected involving table: " + table);
-        }
-
-        visiting.add(table);
-        Set<String> tableDeps = dependencies.getOrDefault(table, Collections.emptySet());
-        for (String dep : tableDeps) {
-            sortRecursive(dep, dependencies, visited, visiting, sorted);
-        }
-        visiting.remove(table);
-        visited.add(table);
-        sorted.add(table);
-    }
-
-
 
     private void withConnection(JdbcConnectionConsumer consumer) {
         this.connectionProvider.withConnection(consumer);

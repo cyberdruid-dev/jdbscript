@@ -1,5 +1,6 @@
 package org.jdbscript.impl;
 
+import org.jdbscript.utils.StubMetadataProvider;
 import org.jdbscript.DBMSType;
 import org.testng.annotations.Test;
 
@@ -12,7 +13,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class TableDependencyOrderMetadataProviderTest {
 
     private static IMetadataProvider realProviderReporting(List<String> realCasedTables) {
-        return new IMetadataProvider() {
+        return new StubMetadataProvider() {
             @Override
             public DBMSType getDbmsType() {
                 return DBMSType.MYSQL;

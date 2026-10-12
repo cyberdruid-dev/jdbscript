@@ -1,7 +1,5 @@
 package org.jdbscript.impl.sql;
-import org.jdbscript.impl.cache.IJDBCache;
-import org.jdbscript.impl.cache.IJDBCache.IJDBCacheKey;
-import org.jdbscript.impl.cache.NoCache;
+import org.jdbscript.impl.IMetadataProvider;
 
 import java.io.InputStream;
 import java.sql.*;
@@ -12,13 +10,11 @@ import java.util.Map;
 import java.util.UUID;
 
 class PostgreSQLStrategy extends  DefaultSqlExecutorStrategy{
-    private record ColumnTypesKey(String tableName) implements IJDBCacheKey<Map<String, String>> {}
-
-    private IJDBCache cache = new NoCache();
+    private IMetadataProvider metadataProvider;
 
     @Override
-    public void setCache(IJDBCache cache) {
-        this.cache = cache != null ? cache : new NoCache();
+    public void setMetadataProvider(IMetadataProvider metadataProvider) {
+        this.metadataProvider = metadataProvider;
     }
 
     @Override
@@ -53,29 +49,13 @@ class PostgreSQLStrategy extends  DefaultSqlExecutorStrategy{
     }
 
     protected boolean isBytea(Connection cnn, String tableName, String columnName) throws SQLException {
-        return "bytea".equals(columnTypes(cnn, tableName).get(columnName.toLowerCase()));
-    }
-
-    private Map<String, String> columnTypes(Connection cnn, String tableName) throws SQLException {
-        try {
-            return cache.getOrCompute(new ColumnTypesKey(tableName), k -> {
-                try {
-                    return findColumnTypes(cnn, k.tableName());
-                } catch (SQLException e) {
-                    throw new RuntimeException(e);
-                }
-            });
-        } catch (RuntimeException e) {
-            if (e.getCause() instanceof SQLException) {
-                throw (SQLException) e.getCause();
-            }
-            throw e;
-        }
+        return "bytea".equals(metadataProvider.getColumnTypes(tableName).get(columnName.toLowerCase()));
     }
 
     // pg_table_is_visible applies the search_path. A missing table yields no rows, so the INSERT reports it.
     // Not to_regclass: it takes cstring before 9.6 and text from 9.6 on, so no one call fits both.
-    private Map<String, String> findColumnTypes(Connection cnn, String tableName) throws SQLException {
+    @Override
+    public Map<String, String> findColumnTypes(Connection cnn, String tableName) throws SQLException {
         Map<String, String> result = new HashMap<>();
         String sql = """
                 SELECT a.attname, t.typname FROM pg_attribute a

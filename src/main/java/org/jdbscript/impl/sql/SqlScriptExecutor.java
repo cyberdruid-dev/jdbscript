@@ -2,6 +2,7 @@ package org.jdbscript.impl.sql;
 
 import org.jdbscript.DBMSType;
 import org.jdbscript.JDBFeatureSet;
+import org.jdbscript.impl.CachingMetadataProvider;
 import org.jdbscript.impl.IMetadataProvider;
 import org.jdbscript.IScriptExecutor;
 import org.jdbscript.impl.JDBRecord;
@@ -52,7 +53,8 @@ public class SqlScriptExecutor implements IScriptExecutor {
  
     private SqlConnectionProvider connectionProvider;
     private volatile ISqlExecutorStrategy strategy;
-    private SqlMetadataProvider metadataProvider;
+    private SqlMetadataProvider sqlMetadataProvider;
+    private CachingMetadataProvider metadataProvider;
     private IJDBCache cache = new NoCache();
     private JDBFeatureSet features = JDBFeatureSet.empty();
     private final Map<String, String> insertSqlCache = new ConcurrentHashMap<>();
@@ -64,12 +66,12 @@ public class SqlScriptExecutor implements IScriptExecutor {
         // Assigned last: getStrategy() reads it without locking.
         ISqlExecutorStrategy newStrategy = SqlExecutorStrategyFactory.getStrategy(dbmsType);
         newStrategy.setFeatures(this.features);
-        newStrategy.setCache(this.cache);
+        newStrategy.setMetadataProvider(this.metadataProvider);
         if (this.connectionProvider != null) {
             this.connectionProvider.setStrategy(newStrategy);
         }
-        if (this.metadataProvider != null) {
-            this.metadataProvider.setStrategy(newStrategy);
+        if (this.sqlMetadataProvider != null) {
+            this.sqlMetadataProvider.setStrategy(newStrategy);
         }
         this.strategy = newStrategy;
     }
@@ -104,11 +106,13 @@ public class SqlScriptExecutor implements IScriptExecutor {
     public synchronized void setDataSource(DataSource value) {
         checkIsNull(this.connectionProvider, DATASOURCE_ALREADY_SET);
         this.connectionProvider = new SqlConnectionProvider(value);
-        this.metadataProvider = new SqlMetadataProvider(connectionProvider);
+        this.sqlMetadataProvider = new SqlMetadataProvider(connectionProvider);
+        this.metadataProvider = new CachingMetadataProvider(sqlMetadataProvider);
         this.metadataProvider.setCache(this.cache);
         if (this.strategy != null) {
             this.connectionProvider.setStrategy(this.strategy);
-            this.metadataProvider.setStrategy(this.strategy);
+            this.sqlMetadataProvider.setStrategy(this.strategy);
+            this.strategy.setMetadataProvider(this.metadataProvider);
         }
     }
 
@@ -206,7 +210,7 @@ public class SqlScriptExecutor implements IScriptExecutor {
     }
 
     private void updateRecord(Connection cnn, JDBRecord record, PreparedStatementProvider stmtProvider) throws SQLException {
-        List<String> primaryKey = metadataProvider.getPrimaryKeyColumns(record.getTableName());
+        List<String> primaryKey = metadataProvider.getPrimaryKeyColumns(metadataProvider.toDbTableName(record.getTableName()));
         if (primaryKey.isEmpty()) {
             throw UPDATE_TABLE_HAS_NO_PRIMARY_KEY.get(record.getTableName());
         }
@@ -275,7 +279,7 @@ public class SqlScriptExecutor implements IScriptExecutor {
         }
         // Some DBMS (e.g. Oracle) can't compare LOBs with "=", so non-null LOB values are fetched
         // and compared here instead of in the WHERE clause.
-        Map<String, Integer> lobColumns = metadataProvider.getLobColumns(record.getTableName());
+        Map<String, Integer> lobColumns = metadataProvider.getLobColumns(metadataProvider.toDbTableName(record.getTableName()));
         List<String> javaCompared = new ArrayList<>();
         List<String> sqlCompared = new ArrayList<>();
         for (String column : columns) {
@@ -355,9 +359,6 @@ public class SqlScriptExecutor implements IScriptExecutor {
         this.cache = cache != null ? cache : new NoCache();
         if (this.metadataProvider != null) {
             this.metadataProvider.setCache(this.cache);
-        }
-        if (this.strategy != null) {
-            this.strategy.setCache(this.cache);
         }
     }
 
