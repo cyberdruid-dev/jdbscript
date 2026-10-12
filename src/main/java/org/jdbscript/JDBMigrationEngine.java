@@ -121,9 +121,7 @@ public class JDBMigrationEngine<F extends IDBSchema, A extends IDBSchema> {
         if (disableDefaultConverters) {
             builder.disableDefaultConverters();
         }
-        if (unmappedTableStrategy != null) {
-            builder.unmappedTableStrategy(unmappedTableStrategy);
-        }
+        builder.unmappedTableStrategy(unmappedTableStrategy);
         if (!suppressedTables.isEmpty()) {
             builder.suppressUnmappedTable(suppressedTables.toArray(new String[0]));
         }
@@ -199,7 +197,7 @@ public class JDBMigrationEngine<F extends IDBSchema, A extends IDBSchema> {
         private Supplier<IScriptExecutor> executorSupplier;
         private final List<IJDBTypeConverter> additionalConverters = new ArrayList<>();
         private boolean disableDefaultConverters = false;
-        private ValidationStrategy unmappedTableStrategy;
+        private ValidationStrategy unmappedTableStrategy = ValidationStrategy.IGNORE;
         private final Set<String> suppressedTables = new HashSet<>();
         private Boolean suppressDefaultUnmappedTables;
         private final List<JDBFeature> features = new ArrayList<>();
@@ -271,7 +269,8 @@ public class JDBMigrationEngine<F extends IDBSchema, A extends IDBSchema> {
 
         /**
          * Applied identically to both {@link #before()} and {@link #after()} - see
-         * {@link JDBEngine.Builder#unmappedTableStrategy}.
+         * {@link JDBEngine.Builder#unmappedTableStrategy}. Default is {@link ValidationStrategy#IGNORE}:
+         * migration test interfaces usually map only the tables a test seeds or asserts.
          */
         public Builder<F, A> unmappedTableStrategy(ValidationStrategy strategy) {
             this.unmappedTableStrategy = strategy;

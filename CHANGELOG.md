@@ -6,6 +6,10 @@ Notable changes per release. Full notes for each version are on [GitHub Releases
 
 ### Added
 - `assertDBHas` / `assertDBHasNot` support LOB columns.
+- `ValidationStrategy.IGNORE`: unmapped tables are only logged at DEBUG.
+
+### Changed
+- `JDBMigrationEngine` defaults to `ValidationStrategy.IGNORE`, so tables its before/after interfaces leave out no longer log a warning.
 
 ## [1.3.1] - 2026-10-12
 

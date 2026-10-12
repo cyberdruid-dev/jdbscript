@@ -32,6 +32,9 @@
   the release tag and set `version`, vs tracking `main`, which can describe unreleased API)
 * [ ] Bump the version in `examples/pom.xml` and in the skill's dependency coordinates
   (`skill/jdbscript/SKILL.md`, "Adding to a project")
+* [ ] Document `ValidationStrategy.IGNORE` and the `JDBMigrationEngine` default: skill
+  `reference/migrations.md` (it still says to expect the `LOG_WARN` warnings) and README's
+  "Schema Validation" list. Not before the release: both are read by users of the released version.
 
 #### Release (v1.3.0)
 * [x] Bump `jdbscript.version` in `examples/pom.xml` to 1.3.0
@@ -49,12 +52,7 @@
 * [ ] Fix the table-order comparator's fallback for tables missing from metadata (not transitive)
 
 #### Schema & Column Validation
-* [ ] Add `ValidationStrategy.IGNORE` for unmapped tables. Migration tests deliberately use
-  minimal before/after interfaces (only the tables a test seeds/asserts), so against a real
-  application database the default `LOG_WARN` logs every other table as noise, and
-  `suppressUnmappedTable(...)` would mean listing them all. Then decide whether
-  `JDBMigrationEngine` should default to `IGNORE`, and update the skill's migration guidance
-  (`skill/jdbscript/reference/migrations.md`), which currently says to expect the warnings.
+* [x] Add `ValidationStrategy.IGNORE` for unmapped tables; `JDBMigrationEngine` defaults to it
 * [ ] Validate an `IDBRecord` interface's declared column methods against the DB table's actual
   columns - same idea as `SchemaValidator`'s table check, one level deeper. Today a misspelled/
   wrong-case fluent setter surfaces as a raw JDBC `SQLException` at insert time, not a clear

@@ -2,7 +2,10 @@ package org.jdbscript;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
+import ch.qos.logback.classic.Level;
 import org.jdbscript.errors.JDBScriptException;
+import org.jdbscript.impl.SchemaValidator;
+import org.jdbscript.utils.LogCapture;
 import org.jdbscript.utils.TestDataSource;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
@@ -17,6 +20,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -160,9 +164,12 @@ public class SchemaValidationTest extends JdbAbstractTest {
 
         JDBEngine<ITestSchema> engine = createEngine(ITestSchema.class);
 
-        // Should not throw, just log warn
-        assertThatCode(() -> engine.insertDB(db -> {}))
-                .doesNotThrowAnyException();
+        try (LogCapture log = new LogCapture(SchemaValidator.class)) {
+            assertThatCode(() -> engine.insertDB(db -> {}))
+                    .doesNotThrowAnyException();
+
+            assertThat(log.messagesAtLeast(Level.WARN)).anyMatch(m -> m.contains("UNMAPPED"));
+        }
     }
 
     @Test
@@ -301,5 +308,40 @@ public class SchemaValidationTest extends JdbAbstractTest {
 
         assertThatCode(() -> engine.insertDB(db -> {}))
                 .doesNotThrowAnyException();
+    }
+
+    @Test
+    public void ignore_strategy_should_not_report_unmapped_table() {
+        executeUpdate("CREATE TABLE table1 (id INT)");
+        executeUpdate("CREATE TABLE table2 (id INT)");
+        executeUpdate("CREATE TABLE unmapped (id INT)");
+
+        JDBEngine<ITestSchema> engine = JDBEngine.builder(ITestSchema.class)
+                .dataSource(() -> cleanDataSource)
+                .executor(testConfiguration.getScriptExecutor())
+                .unmappedTableStrategy(ValidationStrategy.IGNORE)
+                .build();
+
+        try (LogCapture log = new LogCapture(SchemaValidator.class)) {
+            engine.insertDB(db -> {});
+
+            assertThat(log.messagesAtLeast(Level.WARN)).isEmpty();
+            assertThat(log.messagesAtLeast(Level.DEBUG)).anyMatch(m -> m.contains("UNMAPPED"));
+        }
+    }
+
+    @Test
+    public void ignore_strategy_should_still_fail_when_table_is_missing_in_db() {
+        executeUpdate("CREATE TABLE table1 (id INT)");
+
+        JDBEngine<ITestSchema> engine = JDBEngine.builder(ITestSchema.class)
+                .dataSource(() -> cleanDataSource)
+                .executor(testConfiguration.getScriptExecutor())
+                .unmappedTableStrategy(ValidationStrategy.IGNORE)
+                .build();
+
+        assertThatThrownBy(() -> engine.insertDB(db -> {}))
+                .isInstanceOf(JDBScriptException.class)
+                .hasMessageContaining("Table 'TABLE2' defined in interface ITestSchema but missing from DB");
     }
 }

@@ -3,8 +3,11 @@ package org.jdbscript;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import org.jdbscript.IDBSchema.IDBRecord;
+import ch.qos.logback.classic.Level;
 import org.jdbscript.errors.JDBScriptException;
+import org.jdbscript.impl.SchemaValidator;
 import org.jdbscript.impl.conversion.IJDBTypeConverter;
+import org.jdbscript.utils.LogCapture;
 import org.testng.annotations.Test;
 
 import java.sql.Connection;
@@ -205,6 +208,38 @@ public abstract class JDBMigrationEngineContractTest extends MigrationTestBase {
 
         assertThat(migration.before()).isSameAs(migration.before());
         assertThat(migration.after()).isSameAs(migration.after());
+    }
+
+    @Test
+    public void default_settings_do_not_warn_about_tables_the_interfaces_leave_out() {
+        JDBMigrationEngine<ICustomerOnlySchema, ICustomerAndOrderSchema> migration =
+                migrationBuilder(ICustomerOnlySchema.class, ICustomerAndOrderSchema.class).build();
+        migration.migrateTo(markerAfterOrderTable());
+
+        try (LogCapture log = new LogCapture(SchemaValidator.class)) {
+            migration.before().insertDB(db -> {
+                db.migration_customer().id(1).name("Acme");
+            });
+
+            assertThat(log.messagesAtLeast(Level.WARN)).isEmpty();
+        }
+    }
+
+    @Test
+    public void explicit_LOG_WARN_warns_about_tables_the_interfaces_leave_out() {
+        JDBMigrationEngine<ICustomerOnlySchema, ICustomerAndOrderSchema> migration =
+                migrationBuilder(ICustomerOnlySchema.class, ICustomerAndOrderSchema.class)
+                        .unmappedTableStrategy(ValidationStrategy.LOG_WARN)
+                        .build();
+        migration.migrateTo(markerAfterOrderTable());
+
+        try (LogCapture log = new LogCapture(SchemaValidator.class)) {
+            migration.before().insertDB(db -> {
+                db.migration_customer().id(1).name("Acme");
+            });
+
+            assertThat(log.messagesAtLeast(Level.WARN)).anyMatch(m -> m.toUpperCase().contains("MIGRATION_ORDER"));
+        }
     }
 
     @Test

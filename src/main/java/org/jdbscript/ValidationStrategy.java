@@ -5,6 +5,10 @@ package org.jdbscript;
  */
 public enum ValidationStrategy {
     /**
+     * Continue execution without reporting, apart from a DEBUG log message.
+     */
+    IGNORE,
+    /**
      * Log a warning message and continue execution.
      */
     LOG_WARN,

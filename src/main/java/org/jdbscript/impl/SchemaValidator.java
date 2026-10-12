@@ -81,6 +81,7 @@ public class SchemaValidator {
                 }
                 String msg = "Table '%s' found in DB but missing from schema interface %s".formatted(dbTable, dbSchemaClass.getSimpleName());
                 switch (unmappedTableStrategy) {
+                    case IGNORE -> log.debug(msg);
                     case LOG_WARN -> log.warn(msg);
                     case LOG_ERROR -> log.error(msg);
                     case FAIL -> throw JDBErrors.UNMAPPED_TABLE_IN_DB.get(dbTable, dbSchemaClass.getSimpleName());
