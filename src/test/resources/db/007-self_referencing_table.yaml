@@ -1,0 +1,21 @@
+databaseChangeLog:
+  - changeSet:
+      id: 007-tree_nodes
+      author: Cyber Druid
+      changes:
+        - createTable:
+            tableName: tree_nodes
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: parent_id
+                  type: int
+                  constraints:
+                    foreignKeyName: fk_tree_nodes_parent
+                    referencedTableName: tree_nodes
+                    referencedColumnNames: id

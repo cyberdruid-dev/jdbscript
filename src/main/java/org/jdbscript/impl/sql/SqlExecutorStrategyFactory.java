@@ -17,6 +17,7 @@ public class SqlExecutorStrategyFactory {
             case DUCKDB -> new DuckdbStrategy();
             case SQLITE -> new SqliteStrategy();
             case SPANNER -> new SpannerStrategy();
+            case MYSQL, MARIADB -> new MySqlStrategy();
             default -> new DefaultSqlExecutorStrategy();
         };
     }

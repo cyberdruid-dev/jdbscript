@@ -2,6 +2,7 @@ package org.jdbscript.impl.sql;
 
 import org.jdbscript.DBMSType;
 import org.jdbscript.JDBFeatureSet;
+import org.jdbscript.errors.JDBScriptException;
 import org.jdbscript.impl.CachingMetadataProvider;
 import org.jdbscript.impl.IMetadataProvider;
 import org.jdbscript.IScriptExecutor;
@@ -46,6 +47,7 @@ import static org.jdbscript.errors.JDBErrors.EMPTY_ASSERTION_RECORD;
 import static org.jdbscript.errors.JDBErrors.UPDATE_NOTHING_TO_SET;
 import static org.jdbscript.errors.JDBErrors.UPDATE_PRIMARY_KEY_NOT_SET;
 import static org.jdbscript.errors.JDBErrors.UPDATE_ROW_NOT_FOUND;
+import static org.jdbscript.errors.JDBErrors.CLEANUP_FAILED;
 import static org.jdbscript.errors.JDBErrors.UPDATE_TABLE_HAS_NO_PRIMARY_KEY;
 
 public class SqlScriptExecutor implements IScriptExecutor {
@@ -183,14 +185,24 @@ public class SqlScriptExecutor implements IScriptExecutor {
     @Override
     public void cleanupTables(List<String> tableNames) {
         withConnection((cnn)->{
+            getStrategy().beforeCleanup(cnn);
             try(Statement stmt = cnn.createStatement()) {
                 for (var tableName : tableNames) {
                     String sql = createDeleteAllSql(tableName);
                     log.debug("Executing cleanup SQL: {}", sql);
-                    int deleted = stmt.executeUpdate(sql);
+                    int deleted = executeCleanup(stmt, tableName, sql);
                     log.debug("Deleted {} rows from {}", deleted, tableName);
                 }
+            } catch (Throwable e) {
+                // Must run even on failure: MySQL's FOREIGN_KEY_CHECKS would otherwise stay off for the pooled connection.
+                try {
+                    getStrategy().afterCleanup(cnn);
+                } catch (Throwable cleanupError) {
+                    e.addSuppressed(cleanupError);
+                }
+                throw e;
             }
+            getStrategy().afterCleanup(cnn);
             getStrategy().resetSequences(cnn, tableNames);
         });
     }
@@ -408,6 +420,16 @@ public class SqlScriptExecutor implements IScriptExecutor {
         String params = ",?".repeat(columns.size()).substring(1);
         sql += " ( "+ params + " )";
         return sql;
+    }
+
+    private int executeCleanup(Statement stmt, String tableName, String sql) {
+        try {
+            return stmt.executeUpdate(sql);
+        } catch (SQLException e) {
+            JDBScriptException error = CLEANUP_FAILED.get(tableName, e.getMessage());
+            error.initCause(e);
+            throw error;
+        }
     }
 
     private String createDeleteAllSql(String tableName) {

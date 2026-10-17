@@ -64,6 +64,9 @@ public enum JDBErrors implements Supplier<JDBScriptException> {
     /** engine.as(S) with an S that adds an abstract (table) method instead of only default helpers. */
     SCHEMA_VIEW_ADDS_METHOD(JDBScriptException.class,
             "%s declares %s(), which isn't part of schema %s: a sub-interface used with as() may only add default methods."),
+    /** cleanupDB couldn't delete a table's rows; the cause is the driver's error. */
+    CLEANUP_FAILED(JDBScriptException.class,
+            "cleanupDB failed to delete rows from table '%s': %s"),
     /** updateDB found no row with the record's primary key. */
     UPDATE_ROW_NOT_FOUND(JDBScriptException.class,
             "updateDB found no row in table '%s' with primary key %s."),

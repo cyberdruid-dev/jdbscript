@@ -35,6 +35,12 @@ public interface ISqlExecutorStrategy {
     default void resetSequences(Connection cnn, List<String> tableNames) throws SQLException {
     }
 
+    default void beforeCleanup(Connection cnn) throws SQLException {
+    }
+
+    default void afterCleanup(Connection cnn) throws SQLException {
+    }
+
     default void beforeEachInsert(Connection cnn, JDBRecord record) throws SQLException {
     }
 

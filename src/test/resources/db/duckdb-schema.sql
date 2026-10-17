@@ -119,3 +119,9 @@ CREATE TABLE IF NOT EXISTS no_pk_table (
     value_column VARCHAR(50),
     nclob_column TEXT
 );
+
+CREATE TABLE IF NOT EXISTS tree_nodes (
+    id INTEGER PRIMARY KEY,
+    parent_id INTEGER,
+    CONSTRAINT fk_tree_nodes_parent FOREIGN KEY (parent_id) REFERENCES tree_nodes(id)
+);
