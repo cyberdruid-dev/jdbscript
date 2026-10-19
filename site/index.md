@@ -7,8 +7,8 @@ hero:
   tagline: "Type-safe, zero-boilerplate database test fixtures for modern Java."
   actions:
     - theme: brand
-      text: Maven Central (v1.3.1)
-      link: https://central.sonatype.com/artifact/org.jdbscript/jdbscript/1.3.1
+      text: Maven Central (v1.3.2)
+      link: https://central.sonatype.com/artifact/org.jdbscript/jdbscript/1.3.2
     - theme: alt
       text: GitHub Repository
       link: https://github.com/cyberdruid-dev/jdbscript
@@ -70,17 +70,17 @@ Add the `jdbscript` dependency to your project's test scope:
 <dependency>
     <groupId>org.jdbscript</groupId>
     <artifactId>jdbscript</artifactId>
-    <version>1.3.1</version>
+    <version>1.3.2</version>
     <scope>test</scope>
 </dependency>
 ```
 
 ```kotlin [Gradle (build.gradle.kts)]
-testImplementation("org.jdbscript:jdbscript:1.3.1")
+testImplementation("org.jdbscript:jdbscript:1.3.2")
 ```
 
 ```groovy [Gradle (build.gradle)]
-testImplementation 'org.jdbscript:jdbscript:1.3.1'
+testImplementation 'org.jdbscript:jdbscript:1.3.2'
 ```
 
 :::

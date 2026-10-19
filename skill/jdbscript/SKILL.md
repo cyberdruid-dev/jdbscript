@@ -11,7 +11,7 @@ state — no XML/JSON fixtures, no raw SQL strings.
 
 ## Adding to a project
 
-Test-scoped dependency `org.jdbscript:jdbscript:1.3.1` (Java 17+; check Maven Central for the
+Test-scoped dependency `org.jdbscript:jdbscript:1.3.2` (Java 17+; check Maven Central for the
 latest version). It needs only a `javax.sql.DataSource`, so it works with JUnit, TestNG, Spring Boot
 or Testcontainers alike. For a minimal schema, engine and test, start from the Quickstart in
 `reference/examples.md`.

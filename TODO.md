@@ -22,12 +22,11 @@
 * [x] Quoted mixed-case table and column names (`TableNameCaseTest`, `ColumnNameCaseTest`)
 * [x] Extract metadata caching into a `CachingMetadataProvider` proxy: `SqlMetadataProvider` only
   fetches, derived lookups are `IMetadataProvider` default methods, strategies use the provider
-* [ ] Bump the version in `examples/pom.xml` and in the skill's dependency coordinates
+* [x] Bump the version in `examples/pom.xml` and in the skill's dependency coordinates
   (`skill/jdbscript/SKILL.md`, "Adding to a project")
 * [x] Document `ValidationStrategy.IGNORE` and the `JDBMigrationEngine` default in README's
   "Schema Validation" list
-* [ ] Same in skill `reference/migrations.md` (it still says to expect the `LOG_WARN` warnings).
-  Not before the release: the skill is read by users of the released version.
+* [x] Same in skill `reference/migrations.md`
 
 #### Release (v1.3.0)
 * [x] Bump `jdbscript.version` in `examples/pom.xml` to 1.3.0
@@ -160,6 +159,7 @@ Grouped summary of completed work - see git history for detail.
   classes throw an explaining exception; null-handling tested in the executor
 * **Released**: v1.1.0 published to Maven Central (2026-09-05)
 * **Released**: v1.2.0 published to Maven Central (2026-09-29)
+* **Released**: v1.3.2 published to Maven Central (2026-10-19)
 
 ## Requirements
 * JDK 17+ (uses `InvocationHandler.invokeDefault`, which needs Java 16+; project targets 17)

@@ -126,8 +126,9 @@ migration under test as marker: `migrateBefore("3")` / `migrateTo("3")` for
   as the schema at that version; a column left out looks as if the migration had dropped it.
 - **Minimal scripts**: set only the values the test depends on (and NOT NULL columns without a
   DB default, or the insert fails); assert only the columns the migration changes.
-- Expect `unmappedTableStrategy`'s default `LOG_WARN` to log every other table in the database
-  as unmapped. That's normal for minimal interfaces — don't add tables to silence it.
+- Tables the interfaces leave out are only logged at DEBUG: `JDBMigrationEngine` defaults
+  `unmappedTableStrategy` to `IGNORE` (since 1.3.2; older versions log a warning per table).
+  Don't add tables to silence it.
 
 ## Builder
 
