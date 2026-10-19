@@ -58,7 +58,7 @@ Add the dependency to your `pom.xml`:
 <dependency>
     <groupId>org.jdbscript</groupId>
     <artifactId>jdbscript</artifactId>
-    <version>1.3.1</version>
+    <version>1.3.2</version>
     <scope>test</scope>
 </dependency>
 ```
@@ -67,12 +67,12 @@ Add the dependency to your `pom.xml`:
 
 **Groovy DSL** (`build.gradle`):
 ```groovy
-testImplementation 'org.jdbscript:jdbscript:1.3.1'
+testImplementation 'org.jdbscript:jdbscript:1.3.2'
 ```
 
 **Kotlin DSL** (`build.gradle.kts`):
 ```kotlin
-testImplementation("org.jdbscript:jdbscript:1.3.1")
+testImplementation("org.jdbscript:jdbscript:1.3.2")
 ```
 
 ### Requirements
@@ -396,7 +396,8 @@ To improve performance across multiple tests, JDBScript supports different metad
 
 On first use (the first `insertDB`/`resetDB`/`cleanupDB`/assert call, not at `.build()` time), `JDBEngine` validates that all tables defined in your Java interface exist in the database. You can also configure how it handles tables that exist in the database but are *not* defined in your interface:
 
-- `unmappedTableStrategy(ValidationStrategy.LOG_WARN)`: Log a warning (default).
+- `unmappedTableStrategy(ValidationStrategy.IGNORE)`: Log at DEBUG only (default for `JDBMigrationEngine`, whose before/after interfaces usually cover only the tables a migration touches).
+- `unmappedTableStrategy(ValidationStrategy.LOG_WARN)`: Log a warning (default for `JDBEngine`).
 - `unmappedTableStrategy(ValidationStrategy.LOG_ERROR)`: Log an error.
 - `unmappedTableStrategy(ValidationStrategy.FAIL)`: Throw an exception.
 
@@ -430,22 +431,22 @@ IJDBEngine<IAppSchema> engine = JDBEngine.builder(IAppSchema.class)
 
 ## Supported Databases
 
-Every release is tested in CI against each database below, and on JDK 17, 21, and 25. Test counts differ because database-specific tests are skipped where they don't apply:
+Every release is tested in CI against each database below, and on JDK 17, 21, 25, and 27. Test counts differ because database-specific tests are skipped where they don't apply:
 
 | Database | Tested Versions | Tests |
 | :--- | :--- | :---: |
-| **PostgreSQL** | `9.x`, `12.x`, `16.x`, `17.x`, `18.x` | ![Passed](https://img.shields.io/badge/382-passing-success?style=flat-square) |
-| **MySQL** | `5.x`, `8.x`, `9.x` | ![Passed](https://img.shields.io/badge/376-passing-success?style=flat-square) |
-| **MariaDB** | `10.x`, `11.x`, `12.x` | ![Passed](https://img.shields.io/badge/376-passing-success?style=flat-square) |
-| **Oracle** | `18c`, `23.26 Free` | ![Passed](https://img.shields.io/badge/381-passing-success?style=flat-square) |
-| **Microsoft SQL Server** | `2022` | ![Passed](https://img.shields.io/badge/376-passing-success?style=flat-square) |
-| **IBM DB2** | Latest | ![Passed](https://img.shields.io/badge/383-passing-success?style=flat-square) |
-| **CockroachDB** | Latest | ![Passed](https://img.shields.io/badge/382-passing-success?style=flat-square) |
-| **Google Cloud Spanner** | Emulator | ![Passed](https://img.shields.io/badge/372-passing-success?style=flat-square) |
-| **H2** | `2.4.x` | ![Passed](https://img.shields.io/badge/377-passing-success?style=flat-square) |
-| **HSQLDB** | `2.7.x` | ![Passed](https://img.shields.io/badge/381-passing-success?style=flat-square) |
-| **SQLite** | `3.53.x` | ![Passed](https://img.shields.io/badge/376-passing-success?style=flat-square) |
-| **DuckDB** | `1.2.x` | ![Passed](https://img.shields.io/badge/303-passing-success?style=flat-square) |
+| **PostgreSQL** | `9.x`, `12.x`, `16.x`, `17.x`, `18.x` | ![Passed](https://img.shields.io/badge/418-passing-success?style=flat-square) |
+| **MySQL** | `5.x`, `8.x`, `9.x` | ![Passed](https://img.shields.io/badge/412-passing-success?style=flat-square) |
+| **MariaDB** | `10.x`, `11.x`, `12.x` | ![Passed](https://img.shields.io/badge/412-passing-success?style=flat-square) |
+| **Oracle** | `18c`, `23.26 Free` | ![Passed](https://img.shields.io/badge/421-passing-success?style=flat-square) |
+| **Microsoft SQL Server** | `2022` | ![Passed](https://img.shields.io/badge/407-passing-success?style=flat-square) |
+| **IBM DB2** | Latest | ![Passed](https://img.shields.io/badge/421-passing-success?style=flat-square) |
+| **CockroachDB** | Latest | ![Passed](https://img.shields.io/badge/417-passing-success?style=flat-square) |
+| **Google Cloud Spanner** | Emulator | ![Passed](https://img.shields.io/badge/403-passing-success?style=flat-square) |
+| **H2** | `2.4.x` | ![Passed](https://img.shields.io/badge/415-passing-success?style=flat-square) |
+| **HSQLDB** | `2.7.x` | ![Passed](https://img.shields.io/badge/419-passing-success?style=flat-square) |
+| **SQLite** | `3.53.x` | ![Passed](https://img.shields.io/badge/407-passing-success?style=flat-square) |
+| **DuckDB** | `1.2.x` | ![Passed](https://img.shields.io/badge/330-passing-success?style=flat-square) |
 
 ---
 

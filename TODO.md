@@ -24,9 +24,10 @@
   fetches, derived lookups are `IMetadataProvider` default methods, strategies use the provider
 * [ ] Bump the version in `examples/pom.xml` and in the skill's dependency coordinates
   (`skill/jdbscript/SKILL.md`, "Adding to a project")
-* [ ] Document `ValidationStrategy.IGNORE` and the `JDBMigrationEngine` default: skill
-  `reference/migrations.md` (it still says to expect the `LOG_WARN` warnings) and README's
-  "Schema Validation" list. Not before the release: both are read by users of the released version.
+* [x] Document `ValidationStrategy.IGNORE` and the `JDBMigrationEngine` default in README's
+  "Schema Validation" list
+* [ ] Same in skill `reference/migrations.md` (it still says to expect the `LOG_WARN` warnings).
+  Not before the release: the skill is read by users of the released version.
 
 #### Release (v1.3.0)
 * [x] Bump `jdbscript.version` in `examples/pom.xml` to 1.3.0
