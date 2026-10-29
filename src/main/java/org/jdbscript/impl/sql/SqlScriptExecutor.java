@@ -31,6 +31,7 @@ import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -261,10 +262,16 @@ public class SqlScriptExecutor implements IScriptExecutor {
     @Override
     public void assertRowsExist(JDBScript script) {
         withPreparedStatements((cnn, stmtProvider) -> {
-            for (JDBRecord record : script.getRecords()) {
-                if (countMatchingRows(cnn, record, stmtProvider) == 0) {
-                    throw new AssertionFailedError("Expected row to exist.");
+            List<JDBRecord> records = script.getRecords();
+            List<String> failures = new ArrayList<>();
+            for (int i = 0; i < records.size(); i++) {
+                if (countMatchingRows(cnn, records.get(i), stmtProvider) == 0) {
+                    failures.add(describeRecord(i, records.get(i)));
                 }
+            }
+            if (!failures.isEmpty()) {
+                throw new AssertionFailedError("assertDBHas: %d of %d records not found in the database:\n%s"
+                        .formatted(failures.size(), records.size(), String.join("\n", failures)));
             }
         });
     }
@@ -272,15 +279,60 @@ public class SqlScriptExecutor implements IScriptExecutor {
     @Override
     public void assertRowsNotExist(JDBScript script) {
         withPreparedStatements((cnn, stmtProvider) -> {
-            for (JDBRecord record : script.getRecords()) {
-                if (countMatchingRows(cnn, record, stmtProvider) > 0) {
-                    throw new AssertionFailedError("Expected row to NOT exist.");
+            List<JDBRecord> records = script.getRecords();
+            List<String> failures = new ArrayList<>();
+            for (int i = 0; i < records.size(); i++) {
+                String matchingRow = findMatchingRow(cnn, records.get(i), stmtProvider);
+                if (matchingRow != null) {
+                    failures.add(describeRecord(i, records.get(i)) + "\n     row: " + matchingRow);
                 }
+            }
+            if (!failures.isEmpty()) {
+                throw new AssertionFailedError("assertDBHasNot: %d of %d records found in the database:\n%s"
+                        .formatted(failures.size(), records.size(), String.join("\n", failures)));
             }
         });
     }
 
+    private String describeRecord(int index, JDBRecord record) {
+        return "  #" + (index + 1) + " " + record.getTableName() + ": " + AssertionMessages.describe(record.getWrittenValues());
+    }
+
     private long countMatchingRows(Connection cnn, JDBRecord record, PreparedStatementProvider stmtProvider) throws SQLException {
+        MatchQuery query = prepareMatchQuery(cnn, record, stmtProvider, List.of());
+        try (ResultSet rs = query.stmt().executeQuery()) {
+            return query.expectedLobs().isEmpty() ? readCount(rs) : countLobMatches(rs, query.expectedLobs());
+        }
+    }
+
+    // Returns the first matching row, formatted, or null when there is none.
+    private String findMatchingRow(Connection cnn, JDBRecord record, PreparedStatementProvider stmtProvider) throws SQLException {
+        List<String> tableColumns = metadataProvider.getColumns(metadataProvider.toDbTableName(record.getTableName()));
+        MatchQuery query = prepareMatchQuery(cnn, record, stmtProvider, tableColumns);
+        try (ResultSet rs = query.stmt().executeQuery()) {
+            while (rs.next()) {
+                if (lobsMatch(rs, query.expectedLobs())) {
+                    Map<String, Object> row = new LinkedHashMap<>();
+                    int offset = query.expectedLobs().size();
+                    for (int i = 0; i < tableColumns.size(); i++) {
+                        row.put(tableColumns.get(i), rs.getObject(offset + i + 1));
+                    }
+                    return AssertionMessages.describe(row);
+                }
+            }
+            return null;
+        }
+    }
+
+    private record MatchQuery(PreparedStatement stmt, List<Object> expectedLobs) {
+    }
+
+    /**
+     * Selects the LOB columns compared in Java first (so {@link #lobsMatch} reads them by position),
+     * then {@code extraColumns}; with neither, selects {@code count(*)}.
+     */
+    private MatchQuery prepareMatchQuery(Connection cnn, JDBRecord record, PreparedStatementProvider stmtProvider,
+                                         List<String> extraColumns) throws SQLException {
         // Not cached: the SQL shape now depends on which columns are null for this specific record
         // (see createSelectAssertSql), and building it is cheap string concatenation, not a JDBC
         // round trip - the thing actually worth caching, the PreparedStatement, is already handled
@@ -303,7 +355,9 @@ public class SqlScriptExecutor implements IScriptExecutor {
             int lobType = lobColumns.get(column.toUpperCase());
             expectedLobs.add(toComparableLob(record.getTableName(), column, lobType, record.getColumns().get(column)));
         }
-        String sql = createSelectAssertSql(record, sqlCompared, javaCompared);
+        List<String> selectedColumns = new ArrayList<>(javaCompared);
+        selectedColumns.addAll(extraColumns);
+        String sql = createSelectAssertSql(record, sqlCompared, selectedColumns);
         PreparedStatement stmt = stmtProvider.get(sql);
         int paramIndex = 1;
         for (String column : sqlCompared) {
@@ -313,9 +367,7 @@ public class SqlScriptExecutor implements IScriptExecutor {
             }
             // A null column is expressed as a literal "IS NULL" in the SQL - nothing to bind.
         }
-        try (ResultSet rs = stmt.executeQuery()) {
-            return expectedLobs.isEmpty() ? readCount(rs) : countLobMatches(rs, expectedLobs);
-        }
+        return new MatchQuery(stmt, expectedLobs);
     }
 
     private long readCount(ResultSet rs) throws SQLException {

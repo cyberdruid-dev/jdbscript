@@ -12,9 +12,11 @@
 #### Release (v1.3.3)
 * [ ] Skill: add H2 to the sequence-reset DBMS list (`skill/jdbscript/SKILL.md`, "on PostgreSQL,
   CockroachDB, Oracle, DB2, HSQLDB and DuckDB")
-* [ ] `assertDBHas` / `assertDBHasNot` failure message: today only "Expected row to exist." Name the
-  table and the expected column values, ideally with the closest actual rows. The migration article
-  shows this failure (`~/workspaces/articles/untested-migration/`).
+* [x] `assertDBHas` / `assertDBHasNot` failure message: every failing record with its table and
+  written values; `assertDBHasNot` shows a matching row. The migration article shows the old
+  message (`~/workspaces/articles/untested-migration/`) - update it after the release.
+* [ ] `assertDBHas` failure: show the closest actual rows (differing columns marked) and fill
+  `AssertionFailedError`'s `expected` / `actual` for the IDE diff
 * [ ] Skill versioning: decide the workflow for keeping the installed skill in step with the
   released library (e.g. pin the plugin's `git-subdir` source in `site/public/marketplace.json` to
   the release tag and set `version`, vs tracking `main`, which can describe unreleased API)

@@ -91,7 +91,8 @@ public class DbAssertionsTest extends JdbAbstractTest {
             engine.assertDBHas(db -> {
                 db.table_for_assertions().str_column_1("str11").date_column_1(date2);
             });
-        }, new AssertionFailedError("Expected row to exist."));
+        }, new AssertionFailedError("assertDBHas: 1 of 1 records not found in the database:\n"
+                + "  #1 table_for_assertions: str_column_1='str11', date_column_1=2011-07-16T17:18:29Z"));
     }
 
     public void assertDBHas__FAIL_if__row_with_multiple_column_values_NOT_exists() {
@@ -101,7 +102,8 @@ public class DbAssertionsTest extends JdbAbstractTest {
             engine.assertDBHas(db->{
                 db.table_for_assertions().str_column_1("str11").int_column_1(102);
             });
-        }, new AssertionFailedError("Expected row to exist."));
+        }, new AssertionFailedError("assertDBHas: 1 of 1 records not found in the database:\n"
+                + "  #1 table_for_assertions: str_column_1='str11', int_column_1=102"));
     }
 
     public void assertDBHas__passes_if__row_with_column_value_exists() {
@@ -130,7 +132,23 @@ public class DbAssertionsTest extends JdbAbstractTest {
                 db.table_for_assertions().str_column_1("str11");
                 db.table_for_assertions().str_column_1("strXX");
             });
-        }, new AssertionFailedError("Expected row to exist."));
+        }, new AssertionFailedError("assertDBHas: 1 of 2 records not found in the database:\n"
+                + "  #2 table_for_assertions: str_column_1='strXX'"));
+    }
+
+    @Test
+    public void assertDBHas__reports_every_record_NOT_found() {
+        engine.resetDB(AssertionsDataset.class);
+
+        expectFailure(()-> {
+            engine.assertDBHas(db -> {
+                db.table_for_assertions().str_column_1("strXX");
+                db.table_for_assertions().str_column_1("str11");
+                db.table_for_assertions().str_column_1("strYY").str_column_2(null);
+            });
+        }, new AssertionFailedError("assertDBHas: 2 of 3 records not found in the database:\n"
+                + "  #1 table_for_assertions: str_column_1='strXX'\n"
+                + "  #3 table_for_assertions: str_column_1='strYY', str_column_2=null"));
     }
 
     @Test
@@ -141,7 +159,8 @@ public class DbAssertionsTest extends JdbAbstractTest {
             engine.assertDBHas(db -> {
                 db.table_for_assertions().str_column_1("strXX");
             });
-        }, new AssertionFailedError("Expected row to exist."));
+        }, new AssertionFailedError("assertDBHas: 1 of 1 records not found in the database:\n"
+                + "  #1 table_for_assertions: str_column_1='strXX'"));
     }
 
     @Test
@@ -167,23 +186,42 @@ public class DbAssertionsTest extends JdbAbstractTest {
     public void assertDBHasNot__FAIL_if_row_with_column_value_EXISTS() {
         engine.resetDB(AssertionsDataset.class);
 
-        expectFailure(()->{
+        expectFailureStartingWith(()->{
             engine.assertDBHasNot(db->{
                 db.table_for_assertions().str_column_1("str11");
             });
-        }, new AssertionFailedError("Expected row to NOT exist."));
+        }, "assertDBHasNot: 1 of 1 records found in the database:\n"
+                + "  #1 table_for_assertions: str_column_1='str11'\n"
+                + "     row: ");
+    }
+
+    @Test
+    public void assertDBHasNot__FAIL_shows_the_matching_row() {
+        engine.resetDB(AssertionsDataset.class);
+
+        assertThatThrownBy(() -> engine.assertDBHasNot(db -> {
+            db.table_for_assertions().int_column_1(102);
+        })).isInstanceOf(AssertionFailedError.class)
+                .satisfies(e -> assertThat(e.getMessage().substring(e.getMessage().indexOf("row: ")))
+                        .containsIgnoringCase("id=2")
+                        .containsIgnoringCase("str_column_1='str12'")
+                        .containsIgnoringCase("str_column_2='str22'"));
     }
 
     @Test
     public void assertDBHasNot__FAIL_if_any_row_with_column_value_EXISTS() {
         engine.resetDB(AssertionsDataset.class);
 
-        expectFailure(()->{
-            engine.assertDBHasNot(db->{
-                db.table_for_assertions().str_column_1("str11");
-                db.table_for_assertions().str_column_1("strXX");
-            });
-        }, new AssertionFailedError("Expected row to NOT exist."));
+        assertThatThrownBy(() -> engine.assertDBHasNot(db -> {
+            db.table_for_assertions().str_column_1("strXX");
+            db.table_for_assertions().str_column_1("str11");
+            db.table_for_assertions().str_column_1("str12");
+        })).isInstanceOf(AssertionFailedError.class)
+                .hasMessageStartingWith("assertDBHasNot: 2 of 3 records found in the database:\n"
+                        + "  #2 table_for_assertions: str_column_1='str11'\n"
+                        + "     row: ")
+                .hasMessageContaining("\n  #3 table_for_assertions: str_column_1='str12'\n     row: ")
+                .hasMessageNotContaining("#1");
     }
 
     @Test
@@ -199,11 +237,13 @@ public class DbAssertionsTest extends JdbAbstractTest {
     public void assertDBHasNot__FAIL_if_row_with_null_column_value_EXISTS() {
         engine.resetDB(AssertionsDatasetWithNull.class);
 
-        expectFailure(()->{
+        expectFailureStartingWith(()->{
             engine.assertDBHasNot(db->{
                 db.table_for_assertions().str_column_1("str13").str_column_2(null);
             });
-        }, new AssertionFailedError("Expected row to NOT exist."));
+        }, "assertDBHasNot: 1 of 1 records found in the database:\n"
+                + "  #1 table_for_assertions: str_column_1='str13', str_column_2=null\n"
+                + "     row: ");
     }
 
     @Test
@@ -224,11 +264,13 @@ public class DbAssertionsTest extends JdbAbstractTest {
         skipUnless("Oracle treats '' as NULL", DBMSType.ORACLE);
         engine.resetDB(AssertionsDatasetWithNull.class);
 
-        expectFailure(() -> {
+        expectFailureStartingWith(() -> {
             engine.assertDBHasNot(db -> {
                 db.table_for_assertions().str_column_1("str13").str_column_2("");
             });
-        }, new AssertionFailedError("Expected row to NOT exist."));
+        }, "assertDBHasNot: 1 of 1 records found in the database:\n"
+                + "  #1 table_for_assertions: str_column_1='str13', str_column_2=''\n"
+                + "     row: ");
     }
 
     @Test
@@ -249,6 +291,12 @@ public class DbAssertionsTest extends JdbAbstractTest {
             db.table_for_assertions();
         })).isInstanceOf(JDBScriptException.class)
                 .hasMessageContaining("table_for_assertions");
+    }
+
+    private void expectFailureStartingWith(Runnable block, String expectedMessageStart) {
+        assertThatThrownBy(block::run)
+                .isInstanceOf(AssertionFailedError.class)
+                .hasMessageStartingWith(expectedMessageStart);
     }
 
     protected void expectFailure(Runnable block, AssertionFailedError expectedError){
