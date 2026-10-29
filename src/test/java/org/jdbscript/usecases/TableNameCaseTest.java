@@ -138,7 +138,10 @@ public class TableNameCaseTest extends JdbAbstractTest {
                 db.dup().id(1).name("first");
             });
 
-            assertTableValues(table(quoted("dup"), columns("id", "name"), row(1, "first")));
+            assertTableValues(table(quoted("dup"),
+                    columns("id", "name"),
+                    row(1, "first")
+            ));
             assertTableEmpty(quoted("DUP"));
         } finally {
             dropTable("dup");
@@ -156,7 +159,10 @@ public class TableNameCaseTest extends JdbAbstractTest {
 
             engine.cleanupDB();
 
-            assertTableValues(table(quoted("DUP"), columns("id", "name"), row(1, "kept")));
+            assertTableValues(table(quoted("DUP"),
+                    columns("id", "name"),
+                    row(1, "kept")
+            ));
         } finally {
             dropTable("dup");
             dropTable("DUP");

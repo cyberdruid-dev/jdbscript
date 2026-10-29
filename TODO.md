@@ -10,6 +10,8 @@
 ## Open
 
 #### Release (v1.3.3)
+* [ ] Skill: describe `excludeFromCleanup(...)` / `excludedTableWriteStrategy(...)` for reference data
+  created by migrations (`skill/jdbscript/SKILL.md` and `reference/migrations.md`)
 * [ ] Bump `jdbscript.version` in `examples/pom.xml` and `examples/08-springboot/pom.xml` (08 has
   Spring Boot as parent, so it doesn't inherit the version), and in the skill's dependency
   coordinates (`skill/jdbscript/SKILL.md`, "Adding to a project")

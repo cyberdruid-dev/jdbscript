@@ -61,8 +61,9 @@ public class WriteFailureMessageTest extends JdbAbstractTest {
             db.orders().id(101).customer_id(1).order_date("2023-10-27");
         });
 
-        assertThatThrownBy(() -> engine.updateDB(db -> db.orders().id(101).customer_id(null)))
-                .isInstanceOf(JDBScriptException.class)
+        assertThatThrownBy(() -> engine.updateDB(db -> {
+            db.orders().id(101).customer_id(null);
+        })).isInstanceOf(JDBScriptException.class)
                 .hasMessageStartingWith("updateDB failed for orders: id=101, customer_id=null: ")
                 .satisfies(e -> {
                     assertThat(e.getCause()).isInstanceOf(SQLException.class);

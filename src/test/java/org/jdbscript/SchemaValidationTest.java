@@ -410,7 +410,8 @@ public class SchemaValidationTest extends JdbAbstractTest {
 
         JDBEngine<IValidColumnSchema> engine = createEngine(IValidColumnSchema.class);
 
-        assertThatCode(() -> engine.insertDB(db -> db.customers().fullName("Ann").id(1)))
-                .doesNotThrowAnyException();
+        assertThatCode(() -> engine.insertDB(db -> {
+            db.customers().fullName("Ann").id(1);
+        })).doesNotThrowAnyException();
     }
 }

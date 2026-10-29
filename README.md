@@ -297,6 +297,17 @@ engine.cleanupDB();
 
 JDBScript automatically detects foreign key dependencies and deletes records in the correct order to avoid constraint violations. Cleanup also restarts sequences and identity columns at 10000 (see [Key Features](#key-features) for supported databases), so the IDs a test gets from the database are predictable. If a circular dependency **between two or more tables** is detected, an exception will be thrown. A table referencing itself (e.g. an `employees` table with a `manager_id` column pointing back to `employees`) is not treated as a cycle. See [Manual Table Order Override](#manual-table-order-override) for an escape hatch when auto-detection can't determine the right order at all.
 
+Cleanup only touches tables the schema interface declares; other tables are never emptied. To keep the data of a declared table, such as reference data a migration created, exclude it:
+
+```java
+JDBEngine.builder(IShopSchema.class)
+        .dataSource(dataSource)
+        .excludeFromCleanup("brands", "order_statuses")
+        .build();
+```
+
+Excluded tables keep their rows and identity columns, and scripts can still assert against them. A script that inserts into or updates an excluded table fails, since that data would survive cleanup; `excludedTableWriteStrategy(ExcludedTableWriteStrategy.LOG_WARN)` or `IGNORE` allows it. Standalone sequences are still reset, as they can't be attributed to a table.
+
 ### Data Change Callback
 
 If the application under test caches database data, register a callback to invalidate that cache whenever the engine changes the data:

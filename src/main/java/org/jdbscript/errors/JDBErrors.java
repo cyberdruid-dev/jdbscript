@@ -30,6 +30,11 @@ public enum JDBErrors implements Supplier<JDBScriptException> {
     CONVERTER_IS_NULL(JDBScriptException.class,"converter can not be null."  ),
     /** The unmapped-table validation strategy cannot be null. */
     UNMAPPED_TABLE_STRATEGY_IS_NULL(JDBScriptException.class,"unmapped table strategy can not be null."  ),
+    EXCLUDED_TABLE_WRITE_STRATEGY_IS_NULL(JDBScriptException.class, "excluded table write strategy can not be null."),
+    /** A table passed to excludeFromCleanup isn't declared by the schema interface. */
+    EXCLUDED_TABLE_NOT_IN_SCHEMA(JDBScriptException.class, "Table '%s' passed to excludeFromCleanup is not declared in schema interface %s"),
+    /** A script writes to a table excluded from cleanup while the write strategy is FAIL. */
+    WRITE_TO_EXCLUDED_TABLE(JDBScriptException.class, "Script writes to %s, which is excluded from cleanup: the written rows would survive cleanupDB. Use excludedTableWriteStrategy(...) to allow it."),
     /** A feature passed to Builder.feature(...) cannot be null. */
     FEATURE_IS_NULL(JDBScriptException.class,"feature can not be null."  ),
     /** A callback passed to Builder.onDataChange(...) cannot be null. */

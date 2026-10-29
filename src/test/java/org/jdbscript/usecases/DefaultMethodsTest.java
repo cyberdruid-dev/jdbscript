@@ -134,7 +134,9 @@ public class DefaultMethodsTest extends JdbAbstractTest {
     public void default_method_of_private_record_interface_should_work() {
         JDBEngine<IPrivateSchema> privateEngine = createEngine(IPrivateSchema.class);
 
-        privateEngine.resetDB(db -> db.table_with_defaults().id(1).setBoth(7, "private"));
+        privateEngine.resetDB(db -> {
+            db.table_with_defaults().id(1).setBoth(7, "private");
+        });
 
         assertTableValues(table(TABLE_NAME,
                 columns("int_column_1", "str_column_1"),
@@ -146,7 +148,9 @@ public class DefaultMethodsTest extends JdbAbstractTest {
     public void default_method_of_package_private_record_interface_should_work() {
         JDBEngine<IPackagePrivateSchema> packagePrivateEngine = createEngine(IPackagePrivateSchema.class);
 
-        packagePrivateEngine.resetDB(db -> db.table_with_defaults().id(1).setBoth(8, "package-private"));
+        packagePrivateEngine.resetDB(db -> {
+            db.table_with_defaults().id(1).setBoth(8, "package-private");
+        });
 
         assertTableValues(table(TABLE_NAME,
                 columns("int_column_1", "str_column_1"),
@@ -157,9 +161,13 @@ public class DefaultMethodsTest extends JdbAbstractTest {
     @Test
     public void default_method_of_private_record_interface_should_work_in_assertions() {
         JDBEngine<IPrivateSchema> privateEngine = createEngine(IPrivateSchema.class);
-        privateEngine.resetDB(db -> db.table_with_defaults().id(1).int_column_1(9).str_column_1("asserted"));
+        privateEngine.resetDB(db -> {
+            db.table_with_defaults().id(1).int_column_1(9).str_column_1("asserted");
+        });
 
-        privateEngine.assertDBHas(db -> db.table_with_defaults().setBoth(9, "asserted"));
+        privateEngine.assertDBHas(db -> {
+            db.table_with_defaults().setBoth(9, "asserted");
+        });
     }
 
     @Test

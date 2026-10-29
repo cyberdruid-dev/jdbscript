@@ -45,6 +45,8 @@ public class JDBEngine<T extends IDBSchema> implements IJDBEngine<T>{
     private final ValidationStrategy unmappedTableStrategy;
     private final Set<String> suppressedTables;
     private final boolean suppressDefaultUnmappedTables;
+    private final List<String> excludedFromCleanup;
+    private final ExcludedTableWriteStrategy excludedTableWriteStrategy;
     private final JDBFeatureSet features;
     private final List<ThrowingRunnable> dataChangeListeners;
     private final Map<String, Object> tableTools = new HashMap<>();
@@ -58,6 +60,8 @@ public class JDBEngine<T extends IDBSchema> implements IJDBEngine<T>{
         this.unmappedTableStrategy = builder.unmappedTableStrategy;
         this.suppressedTables = Set.copyOf(builder.suppressedTables);
         this.suppressDefaultUnmappedTables = builder.suppressDefaultUnmappedTables;
+        this.excludedFromCleanup = List.copyOf(builder.excludedFromCleanup);
+        this.excludedTableWriteStrategy = builder.excludedTableWriteStrategy;
         this.features = JDBFeatureSet.copyOf(builder.features);
         this.dataChangeListeners = List.copyOf(builder.dataChangeListeners);
         if (builder.disableDefaultConverters) {
@@ -78,6 +82,17 @@ public class JDBEngine<T extends IDBSchema> implements IJDBEngine<T>{
                 .toList();
         if (!missing.isEmpty()) {
             throw TABLE_MISSING_FROM_DEPENDENCY_ORDER.get(String.join(", ", missing));
+        }
+    }
+
+    private void validateExcludedTablesAreInSchema() {
+        Set<String> interfaceTables = SchemaValidator.findRecordMethods(dbSchemaClass).stream()
+                .map(m -> m.getName().toUpperCase())
+                .collect(toSet());
+        for (String excluded : excludedFromCleanup) {
+            if (!interfaceTables.contains(excluded.toUpperCase())) {
+                throw EXCLUDED_TABLE_NOT_IN_SCHEMA.get(excluded, dbSchemaClass.getSimpleName());
+            }
         }
     }
 
@@ -153,6 +168,7 @@ public class JDBEngine<T extends IDBSchema> implements IJDBEngine<T>{
         log.debug("updateDB(consumer={})", db);
         validateSchema();
         JDBScript script = buildScript(db, new ScriptHandler<>(proxyClass));
+        checkExcludedTableWrites(script);
         getExecutor().update(script);
         notifyDataChange();
     }
@@ -174,6 +190,7 @@ public class JDBEngine<T extends IDBSchema> implements IJDBEngine<T>{
         handler.applyDefaults();
         JDBScript script = handler.getDbScript();
         converter.convertTypes(script);
+        checkExcludedTableWrites(script);
         sortScript(script);
         getExecutor().insert(script);
     }
@@ -219,6 +236,7 @@ public class JDBEngine<T extends IDBSchema> implements IJDBEngine<T>{
             if (tableDependencyOrder != null) {
                 validateTableDependencyOrderCoversSchema();
             }
+            validateExcludedTablesAreInSchema();
             this.executor.setDataSource(getDataSource());
             this.executor.setCache(getCache());
             this.executor.setFeatures(features);
@@ -343,17 +361,45 @@ public class JDBEngine<T extends IDBSchema> implements IJDBEngine<T>{
         records.sort(Comparator.comparing(JDBRecord::getTableName, getMetadataProvider().getParentChildTableComparator()));
     }
 
+    private void checkExcludedTableWrites(JDBScript script) {
+        Set<String> excluded = getExcludedDbTableNames();
+        Set<String> written = new LinkedHashSet<>();
+        for (JDBRecord record : script.getRecords()) {
+            if (excluded.contains(getMetadataProvider().toDbTableName(record.getTableName()))) {
+                written.add(record.getTableName());
+            }
+        }
+        for (String table : written) {
+            JDBScriptException error = WRITE_TO_EXCLUDED_TABLE.get(table);
+            switch (excludedTableWriteStrategy) {
+                case IGNORE -> log.debug(error.getMessage());
+                case LOG_WARN -> log.warn(error.getMessage());
+                case FAIL -> throw error;
+            }
+        }
+    }
+
+    private Set<String> getExcludedDbTableNames() {
+        IMetadataProvider provider = getMetadataProvider();
+        return excludedFromCleanup.stream()
+                .map(provider::toDbTableName)
+                .collect(toSet());
+    }
+
     private List<String> getTableNamesCleanupOrder() {
         IMetadataProvider provider = getMetadataProvider();
         Set<String> interfaceTables = SchemaValidator.findRecordMethods(dbSchemaClass).stream()
                 .map(m -> provider.toDbTableName(m.getName()))
                 .collect(toSet());
 
+        Set<String> excluded = getExcludedDbTableNames();
+
         List<String> sorted = new ArrayList<>(provider.getSortedTables());
         Collections.reverse(sorted);
 
         return sorted.stream()
                 .filter(interfaceTables::contains)
+                .filter(table -> !excluded.contains(table))
                 .toList();
     }
 
@@ -377,6 +423,8 @@ public class JDBEngine<T extends IDBSchema> implements IJDBEngine<T>{
         private CacheStrategy cacheStrategy = CacheStrategy.INSTANCE;
         private ValidationStrategy unmappedTableStrategy = ValidationStrategy.LOG_WARN;
         private final Set<String> suppressedTables = new HashSet<>();
+        private final List<String> excludedFromCleanup = new ArrayList<>();
+        private ExcludedTableWriteStrategy excludedTableWriteStrategy = ExcludedTableWriteStrategy.FAIL;
         private boolean suppressDefaultUnmappedTables = true;
         private final JDBFeatureSet features = JDBFeatureSet.empty();
         private final List<ThrowingRunnable> dataChangeListeners = new ArrayList<>();
@@ -490,6 +538,34 @@ public class JDBEngine<T extends IDBSchema> implements IJDBEngine<T>{
                     this.suppressedTables.add(tableName.toUpperCase());
                 }
             }
+            return this;
+        }
+
+        /**
+         * Excludes tables of the schema interface from {@link JDBEngine#cleanupDB()} (and so from
+         * {@code resetDB}): their rows are never deleted and their identity columns never reset,
+         * e.g. reference data created by a migration. The tables stay mapped, so scripts can still
+         * assert against them. This method is cumulative.
+         *
+         * @param tableNames schema interface table names, matched ignoring case
+         * @return this builder
+         * @see #excludedTableWriteStrategy(ExcludedTableWriteStrategy)
+         */
+        public Builder<T> excludeFromCleanup(String... tableNames) {
+            this.excludedFromCleanup.addAll(List.of(tableNames));
+            return this;
+        }
+
+        /**
+         * Sets what happens when an {@code insertDB}, {@code resetDB} or {@code updateDB} script
+         * writes to a table excluded from cleanup. Default is {@link ExcludedTableWriteStrategy#FAIL}:
+         * the excluded data is protected.
+         *
+         * @param strategy the strategy
+         * @return this builder
+         */
+        public Builder<T> excludedTableWriteStrategy(ExcludedTableWriteStrategy strategy) {
+            this.excludedTableWriteStrategy = checkNotNull(strategy, EXCLUDED_TABLE_WRITE_STRATEGY_IS_NULL);
             return this;
         }
 

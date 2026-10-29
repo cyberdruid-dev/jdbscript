@@ -4,6 +4,9 @@ Notable changes per release. Full notes for each version are on [GitHub Releases
 
 ## [Unreleased]
 
+### Added
+- `excludeFromCleanup(...)`: keep the data of declared tables, e.g. reference data created by a migration. Writing to an excluded table fails unless `excludedTableWriteStrategy(...)` allows it.
+
 ### Changed
 - Schema validation also checks columns: a record method without a matching database column fails on first use of the engine, listing every mismatch. Previously the insert or query failed with the database's own error.
 - `insertDB` / `updateDB` failures throw `JDBScriptException` naming the table, the record's values and the database's message (the `SQLException` is the cause). Previously a `RuntimeException` wrapping only the database error.

@@ -42,6 +42,16 @@ engine.assertDB(db -> {
 - **Groundwork:** the v1.3.3 failure message reports every failing record and lets each column
   expectation describe itself, so matchers and counts can plug into the same reporting.
 
+## Annotations as an alternative to builder options
+
+*2026-10-29. Status: later.* E.g. `@ExcludeFromCleanup IBrandRecord brands();` next to the table
+instead of `.excludeFromCleanup("brands")`, and the same for other options where possible, so the
+configuration lives in the shared schema interface.
+
+## ~~Clean up only the rows a test inserted into an excluded table~~
+
+*2026-10-29.* Rejected: more complex and less predictable than failing on writes to excluded tables.
+
 ## Typed query assertions
 
 *2026-10-12. Status: to evaluate in `java-db-testing-compared`.*

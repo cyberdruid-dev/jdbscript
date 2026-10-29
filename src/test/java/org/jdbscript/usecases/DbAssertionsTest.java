@@ -312,16 +312,26 @@ public class DbAssertionsTest extends JdbAbstractTest {
 
     public void assertDBHas__does_not_apply_defaults() {
         IJDBEngine<IDefaultsSchema> defaultsEngine = createEngine(IDefaultsSchema.class);
-        defaultsEngine.resetDB(db -> db.table_for_assertions().id(1).str_column_1("str15").str_column_2("explicit"));
+        defaultsEngine.resetDB(db -> {
+            db.table_for_assertions().id(1).str_column_1("str15").str_column_2("explicit");
+        });
 
-        defaultsEngine.assertDBHas(db -> db.table_for_assertions().str_column_1("str15"));
+        defaultsEngine.assertDBHas(db -> {
+            db.table_for_assertions().str_column_1("str15");
+        });
     }
 
     public void assertDBHas__converts_values_like_insert() {
-        engine.resetDB(db -> db.table_for_assertions().id(1).str_column_1("ACTIVE"));
+        engine.resetDB(db -> {
+            db.table_for_assertions().id(1).str_column_1("ACTIVE");
+        });
 
-        engine.assertDBHas(db -> db.table_for_assertions().str_column_1(Status.ACTIVE));
-        engine.assertDBHasNot(db -> db.table_for_assertions().str_column_1(Status.BLOCKED));
+        engine.assertDBHas(db -> {
+            db.table_for_assertions().str_column_1(Status.ACTIVE);
+        });
+        engine.assertDBHasNot(db -> {
+            db.table_for_assertions().str_column_1(Status.BLOCKED);
+        });
     }
 
     private void expectFailureStartingWith(Runnable block, String expectedMessageStart) {
