@@ -4,8 +4,10 @@ import org.jdbscript.DBMSType;
 import org.jdbscript.impl.IMetadataProvider;
 import org.jdbscript.impl.sql.SqlConnectionProvider.JdbcConnectionConsumer;
 
+import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Types;
 import java.util.*;
 
@@ -89,15 +91,30 @@ public class SqlMetadataProvider implements IMetadataProvider {
     @Override
     public List<String> getColumns(String dbTableName) {
         List<String> columns = new ArrayList<>();
+        withConnection(cnn -> columns.addAll(fetchColumns(cnn, dbTableName)));
+        return columns;
+    }
+
+    @Override
+    public Map<String, List<String>> getColumns(Collection<String> dbTableNames) {
+        Map<String, List<String>> columns = new LinkedHashMap<>();
         withConnection(cnn -> {
-            String searchCatalog = getStrategy().getSearchCatalog(cnn);
-            String searchSchema = getStrategy().getSearchSchema(cnn);
-            try (ResultSet rs = cnn.getMetaData().getColumns(searchCatalog, searchSchema, dbTableName, null)) {
-                while (rs.next()) {
-                    columns.add(rs.getString("COLUMN_NAME"));
-                }
+            for (String dbTableName : dbTableNames) {
+                columns.put(dbTableName, fetchColumns(cnn, dbTableName));
             }
         });
+        return columns;
+    }
+
+    private List<String> fetchColumns(Connection cnn, String dbTableName) throws SQLException {
+        List<String> columns = new ArrayList<>();
+        String searchCatalog = getStrategy().getSearchCatalog(cnn);
+        String searchSchema = getStrategy().getSearchSchema(cnn);
+        try (ResultSet rs = cnn.getMetaData().getColumns(searchCatalog, searchSchema, dbTableName, null)) {
+            while (rs.next()) {
+                columns.add(rs.getString("COLUMN_NAME"));
+            }
+        }
         return columns;
     }
 

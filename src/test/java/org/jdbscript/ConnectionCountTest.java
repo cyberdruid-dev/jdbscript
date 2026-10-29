@@ -16,6 +16,6 @@ public class ConnectionCountTest extends JdbAbstractTest {
             db.table_1().id(1).str_column_1("a");
         });
 
-        assertThat(dataSource.getAcquiredConnectionCount()).isLessThanOrEqualTo(4);
+        assertThat(dataSource.getAcquiredConnectionCount()).isLessThanOrEqualTo(5);
     }
 }

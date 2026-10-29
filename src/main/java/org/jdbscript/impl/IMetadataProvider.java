@@ -9,6 +9,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -41,6 +42,15 @@ public interface IMetadataProvider {
 
     List<String> getColumns(String dbTableName);
 
+    /** @return each table to its columns, like {@link #getColumns(String)} */
+    default Map<String, List<String>> getColumns(Collection<String> dbTableNames) {
+        Map<String, List<String>> columns = new LinkedHashMap<>();
+        for (String dbTableName : dbTableNames) {
+            columns.put(dbTableName, getColumns(dbTableName));
+        }
+        return columns;
+    }
+
     /**
      * CLOB/NCLOB/BLOB columns, which a DBMS like Oracle can't compare with {@code =}.
      * @return upper-cased column name to {@link java.sql.Types} constant
@@ -67,8 +77,14 @@ public interface IMetadataProvider {
 
     default String toDbColumnName(String tableName, String columnName) {
         String dbTableName = toDbTableName(tableName);
-        return Utils.resolveIdentifier(columnName, getColumns(dbTableName),
+        List<String> columns = getColumns(dbTableName);
+        String dbColumnName = Utils.resolveIdentifier(columnName, columns,
                 matches -> JDBErrors.AMBIGUOUS_COLUMN_NAME.get(columnName, dbTableName, String.join(", ", matches)));
+        // No columns at all means no column metadata (a real table has at least one), not "no such column".
+        if (!columns.isEmpty() && !columns.contains(dbColumnName)) {
+            throw JDBErrors.UNKNOWN_COLUMN.get(columnName, dbTableName, String.join(", ", columns));
+        }
+        return dbColumnName;
     }
 
     default String quoteTableName(String tableName) {

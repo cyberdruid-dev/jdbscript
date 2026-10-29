@@ -394,7 +394,7 @@ To improve performance across multiple tests, JDBScript supports different metad
 
 ## Schema Validation
 
-On first use (the first `insertDB`/`resetDB`/`cleanupDB`/assert call, not at `.build()` time), `JDBEngine` validates that all tables defined in your Java interface exist in the database. You can also configure how it handles tables that exist in the database but are *not* defined in your interface:
+On first use (the first `insertDB`/`resetDB`/`cleanupDB`/assert call, not at `.build()` time), `JDBEngine` validates that all tables defined in your Java interface exist in the database, and that every record method has a matching column (database columns a record leaves out are fine). Mismatches throw a `JDBScriptException` listing all of them. You can also configure how it handles tables that exist in the database but are *not* defined in your interface:
 
 - `unmappedTableStrategy(ValidationStrategy.IGNORE)`: Log at DEBUG only (default for `JDBMigrationEngine`, whose before/after interfaces usually cover only the tables a migration touches).
 - `unmappedTableStrategy(ValidationStrategy.LOG_WARN)`: Log a warning (default for `JDBEngine`).

@@ -5,6 +5,7 @@ Notable changes per release. Full notes for each version are on [GitHub Releases
 ## [Unreleased]
 
 ### Changed
+- Schema validation also checks columns: a record method without a matching database column fails on first use of the engine, listing every mismatch. Previously the insert or query failed with the database's own error.
 - `assertDBHas` / `assertDBHasNot` failures list every failing record with its table and the values the test wrote; `assertDBHasNot` also shows a matching row. Previously only "Expected row to exist." / "Expected row to NOT exist.".
 
 ### Fixed

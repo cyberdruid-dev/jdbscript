@@ -49,20 +49,8 @@
 
 #### Schema & Column Validation
 * [x] Add `ValidationStrategy.IGNORE` for unmapped tables; `JDBMigrationEngine` defaults to it
-* [ ] Validate an `IDBRecord` interface's declared column methods against the DB table's actual
-  columns - same idea as `SchemaValidator`'s table check, one level deeper. Today a misspelled/
-  wrong-case fluent setter surfaces as a raw JDBC `SQLException` at insert time, not a clear
-  jdbscript error.
-  * reuse `SchemaValidator.findRecordMethods()`'s reflection approach (`clazz.getMethods()`,
-    filter Object/default/`defaults`), just applied to an `IDBRecord` subtype instead of the
-    schema interface
-  * one direction only: interface declares a column the DB doesn't have -> always fail. Unlike
-    tables, DB columns absent from the interface are normal (audit columns, unused optional
-    fields) and shouldn't warn - no `unmappedTableStrategy`-style toggle needed
-  * validate lazily per table, on first use of that record type; reuse `CacheStrategy` so it's
-    not a `DatabaseMetaData.getColumns()` call per insert
-  * supersedes the old, vaguer "`engine.verifySchema()`" idea - table-level validation already
-    ships automatically on first use; this is the column-level counterpart
+* [x] Validate an `IDBRecord` interface's declared column methods against the DB table's actual
+  columns (one direction; all mismatches in one `JDBScriptException`)
 #### Type Conversion
 * [ ] Warn (or leave to the DBMS) when a Java value has more precision than the DB column
   supports (e.g. `Date` vs a DB `DATE` column; MariaDB + `assertDBHas()` on timestamps)

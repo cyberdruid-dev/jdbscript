@@ -8,9 +8,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 import static org.jdbscript.errors.Checks.checkNotNull;
@@ -94,7 +98,44 @@ public class SchemaValidator {
                 throw JDBErrors.MISSING_TABLE_IN_DB.get(interfaceTable.toUpperCase(), dbSchemaClass.getSimpleName());
             }
         }
+        validateColumns();
         schemaValidated = true;
+    }
+
+    // One direction only: DB columns the record doesn't declare (audit columns, unused optional
+    // ones) are normal. A table without any columns in the metadata is skipped: that means no
+    // column metadata, not an empty table.
+    private void validateColumns() {
+        List<Method> tableMethods = findRecordMethods(dbSchemaClass);
+        Map<String, List<String>> columnsByTable = provider.getColumns(tableMethods.stream()
+                .map(m -> provider.toDbTableName(m.getName()))
+                .distinct()
+                .toList());
+        List<String> problems = new ArrayList<>();
+        for (Method tableMethod : tableMethods) {
+            Class<?> recordClass = tableMethod.getReturnType();
+            String dbTable = provider.toDbTableName(tableMethod.getName());
+            List<String> dbColumns = columnsByTable.get(dbTable);
+            if (dbColumns.isEmpty()) {
+                continue;
+            }
+            for (String column : findColumnMethodNames(recordClass)) {
+                if (dbColumns.stream().noneMatch(column::equalsIgnoreCase)) {
+                    problems.add("  %s.%s(): no column '%s' in table %s (columns: %s)".formatted(
+                            recordClass.getSimpleName(), column, column, dbTable, String.join(", ", dbColumns)));
+                }
+            }
+        }
+        if (!problems.isEmpty()) {
+            throw JDBErrors.SCHEMA_COLUMNS_MISSING_IN_DB.get(dbSchemaClass.getSimpleName(), String.join("\n", problems));
+        }
+    }
+
+    private static Set<String> findColumnMethodNames(Class<?> recordClass) {
+        return Arrays.stream(recordClass.getMethods())
+                .filter(m -> !m.isDefault() && !Modifier.isStatic(m.getModifiers()) && m.getDeclaringClass() != Object.class)
+                .map(Method::getName)
+                .collect(Collectors.toCollection(TreeSet::new));
     }
 
     private boolean isSuppressed(String tableNameUpper) {

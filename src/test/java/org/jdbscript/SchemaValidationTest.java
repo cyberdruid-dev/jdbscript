@@ -44,6 +44,38 @@ public class SchemaValidationTest extends JdbAbstractTest {
         ITestSchema.ITableRecord dup();
     }
 
+    public interface IBaseRecord extends IDBSchema.IDBRecord {
+        IBaseRecord id(int value);
+    }
+
+    private interface ICustomerRecord extends IBaseRecord {
+        ICustomerRecord full_name(String value);
+        ICustomerRecord name(String value);
+    }
+
+    private interface IOrderRecord extends IBaseRecord {
+        IOrderRecord total(Integer value);
+        IOrderRecord status(String value);
+    }
+
+    private interface IColumnSchema extends IDBSchema {
+        ICustomerRecord customers();
+        IOrderRecord orders();
+    }
+
+    public interface IValidCustomerRecord extends IBaseRecord {
+        IValidCustomerRecord full_name(String value);
+        IValidCustomerRecord id(Long value);
+
+        default IValidCustomerRecord fullName(String value) {
+            return full_name(value);
+        }
+    }
+
+    private interface IValidColumnSchema extends IDBSchema {
+        IValidCustomerRecord customers();
+    }
+
     @BeforeClass
     public void setupCleanDataSource() {
         skipIfNotH2(SchemaValidationTest.class);
@@ -343,5 +375,42 @@ public class SchemaValidationTest extends JdbAbstractTest {
         assertThatThrownBy(() -> engine.insertDB(db -> {}))
                 .isInstanceOf(JDBScriptException.class)
                 .hasMessageContaining("Table 'TABLE2' defined in interface ITestSchema but missing from DB");
+    }
+
+    @Test
+    public void should_fail_when_record_method_has_no_column_in_db() {
+        executeUpdate("CREATE TABLE customers (id INT, full_name VARCHAR(50))");
+        executeUpdate("CREATE TABLE orders (id INT, total INT, status VARCHAR(10))");
+
+        JDBEngine<IColumnSchema> engine = createEngine(IColumnSchema.class);
+
+        assertThatThrownBy(() -> engine.insertDB(db -> {}))
+                .isInstanceOf(JDBScriptException.class)
+                .hasMessage("Schema interface IColumnSchema doesn't match the database:\n"
+                        + "  ICustomerRecord.name(): no column 'name' in table CUSTOMERS (columns: ID, FULL_NAME)");
+    }
+
+    @Test
+    public void should_report_every_record_method_without_column_in_one_error() {
+        executeUpdate("CREATE TABLE customers (id INT, full_name VARCHAR(50))");
+        executeUpdate("CREATE TABLE orders (total INT)");
+
+        JDBEngine<IColumnSchema> engine = createEngine(IColumnSchema.class);
+
+        assertThatThrownBy(() -> engine.assertDBHas(db -> {}))
+                .isInstanceOf(JDBScriptException.class)
+                .hasMessageContaining("  ICustomerRecord.name(): no column 'name' in table CUSTOMERS (columns: ID, FULL_NAME)")
+                .hasMessageContaining("  IOrderRecord.id(): no column 'id' in table ORDERS (columns: TOTAL)")
+                .hasMessageContaining("  IOrderRecord.status(): no column 'status' in table ORDERS (columns: TOTAL)");
+    }
+
+    @Test
+    public void should_accept_db_columns_missing_from_record_and_ignore_default_methods() {
+        executeUpdate("CREATE TABLE customers (id INT, full_name VARCHAR(50), created_at TIMESTAMP)");
+
+        JDBEngine<IValidColumnSchema> engine = createEngine(IValidColumnSchema.class);
+
+        assertThatCode(() -> engine.insertDB(db -> db.customers().fullName("Ann").id(1)))
+                .doesNotThrowAnyException();
     }
 }

@@ -86,6 +86,25 @@ public class CachingMetadataProvider extends AbstractMetadataProviderProxy {
         return cache.getOrCompute(new ColumnsKey(dbTableName), k -> super.getColumns(dbTableName));
     }
 
+    // Same batching as getTableDependencies.
+    @Override
+    public Map<String, List<String>> getColumns(Collection<String> dbTableNames) {
+        List<String> names = List.copyOf(dbTableNames);
+        Map<String, List<String>> fetched = new HashMap<>();
+        Map<String, List<String>> result = new LinkedHashMap<>();
+        for (int i = 0; i < names.size(); i++) {
+            String name = names.get(i);
+            List<String> remaining = names.subList(i, names.size());
+            result.put(name, cache.getOrCompute(new ColumnsKey(name), k -> {
+                if (!fetched.containsKey(name)) {
+                    fetched.putAll(super.getColumns(remaining));
+                }
+                return fetched.get(name);
+            }));
+        }
+        return result;
+    }
+
     @Override
     public Map<String, Integer> getLobColumns(String dbTableName) {
         return cache.getOrCompute(new LobColumnsKey(dbTableName), k -> super.getLobColumns(dbTableName));

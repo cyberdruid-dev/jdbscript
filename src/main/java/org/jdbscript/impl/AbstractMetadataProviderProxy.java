@@ -46,6 +46,11 @@ public abstract class AbstractMetadataProviderProxy implements IMetadataProvider
     }
 
     @Override
+    public Map<String, List<String>> getColumns(Collection<String> dbTableNames) {
+        return delegate.getColumns(dbTableNames);
+    }
+
+    @Override
     public Map<String, Integer> getLobColumns(String dbTableName) {
         return delegate.getLobColumns(dbTableName);
     }
