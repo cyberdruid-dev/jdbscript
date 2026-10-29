@@ -75,6 +75,23 @@ public class CleanupExclusionTest extends JdbAbstractTest {
         assertThat(generatedId("c")).isGreaterThan(highestIdBefore);
     }
 
+    public void cleanupDB_does_not_restart_the_identity_of_a_table_outside_the_schema() {
+        skipFor("Native auto-increment", DBMSType.SPANNER);
+        IJDBEngine<IGeneratedIdSchema> plainEngine = createEngine(IGeneratedIdSchema.class);
+        plainEngine.resetDB(db -> {
+            db.generated_int_id_table().varchar_column("a");
+            db.generated_int_id_table().varchar_column("b");
+        });
+        long highestIdBefore = generatedId("b");
+
+        seedingEngine.cleanupDB();
+        plainEngine.insertDB(db -> {
+            db.generated_int_id_table().varchar_column("c");
+        });
+
+        assertThat(generatedId("c")).isGreaterThan(highestIdBefore);
+    }
+
     public void insertDB_into_an_excluded_table_fails_by_default() {
         IJDBEngine<IOrderSchema> engine = engineBuilder(IOrderSchema.class).excludeFromCleanup("customers").build();
 
