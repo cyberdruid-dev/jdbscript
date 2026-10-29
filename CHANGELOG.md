@@ -10,6 +10,7 @@ Notable changes per release. Full notes for each version are on [GitHub Releases
 - `assertDBHas` / `assertDBHasNot` failures list every failing record with its table and the values the test wrote; `assertDBHasNot` also shows a matching row. Previously only "Expected row to exist." / "Expected row to NOT exist.".
 
 ### Fixed
+- Default methods on a private or package-private record interface (e.g. one nested in a test class) failed with `UndeclaredThrowableException` when called from a script.
 - H2: cleanup restarts sequences and identity columns at 10000, as on PostgreSQL, Oracle, HSQLDB and the others. Previously generated ids could collide with manually assigned low ids, depending on test order.
 
 ## [1.3.2] - 2026-10-18

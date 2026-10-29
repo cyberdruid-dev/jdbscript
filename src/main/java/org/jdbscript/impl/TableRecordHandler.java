@@ -17,7 +17,7 @@ class TableRecordHandler implements InvocationHandler {
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
         if (method.isDefault()) {
-            return InvocationHandler.invokeDefault(proxy, method, args);
+            return Utils.invokeDefault(proxy, method, args);
         }
 
         if (method.getDeclaringClass() == Object.class) {
