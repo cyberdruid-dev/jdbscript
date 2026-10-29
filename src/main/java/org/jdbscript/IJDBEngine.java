@@ -69,8 +69,32 @@ public interface IJDBEngine <T extends IDBSchema>{
      */
     <S extends T> IJDBEngine<S> as(Class<S> schemaClass);
 
+    /**
+     * Asserts that every record in the script matches at least one row of its table. Records are
+     * checked independently, so several records may match the same row.
+     * <ul>
+     *   <li>Only the columns set on a record are compared; the others are ignored.</li>
+     *   <li>{@code null} matches SQL NULL.</li>
+     *   <li>Values go through the same converters as {@link #insertDB(Consumer)}, but
+     *       {@code defaults} are not applied.</li>
+     *   <li>The database compares the values; LOB columns are compared in full.</li>
+     *   <li>A record with no columns set is an error.</li>
+     * </ul>
+     * On failure, the {@link org.opentest4j.AssertionFailedError} lists every record without a
+     * matching row.
+     *
+     * @param dbAsserts a {@link Consumer} receiving the schema proxy to define the expected records
+     */
     void assertDBHas(Consumer<T> dbAsserts);
 
+    /**
+     * Asserts that no record in the script matches any row of its table. Matching follows the
+     * same rules as {@link #assertDBHas(Consumer)}. On failure, the
+     * {@link org.opentest4j.AssertionFailedError} lists every matching record with one of its
+     * rows.
+     *
+     * @param dbAsserts a {@link Consumer} receiving the schema proxy to define the records that must not exist
+     */
     void assertDBHasNot(Consumer<T> dbAsserts);
 
 }

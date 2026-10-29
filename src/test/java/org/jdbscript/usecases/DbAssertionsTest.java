@@ -27,12 +27,29 @@ public class DbAssertionsTest extends JdbAbstractTest {
         ITableForAssertions int_column_1(Integer value);
         ITableForAssertions boolean_column_1(Boolean value);
         ITableForAssertions date_column_1(Date value);
+        ITableForAssertions str_column_1(Status value);
     }
+
+    private enum Status { ACTIVE, BLOCKED }
 
     private interface IAssertionTestSchema extends IDBSchema {
 
         ITableForAssertions table_for_assertions();
 
+    }
+
+    private interface ITableWithDefaults extends IDBRecord {
+        ITableWithDefaults id(int value);
+        ITableWithDefaults str_column_1(String value);
+        ITableWithDefaults str_column_2(String value);
+
+        default void defaults() {
+            str_column_2("from-defaults");
+        }
+    }
+
+    private interface IDefaultsSchema extends IDBSchema {
+        ITableWithDefaults table_for_assertions();
     }
 
     private final IJDBEngine<IAssertionTestSchema> engine = createEngine(IAssertionTestSchema.class);
@@ -291,6 +308,20 @@ public class DbAssertionsTest extends JdbAbstractTest {
             db.table_for_assertions();
         })).isInstanceOf(JDBScriptException.class)
                 .hasMessageContaining("table_for_assertions");
+    }
+
+    public void assertDBHas__does_not_apply_defaults() {
+        IJDBEngine<IDefaultsSchema> defaultsEngine = createEngine(IDefaultsSchema.class);
+        defaultsEngine.resetDB(db -> db.table_for_assertions().id(1).str_column_1("str15").str_column_2("explicit"));
+
+        defaultsEngine.assertDBHas(db -> db.table_for_assertions().str_column_1("str15"));
+    }
+
+    public void assertDBHas__converts_values_like_insert() {
+        engine.resetDB(db -> db.table_for_assertions().id(1).str_column_1("ACTIVE"));
+
+        engine.assertDBHas(db -> db.table_for_assertions().str_column_1(Status.ACTIVE));
+        engine.assertDBHasNot(db -> db.table_for_assertions().str_column_1(Status.BLOCKED));
     }
 
     private void expectFailureStartingWith(Runnable block, String expectedMessageStart) {

@@ -343,6 +343,8 @@ engine.assertDBHasNot(db -> {
 });
 ```
 
+Each record must match at least one row (`assertDBHas`) or none (`assertDBHasNot`). Only the columns you set are compared, and `defaults` are not applied. See the javadoc for the full matching rules.
+
 ---
 
 ## Migration Testing
