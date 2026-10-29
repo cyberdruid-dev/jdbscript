@@ -41,7 +41,9 @@ public class ConnectionReentrancyTest {
 
             // Fresh engine: DBMS type/strategy is not resolved yet, forcing the lazy lookup to
             // happen while this insert's own connection is still checked out.
-            engine.insertDB(db -> db.customers().id(1).name("Ann"));
+            engine.insertDB(db -> {
+                db.customers().id(1).name("Ann");
+            });
         }
     }
 }

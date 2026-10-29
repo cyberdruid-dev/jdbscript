@@ -67,7 +67,9 @@ public class Db2FeatureTest extends JdbAbstractTest {
                 .build();
         int manualId = 900_000_000;
 
-        engine.insertDB(db -> db.generated_int_id_table().generated_id_column(manualId).varchar_column("manual"));
+        engine.insertDB(db -> {
+            db.generated_int_id_table().generated_id_column(manualId).varchar_column("manual");
+        });
         // Triggers resetSequences(), a no-op here under NOT_MODIFIED; the row it also deletes is
         // irrelevant - DELETE never touches the identity column's own counter either way.
         engine.cleanupDB();
@@ -87,7 +89,9 @@ public class Db2FeatureTest extends JdbAbstractTest {
                 .feature(JDBFeature.DB2_ID_OWNED_SEQUENCE_RESTART_WITH)
                 .build();
 
-        engine.insertDB(db -> db.generated_int_id_table().generated_id_column(1).varchar_column("manual"));
+        engine.insertDB(db -> {
+            db.generated_int_id_table().generated_id_column(1).varchar_column("manual");
+        });
         engine.cleanupDB();
         executeUpdate("INSERT INTO %s (varchar_column) VALUES ('auto')", TABLE_WITH_AUTO_ID);
 

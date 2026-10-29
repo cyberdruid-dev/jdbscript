@@ -132,7 +132,9 @@ public class GeneratedIdTest extends JdbAbstractTest {
             db.table_with_defaults();
         });
 
-        engine.insertDB(db -> db.table_with_defaults());
+        engine.insertDB(db -> {
+            db.table_with_defaults();
+        });
 
         assertTableValues(table(TABLE_WITH_DEFAULTS,
                 columns("id"),
@@ -150,7 +152,9 @@ public class GeneratedIdTest extends JdbAbstractTest {
         });
 
         engine.cleanupDB();
-        engine.insertDB(db -> db.table_with_defaults());
+        engine.insertDB(db -> {
+            db.table_with_defaults();
+        });
 
         assertTableValues(table(TABLE_WITH_DEFAULTS,
                 columns("id"),
@@ -165,7 +169,9 @@ public class GeneratedIdTest extends JdbAbstractTest {
             db.table_with_defaults();
         });
 
-        engine.resetDB(db -> db.table_with_defaults());
+        engine.resetDB(db -> {
+            db.table_with_defaults();
+        });
 
         assertTableValues(table(TABLE_WITH_DEFAULTS,
                 columns("id"),

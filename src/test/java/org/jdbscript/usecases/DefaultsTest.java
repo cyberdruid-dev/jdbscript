@@ -87,7 +87,9 @@ public class DefaultsTest extends JdbAbstractTest {
 
     @Test
     public void defaults_should_work_for_a_private_record_interface() {
-        createEngine(IPrivateDefaultsTestSchema.class).resetDB(db -> db.table_with_defaults());
+        createEngine(IPrivateDefaultsTestSchema.class).resetDB(db -> {
+            db.table_with_defaults();
+        });
 
         assertTableValues(table(TABLE_NAME,
                 columns("str_column_1"),

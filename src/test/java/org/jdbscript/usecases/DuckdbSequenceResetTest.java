@@ -40,14 +40,18 @@ public class DuckdbSequenceResetTest extends JdbAbstractTest {
 
     @Test
     public void cleanup_should_not_re_advance_a_sequence_already_past_the_safe_floor() {
-        engine.insertDB(db -> db.table_1().id(1).str_column_1("first"));
+        engine.insertDB(db -> {
+            db.table_1().id(1).str_column_1("first");
+        });
         engine.cleanupDB();
         long afterFirstCleanup = currentSequenceValue();
         assertThat(afterFirstCleanup)
                 .describedAs("first cleanup should push the sequence past the safe floor")
                 .isGreaterThanOrEqualTo(10000L);
 
-        engine.insertDB(db -> db.table_1().id(2).str_column_1("second"));
+        engine.insertDB(db -> {
+            db.table_1().id(2).str_column_1("second");
+        });
         engine.cleanupDB();
         long afterSecondCleanup = currentSequenceValue();
 

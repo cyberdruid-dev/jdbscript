@@ -55,27 +55,35 @@ public class DataChangeListenerTest extends JdbAbstractTest {
                 .onDataChange(count::incrementAndGet)
                 .build();
 
-        engine.insertDB(db -> db.table_1().id(1).str_column_1("hello"));
+        engine.insertDB(db -> {
+            db.table_1().id(1).str_column_1("hello");
+        });
 
         assertThat(count).hasValue(1);
     }
 
     @Test
     public void test_updateDB_consumer_fires_listener_once() {
-        createEngine(ITestDBSchema.class).insertDB(db -> db.table_1().id(1).str_column_1("hello"));
+        createEngine(ITestDBSchema.class).insertDB(db -> {
+            db.table_1().id(1).str_column_1("hello");
+        });
         AtomicInteger count = new AtomicInteger();
         IJDBEngine<ITestDBSchema> engine = engineBuilder(ITestDBSchema.class)
                 .onDataChange(count::incrementAndGet)
                 .build();
 
-        engine.updateDB(db -> db.table_1().id(1).str_column_1("changed"));
+        engine.updateDB(db -> {
+            db.table_1().id(1).str_column_1("changed");
+        });
 
         assertThat(count).hasValue(1);
     }
 
     @Test
     public void test_updateDB_class_fires_listener_once() {
-        createEngine(ITestDBSchema.class).insertDB(db -> db.table_1().id(1).str_column_1("hello"));
+        createEngine(ITestDBSchema.class).insertDB(db -> {
+            db.table_1().id(1).str_column_1("hello");
+        });
         AtomicInteger count = new AtomicInteger();
         IJDBEngine<ITestDBSchema> engine = engineBuilder(ITestDBSchema.class)
                 .onDataChange(count::incrementAndGet)
@@ -93,8 +101,9 @@ public class DataChangeListenerTest extends JdbAbstractTest {
                 .onDataChange(count::incrementAndGet)
                 .build();
 
-        assertThatThrownBy(() -> engine.updateDB(db -> db.table_1().id(99).str_column_1("changed")))
-                .isInstanceOf(JDBScriptException.class);
+        assertThatThrownBy(() -> engine.updateDB(db -> {
+            db.table_1().id(99).str_column_1("changed");
+        })).isInstanceOf(JDBScriptException.class);
 
         assertThat(count).hasValue(0);
     }
@@ -118,7 +127,9 @@ public class DataChangeListenerTest extends JdbAbstractTest {
                 .onDataChange(count::incrementAndGet)
                 .build();
 
-        engine.resetDB(db -> db.table_1().id(1).str_column_1("hello"));
+        engine.resetDB(db -> {
+            db.table_1().id(1).str_column_1("hello");
+        });
 
         assertThat(count).hasValue(1);
     }
@@ -143,7 +154,9 @@ public class DataChangeListenerTest extends JdbAbstractTest {
                 .onDataChange(() -> invocations.add("second"))
                 .build();
 
-        engine.insertDB(db -> db.table_1().id(1).str_column_1("hello"));
+        engine.insertDB(db -> {
+            db.table_1().id(1).str_column_1("hello");
+        });
 
         assertThat(invocations).containsExactly("first", "second");
     }
@@ -152,8 +165,9 @@ public class DataChangeListenerTest extends JdbAbstractTest {
     public void test_no_listeners_registered_does_not_throw() {
         IJDBEngine<ITestDBSchema> engine = createEngine(ITestDBSchema.class);
 
-        assertThatCode(() -> engine.insertDB(db -> db.table_1().id(1).str_column_1("hello")))
-                .doesNotThrowAnyException();
+        assertThatCode(() -> engine.insertDB(db -> {
+            db.table_1().id(1).str_column_1("hello");
+        })).doesNotThrowAnyException();
     }
 
     @Test
@@ -164,8 +178,12 @@ public class DataChangeListenerTest extends JdbAbstractTest {
                 .onDataChange(count::incrementAndGet)
                 .build();
 
-        engine.assertDBHas(db -> db.table_1().str_column_1("seeded"));
-        engine.assertDBHasNot(db -> db.table_1().str_column_1("missing"));
+        engine.assertDBHas(db -> {
+            db.table_1().str_column_1("seeded");
+        });
+        engine.assertDBHasNot(db -> {
+            db.table_1().str_column_1("missing");
+        });
 
         assertThat(count).hasValue(0);
     }
@@ -177,8 +195,9 @@ public class DataChangeListenerTest extends JdbAbstractTest {
                 .onDataChange(count::incrementAndGet)
                 .build();
 
-        assertThatThrownBy(() -> engine.insertDB(db -> db.include(ScriptWithParamConstructor.class)))
-                .isInstanceOf(JDBScriptException.class);
+        assertThatThrownBy(() -> engine.insertDB(db -> {
+            db.include(ScriptWithParamConstructor.class);
+        })).isInstanceOf(JDBScriptException.class);
 
         assertThat(count).hasValue(0);
     }
@@ -190,8 +209,9 @@ public class DataChangeListenerTest extends JdbAbstractTest {
                 .onDataChange(() -> { throw cause; })
                 .build();
 
-        assertThatThrownBy(() -> engine.insertDB(db -> db.table_1().id(1).str_column_1("hello")))
-                .isInstanceOf(JDBScriptException.class)
+        assertThatThrownBy(() -> engine.insertDB(db -> {
+            db.table_1().id(1).str_column_1("hello");
+        })).isInstanceOf(JDBScriptException.class)
                 .hasCause(cause);
 
         assertTableValues(table(TABLE_NAME,
@@ -207,8 +227,9 @@ public class DataChangeListenerTest extends JdbAbstractTest {
                 .onDataChange(() -> { throw cause; })
                 .build();
 
-        assertThatThrownBy(() -> engine.insertDB(db -> db.table_1().id(1).str_column_1("hello")))
-                .isInstanceOf(JDBScriptException.class)
+        assertThatThrownBy(() -> engine.insertDB(db -> {
+            db.table_1().id(1).str_column_1("hello");
+        })).isInstanceOf(JDBScriptException.class)
                 .hasCause(cause);
     }
 

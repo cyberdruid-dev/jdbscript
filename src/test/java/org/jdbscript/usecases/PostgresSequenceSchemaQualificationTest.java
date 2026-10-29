@@ -84,7 +84,9 @@ public class PostgresSequenceSchemaQualificationTest extends JdbAbstractTest {
 
     @Test
     public void cleanup_should_reset_the_sequence_the_table_actually_depends_on_not_a_same_named_one_elsewhere() {
-        engine.insertDB(db -> db.pg_seq_qual_test_table().id(1).name("manual"));
+        engine.insertDB(db -> {
+            db.pg_seq_qual_test_table().id(1).name("manual");
+        });
         engine.cleanupDB();
 
         // >= 9999, not >= 10000: CockroachDB reports last_value as 9999 for the same "not yet

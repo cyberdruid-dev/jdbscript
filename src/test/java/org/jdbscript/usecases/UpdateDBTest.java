@@ -89,9 +89,13 @@ public class UpdateDBTest extends JdbAbstractTest {
     }
 
     public void update_should_change_set_column_and_keep_unset_ones() {
-        engine.resetDB(db -> db.table_1().id(1).str_column_1("one").str_column_2("two"));
+        engine.resetDB(db -> {
+            db.table_1().id(1).str_column_1("one").str_column_2("two");
+        });
 
-        engine.updateDB(db -> db.table_1().id(1).str_column_1("changed"));
+        engine.updateDB(db -> {
+            db.table_1().id(1).str_column_1("changed");
+        });
 
         assertTableValues(table(TABLE_NAME_1,
                 columns("id", "str_column_1", "str_column_2"),
@@ -105,7 +109,9 @@ public class UpdateDBTest extends JdbAbstractTest {
             db.table_1().id(2).str_column_1("two");
         });
 
-        engine.updateDB(db -> db.table_1().id(1).str_column_1("changed"));
+        engine.updateDB(db -> {
+            db.table_1().id(1).str_column_1("changed");
+        });
 
         assertTableValues(table(TABLE_NAME_1,
                 columns("id", "str_column_1"),
@@ -115,9 +121,13 @@ public class UpdateDBTest extends JdbAbstractTest {
     }
 
     public void update_should_change_several_columns_of_one_row() {
-        engine.resetDB(db -> db.table_1().id(1).str_column_1("one").str_column_2("two").int_column_1(1));
+        engine.resetDB(db -> {
+            db.table_1().id(1).str_column_1("one").str_column_2("two").int_column_1(1);
+        });
 
-        engine.updateDB(db -> db.table_1().id(1).str_column_1("changed 1").int_column_1(42));
+        engine.updateDB(db -> {
+            db.table_1().id(1).str_column_1("changed 1").int_column_1(42);
+        });
 
         assertTableValues(table(TABLE_NAME_1,
                 columns("id", "str_column_1", "str_column_2", "int_column_1"),
@@ -150,9 +160,13 @@ public class UpdateDBTest extends JdbAbstractTest {
     }
 
     public void update_should_set_column_to_null_when_set_to_null() {
-        engine.resetDB(db -> db.table_1().id(1).str_column_1("one").int_column_1(1));
+        engine.resetDB(db -> {
+            db.table_1().id(1).str_column_1("one").int_column_1(1);
+        });
 
-        engine.updateDB(db -> db.table_1().id(1).str_column_1(null).int_column_1(null));
+        engine.updateDB(db -> {
+            db.table_1().id(1).str_column_1(null).int_column_1(null);
+        });
 
         assertTableValues(table(TABLE_NAME_1,
                 columns("id", "str_column_1", "int_column_1"),
@@ -161,9 +175,13 @@ public class UpdateDBTest extends JdbAbstractTest {
     }
 
     public void update_should_not_apply_defaults() {
-        defaultsEngine.resetDB(db -> db.table_with_defaults().id(1).int_column_1(1).str_column_1("custom"));
+        defaultsEngine.resetDB(db -> {
+            db.table_with_defaults().id(1).int_column_1(1).str_column_1("custom");
+        });
 
-        defaultsEngine.updateDB(db -> db.table_with_defaults().id(1).int_column_1(2));
+        defaultsEngine.updateDB(db -> {
+            db.table_with_defaults().id(1).int_column_1(2);
+        });
 
         assertTableValues(table(TABLE_WITH_DEFAULTS,
                 columns("id", "int_column_1", "str_column_1"),
@@ -178,7 +196,9 @@ public class UpdateDBTest extends JdbAbstractTest {
             db.composite_pk_table().key_1(2).key_2("a").value_column("2a");
         });
 
-        engine.updateDB(db -> db.composite_pk_table().key_1(1).key_2("b").value_column("changed"));
+        engine.updateDB(db -> {
+            db.composite_pk_table().key_1(1).key_2("b").value_column("changed");
+        });
 
         assertTableValues(table(COMPOSITE_PK_TABLE,
                 columns("key_1", "key_2", "value_column"),
@@ -193,9 +213,13 @@ public class UpdateDBTest extends JdbAbstractTest {
                 .disableDefaultConverters()
                 .converter(new StatusConverter())
                 .build();
-        statusEngine.resetDB(db -> db.table_1().id(1).str_column_1(Status.ACTIVE));
+        statusEngine.resetDB(db -> {
+            db.table_1().id(1).str_column_1(Status.ACTIVE);
+        });
 
-        statusEngine.updateDB(db -> db.table_1().id(1).str_column_1(Status.DISABLED));
+        statusEngine.updateDB(db -> {
+            db.table_1().id(1).str_column_1(Status.DISABLED);
+        });
 
         assertTableValues(table(TABLE_NAME_1,
                 columns("id", "str_column_1"),
@@ -204,7 +228,9 @@ public class UpdateDBTest extends JdbAbstractTest {
     }
 
     public void update_should_run_a_class_script() {
-        engine.resetDB(db -> db.table_1().id(1).str_column_1("one"));
+        engine.resetDB(db -> {
+            db.table_1().id(1).str_column_1("one");
+        });
 
         engine.updateDB(UpdateScript.class);
 
@@ -233,7 +259,9 @@ public class UpdateDBTest extends JdbAbstractTest {
     }
 
     public void update_with_empty_script_should_change_nothing() {
-        engine.resetDB(db -> db.table_1().id(1).str_column_1("one"));
+        engine.resetDB(db -> {
+            db.table_1().id(1).str_column_1("one");
+        });
 
         engine.updateDB(db -> {});
 
@@ -244,17 +272,22 @@ public class UpdateDBTest extends JdbAbstractTest {
     }
 
     public void update_should_fail_when_no_row_matches() {
-        engine.resetDB(db -> db.table_1().id(1).str_column_1("one"));
+        engine.resetDB(db -> {
+            db.table_1().id(1).str_column_1("one");
+        });
 
-        assertThatThrownBy(() -> engine.updateDB(db -> db.table_1().id(99).str_column_1("changed")))
-                .isInstanceOf(JDBScriptException.class)
+        assertThatThrownBy(() -> engine.updateDB(db -> {
+            db.table_1().id(99).str_column_1("changed");
+        })).isInstanceOf(JDBScriptException.class)
                 .hasMessageContaining("table_1")
                 .hasMessageContaining("id=99");
     }
 
     public void failed_update_should_roll_back_earlier_updates_of_the_same_call() {
         skipFor("rollback of a failed updateDB", DBMSType.DUCKDB, null, "runs in auto-commit mode");
-        engine.resetDB(db -> db.table_1().id(1).str_column_1("one"));
+        engine.resetDB(db -> {
+            db.table_1().id(1).str_column_1("one");
+        });
 
         assertThatThrownBy(() -> engine.updateDB(db -> {
             db.table_1().id(1).str_column_1("changed");
@@ -273,26 +306,33 @@ public class UpdateDBTest extends JdbAbstractTest {
         executeUpdate("INSERT INTO no_pk_table (id, value_column) VALUES (1, 'one')");
         JDBEngine<INoPkSchema> noPkEngine = createEngine(INoPkSchema.class);
 
-        assertThatThrownBy(() -> noPkEngine.updateDB(db -> db.no_pk_table().id(1).value_column("changed")))
-                .isInstanceOf(JDBScriptException.class)
+        assertThatThrownBy(() -> noPkEngine.updateDB(db -> {
+            db.no_pk_table().id(1).value_column("changed");
+        })).isInstanceOf(JDBScriptException.class)
                 .hasMessageContaining("no_pk_table")
                 .hasMessageContaining("primary key");
     }
 
     public void update_should_fail_when_not_all_primary_key_columns_are_set() {
-        engine.resetDB(db -> db.composite_pk_table().key_1(1).key_2("a").value_column("1a"));
+        engine.resetDB(db -> {
+            db.composite_pk_table().key_1(1).key_2("a").value_column("1a");
+        });
 
-        assertThatThrownBy(() -> engine.updateDB(db -> db.composite_pk_table().key_1(1).value_column("changed")))
-                .isInstanceOf(JDBScriptException.class)
+        assertThatThrownBy(() -> engine.updateDB(db -> {
+            db.composite_pk_table().key_1(1).value_column("changed");
+        })).isInstanceOf(JDBScriptException.class)
                 .hasMessageContaining("composite_pk_table")
                 .satisfies(e -> assertThat(e.getMessage()).containsIgnoringCase("key_2"));
     }
 
     public void update_should_fail_when_only_primary_key_columns_are_set() {
-        engine.resetDB(db -> db.table_1().id(1).str_column_1("one"));
+        engine.resetDB(db -> {
+            db.table_1().id(1).str_column_1("one");
+        });
 
-        assertThatThrownBy(() -> engine.updateDB(db -> db.table_1().id(1)))
-                .isInstanceOf(JDBScriptException.class)
+        assertThatThrownBy(() -> engine.updateDB(db -> {
+            db.table_1().id(1);
+        })).isInstanceOf(JDBScriptException.class)
                 .hasMessageContaining("table_1")
                 .hasMessageContaining("nothing to update");
     }

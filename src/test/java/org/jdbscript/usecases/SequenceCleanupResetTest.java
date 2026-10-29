@@ -49,7 +49,9 @@ public class SequenceCleanupResetTest extends JdbAbstractTest {
 
     @Test
     public void first_reset_should_assign_the_predictable_floor_value() {
-        engine.resetDB(db -> db.generated_int_id_table().varchar_column("a"));
+        engine.resetDB(db -> {
+            db.generated_int_id_table().varchar_column("a");
+        });
 
         assertTableValues(table(TABLE_NAME_GENERATED,
                 columns("generated_id_column", "varchar_column"),
@@ -64,7 +66,9 @@ public class SequenceCleanupResetTest extends JdbAbstractTest {
             db.generated_int_id_table().varchar_column("b");
         });
 
-        engine.resetDB(db -> db.generated_int_id_table().varchar_column("c"));
+        engine.resetDB(db -> {
+            db.generated_int_id_table().varchar_column("c");
+        });
 
         assertTableValues(table(TABLE_NAME_GENERATED,
                 columns("generated_id_column", "varchar_column"),

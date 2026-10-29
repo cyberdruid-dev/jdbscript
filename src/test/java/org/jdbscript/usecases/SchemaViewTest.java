@@ -81,7 +81,9 @@ public class SchemaViewTest extends JdbAbstractTest {
     }
 
     public void view_lambda_should_call_default_helpers_of_the_sub_interface() {
-        engine.as(ICustomerScript.class).resetDB(db -> db.addCustomerWithOrder(1));
+        engine.as(ICustomerScript.class).resetDB(db -> {
+            db.addCustomerWithOrder(1);
+        });
 
         assertTableValues(table("customers",
                 columns("id", "name"),
@@ -94,7 +96,9 @@ public class SchemaViewTest extends JdbAbstractTest {
     }
 
     public void setters_chained_on_a_helper_result_should_be_applied() {
-        engine.as(ICustomerScript.class).resetDB(db -> db.addCustomerWithOrder(1).order_date("2026-01-01"));
+        engine.as(ICustomerScript.class).resetDB(db -> {
+            db.addCustomerWithOrder(1).order_date("2026-01-01");
+        });
 
         assertTableValues(table("orders",
                 columns("id", "order_date"),
@@ -110,7 +114,9 @@ public class SchemaViewTest extends JdbAbstractTest {
             db.table_with_defaults().str_column_1("plain");
             db.table_with_defaults().str_column_1("plain");
         });
-        view.insertDB(db -> db.addRow("view"));
+        view.insertDB(db -> {
+            db.addRow("view");
+        });
 
         assertTableValues(table("table_with_defaults",
                 columns("id", "str_column_1"),
@@ -120,8 +126,12 @@ public class SchemaViewTest extends JdbAbstractTest {
         ));
 
         view.cleanupDB();
-        view.insertDB(db -> db.addRow("after cleanup"));
-        idEngine.insertDB(db -> db.table_with_defaults().str_column_1("plain after cleanup"));
+        view.insertDB(db -> {
+            db.addRow("after cleanup");
+        });
+        idEngine.insertDB(db -> {
+            db.table_with_defaults().str_column_1("plain after cleanup");
+        });
 
         assertTableValues(table("table_with_defaults",
                 columns("id", "str_column_1"),
@@ -132,13 +142,23 @@ public class SchemaViewTest extends JdbAbstractTest {
 
     public void view_should_update_and_assert() {
         IJDBEngine<ICustomerScript> view = engine.as(ICustomerScript.class);
-        view.resetDB(db -> db.addCustomerWithOrder(1));
-        view.assertDBHas(db -> db.addCustomerWithOrder(1));
-        view.assertDBHasNot(db -> db.addCustomerWithOrder(2));
+        view.resetDB(db -> {
+            db.addCustomerWithOrder(1);
+        });
+        view.assertDBHas(db -> {
+            db.addCustomerWithOrder(1);
+        });
+        view.assertDBHasNot(db -> {
+            db.addCustomerWithOrder(2);
+        });
 
-        view.updateDB(db -> db.customers().id(1).name("changed"));
+        view.updateDB(db -> {
+            db.customers().id(1).name("changed");
+        });
 
-        view.assertDBHas(db -> db.customers().id(1).name("changed"));
+        view.assertDBHas(db -> {
+            db.customers().id(1).name("changed");
+        });
     }
 
     public void view_cleanupDB_should_clean_every_table_of_the_engine_schema() {
@@ -162,8 +182,12 @@ public class SchemaViewTest extends JdbAbstractTest {
                 .build()
                 .as(ICustomerScript.class);
 
-        view.resetDB(db -> db.addCustomerWithOrder(1));
-        view.updateDB(db -> db.customers().id(1).name("changed"));
+        view.resetDB(db -> {
+            db.addCustomerWithOrder(1);
+        });
+        view.updateDB(db -> {
+            db.customers().id(1).name("changed");
+        });
         view.cleanupDB();
 
         assertThat(count).hasValue(3);
@@ -216,7 +240,9 @@ public class SchemaViewTest extends JdbAbstractTest {
     }
 
     public void view_should_work_with_a_non_public_sub_interface() {
-        engine.as(IPrivateScript.class).resetDB(db -> db.addCustomer(5));
+        engine.as(IPrivateScript.class).resetDB(db -> {
+            db.addCustomer(5);
+        });
 
         assertTableValues(table("customers",
                 columns("id", "name"),
@@ -225,7 +251,9 @@ public class SchemaViewTest extends JdbAbstractTest {
     }
 
     public void class_script_should_work_from_the_plain_engine_after_a_view_used_it() {
-        engine.as(ICustomerScript.class).resetDB(db -> db.include(SharedClassScript.class));
+        engine.as(ICustomerScript.class).resetDB(db -> {
+            db.include(SharedClassScript.class);
+        });
 
         engine.resetDB(SharedClassScript.class);
 

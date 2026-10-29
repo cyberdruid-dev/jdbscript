@@ -71,7 +71,9 @@ public class TemporaryTableDiscoveryTest extends JdbAbstractTest {
                 .unmappedTableStrategy(ValidationStrategy.FAIL)
                 .build();
 
-        engine.insertDB(db -> db.table_1().id(1).str_column_1("inserted"));
+        engine.insertDB(db -> {
+            db.table_1().id(1).str_column_1("inserted");
+        });
 
         assertTableValues(table("table_1",
                 columns("id", "str_column_1"),
