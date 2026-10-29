@@ -10,6 +10,9 @@
 ## Open
 
 #### Release (v1.3.3)
+* [ ] Bump `jdbscript.version` in `examples/pom.xml` and `examples/08-springboot/pom.xml` (08 has
+  Spring Boot as parent, so it doesn't inherit the version), and in the skill's dependency
+  coordinates (`skill/jdbscript/SKILL.md`, "Adding to a project")
 * [ ] Skill: add H2 to the sequence-reset DBMS list (`skill/jdbscript/SKILL.md`, "on PostgreSQL,
   CockroachDB, Oracle, DB2, HSQLDB and DuckDB")
 * [x] `assertDBHas` / `assertDBHasNot` failure message: every failing record with its table and
