@@ -71,6 +71,8 @@ public enum JDBErrors implements Supplier<JDBScriptException> {
     /** cleanupDB couldn't delete a table's rows; the cause is the driver's error. */
     CLEANUP_FAILED(JDBScriptException.class,
             "cleanupDB failed to delete rows from table '%s': %s"),
+    /** An insertDB/updateDB statement failed in the DB: operation, table, the record's written values, DB message. */
+    WRITE_FAILED(JDBScriptException.class, "%s failed for %s: %s: %s"),
     /** updateDB found no row with the record's primary key. */
     UPDATE_ROW_NOT_FOUND(JDBScriptException.class,
             "updateDB found no row in table '%s' with primary key %s."),

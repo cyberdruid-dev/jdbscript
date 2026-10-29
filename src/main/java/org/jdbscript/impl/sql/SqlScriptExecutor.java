@@ -50,6 +50,7 @@ import static org.jdbscript.errors.JDBErrors.UPDATE_PRIMARY_KEY_NOT_SET;
 import static org.jdbscript.errors.JDBErrors.UPDATE_ROW_NOT_FOUND;
 import static org.jdbscript.errors.JDBErrors.CLEANUP_FAILED;
 import static org.jdbscript.errors.JDBErrors.UPDATE_TABLE_HAS_NO_PRIMARY_KEY;
+import static org.jdbscript.errors.JDBErrors.WRITE_FAILED;
 
 public class SqlScriptExecutor implements IScriptExecutor {
     private static final Logger log = LoggerFactory.getLogger(SqlScriptExecutor.class);
@@ -129,12 +130,16 @@ public class SqlScriptExecutor implements IScriptExecutor {
                     List<String> columns = getSortedColumns(record);
                     String sqlKey = record.getTableName() + ":" + String.join(",", columns);
                     String sql = insertSqlCache.computeIfAbsent(sqlKey, k -> createInsertSql(record, columns));
-                    PreparedStatement stmt = stmtProvider.get(sql);
-                    for (int i = 0; i < columns.size(); i++) {
-                        String column = columns.get(i);
-                        setColumnValue(cnn, record.getTableName(), column, stmt, i + 1, record.getColumns().get(column));
+                    try {
+                        PreparedStatement stmt = stmtProvider.get(sql);
+                        for (int i = 0; i < columns.size(); i++) {
+                            String column = columns.get(i);
+                            setColumnValue(cnn, record.getTableName(), column, stmt, i + 1, record.getColumns().get(column));
+                        }
+                        stmt.execute();
+                    } catch (SQLException e) {
+                        throw writeFailed("insertDB", record, e);
                     }
-                    stmt.execute();
                 }
             } catch (Throwable e) {
                 // Must run even on failure: MSSQL's IDENTITY_INSERT would otherwise stay ON for the pooled connection.
@@ -217,7 +222,11 @@ public class SqlScriptExecutor implements IScriptExecutor {
     public void update(JDBScript dbScript) {
         withPreparedStatements((cnn, stmtProvider) -> {
             for (JDBRecord record : dbScript.getRecords()) {
-                updateRecord(cnn, record, stmtProvider);
+                try {
+                    updateRecord(cnn, record, stmtProvider);
+                } catch (SQLException e) {
+                    throw writeFailed("updateDB", record, e);
+                }
             }
         });
     }
@@ -294,8 +303,15 @@ public class SqlScriptExecutor implements IScriptExecutor {
         });
     }
 
+    private JDBScriptException writeFailed(String operation, JDBRecord record, SQLException e) {
+        JDBScriptException error = WRITE_FAILED.get(operation, record.getTableName(),
+                RecordFormat.describe(record.getWrittenValues()), e.getMessage());
+        error.initCause(e);
+        return error;
+    }
+
     private String describeRecord(int index, JDBRecord record) {
-        return "  #" + (index + 1) + " " + record.getTableName() + ": " + AssertionMessages.describe(record.getWrittenValues());
+        return "  #" + (index + 1) + " " + record.getTableName() + ": " + RecordFormat.describe(record.getWrittenValues());
     }
 
     private long countMatchingRows(Connection cnn, JDBRecord record, PreparedStatementProvider stmtProvider) throws SQLException {
@@ -317,7 +333,7 @@ public class SqlScriptExecutor implements IScriptExecutor {
                     for (int i = 0; i < tableColumns.size(); i++) {
                         row.put(tableColumns.get(i), rs.getObject(offset + i + 1));
                     }
-                    return AssertionMessages.describe(row);
+                    return RecordFormat.describe(row);
                 }
             }
             return null;

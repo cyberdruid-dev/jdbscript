@@ -10,10 +10,10 @@ import java.util.Map;
 
 import static java.util.stream.Collectors.joining;
 
-final class AssertionMessages {
+final class RecordFormat {
     private static final int MAX_STRING_LENGTH = 100;
 
-    private AssertionMessages() {
+    private RecordFormat() {
     }
 
     static String describe(Map<String, ?> columns) {
