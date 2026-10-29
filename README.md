@@ -44,7 +44,7 @@ The approach isn't new: it has been the in-house fixture layer of two long-lived
 - **Metadata Caching**: Built-in caching for database metadata (tables, foreign keys) to speed up test execution.
 - **Multi-DBMS Compatibility**: Built-in support for PostgreSQL, MySQL, MariaDB, Oracle, Microsoft SQL Server, H2, HSQLDB, IBM DB2, CockroachDB, SQLite, DuckDB, and Google Cloud Spanner.
 - **Automatic Type Conversion**: Seamless handling of Java Enums, UUIDs, Dates, Timestamps, and binary data.
-- **Sequence Management**: Cleanup restarts sequences and identity columns at exactly 10000, so manually assigned low IDs (1, 2, ...) never collide with generated ones (supported for PostgreSQL, CockroachDB, Oracle, DB2, HSQLDB, and DuckDB).
+- **Sequence Management**: Cleanup restarts sequences and identity columns at exactly 10000, so manually assigned low IDs (1, 2, ...) never collide with generated ones (supported for PostgreSQL, CockroachDB, Oracle, DB2, H2, HSQLDB, and DuckDB).
 
 ---
 

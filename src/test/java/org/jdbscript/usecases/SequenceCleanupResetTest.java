@@ -25,7 +25,7 @@ public class SequenceCleanupResetTest extends JdbAbstractTest {
 
     @BeforeMethod
     public void beforeMethod() {
-        skipFor("sequence reset on cleanup", DBMSType.H2, DBMSType.MSSQL, DBMSType.MYSQL, DBMSType.MARIADB,
+        skipFor("sequence reset on cleanup", DBMSType.MSSQL, DBMSType.MYSQL, DBMSType.MARIADB,
                 DBMSType.SQLITE, DBMSType.DUCKDB, DBMSType.SPANNER);
         cleanupTables(TABLE_NAME_GENERATED);
     }
@@ -38,6 +38,7 @@ public class SequenceCleanupResetTest extends JdbAbstractTest {
             case POSTGRESQL, COCKROACHDB -> "SELECT nextval('%s')";
             case DB2 -> "VALUES NEXT VALUE FOR %s";
             case HSQLDB -> "CALL NEXT VALUE FOR %s";
+            case H2 -> "VALUES NEXT VALUE FOR %s";
             default -> throw new IllegalStateException("No nextval syntax for " + testConfiguration.getDbmsType());
         };
         return withResultSet(sql.formatted(sequenceName), (rs, columns, types) -> {

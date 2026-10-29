@@ -2,6 +2,11 @@
 
 Notable changes per release. Full notes for each version are on [GitHub Releases](https://github.com/cyberdruid-dev/jdbscript/releases).
 
+## [Unreleased]
+
+### Fixed
+- H2: cleanup restarts sequences and identity columns at 10000, as on PostgreSQL, Oracle, HSQLDB and the others. Previously generated ids could collide with manually assigned low ids, depending on test order.
+
 ## [1.3.2] - 2026-10-18
 
 ### Added

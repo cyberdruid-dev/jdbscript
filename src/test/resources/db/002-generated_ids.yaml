@@ -19,7 +19,7 @@ databaseChangeLog:
       id: 002-standalone_sequence
       author: Cyber Druid
       # Only the DBMS whose cleanup rewinds a standalone sequence to exactly 10000.
-      dbms: oracle,postgresql,cockroachdb,db2,hsqldb
+      dbms: oracle,postgresql,cockroachdb,db2,hsqldb,h2
       changes:
         - createSequence:
             sequenceName: standalone_seq

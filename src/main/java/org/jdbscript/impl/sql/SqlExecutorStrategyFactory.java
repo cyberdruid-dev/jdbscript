@@ -12,6 +12,7 @@ public class SqlExecutorStrategyFactory {
             case MSSQL -> new MssqlStrategy();
             case ORACLE -> new OracleStrategy();
             case HSQLDB -> new HsqldbStrategy();
+            case H2 -> new H2Strategy();
             case DB2 -> new Db2Strategy();
             case COCKROACHDB -> new CockroachDBStrategy();
             case DUCKDB -> new DuckdbStrategy();

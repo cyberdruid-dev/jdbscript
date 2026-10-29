@@ -3,6 +3,7 @@ target/
 !**/src/main/**/target/
 !**/src/test/**/target/
 TESTLIST.md
+SESSION_TODO.md
 
 ### IntelliJ IDEA ###
 .idea/modules.xml

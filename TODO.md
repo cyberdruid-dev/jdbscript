@@ -10,6 +10,8 @@
 ## Open
 
 #### Release (v1.3.3)
+* [ ] Skill: add H2 to the sequence-reset DBMS list (`skill/jdbscript/SKILL.md`, "on PostgreSQL,
+  CockroachDB, Oracle, DB2, HSQLDB and DuckDB")
 * [ ] `assertDBHas` / `assertDBHasNot` failure message: today only "Expected row to exist." Name the
   table and the expected column values, ideally with the closest actual rows. The migration article
   shows this failure (`~/workspaces/articles/untested-migration/`).
