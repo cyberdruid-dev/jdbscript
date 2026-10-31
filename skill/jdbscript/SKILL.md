@@ -45,9 +45,12 @@ There is **no** camelCase→snake_case conversion and no annotation to override 
 method exactly as the database column is named, even if that means a non-camelCase method name.
 Do not "fix" `user_id` to `userId` — that silently breaks the mapping.
 
-### Renaming a column or table
+### Renaming or dropping a column or table
 A rename is a method rename (setter or table method): rename the declaration, then fix the
-compile errors, or use a semantic rename tool if one is available.
+compile errors, or use a semantic rename (IDE via MCP, language server) if one is available.
+On a large code base, OpenRewrite does it in one run regardless of the number of call sites:
+`ChangeMethodName` for a rename, `RemoveMethodInvocations` for a dropped column (then delete
+the declaration).
 
 ## When writing schema interfaces
 
