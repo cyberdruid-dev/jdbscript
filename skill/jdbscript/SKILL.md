@@ -45,6 +45,10 @@ There is **no** camelCase→snake_case conversion and no annotation to override 
 method exactly as the database column is named, even if that means a non-camelCase method name.
 Do not "fix" `user_id` to `userId` — that silently breaks the mapping.
 
+### Renaming a column or table
+A rename is a method rename (setter or table method): rename the declaration, then fix the
+compile errors, or use a semantic rename tool if one is available.
+
 ## When writing schema interfaces
 
 - One record interface per table; one accessor method per table on the schema interface.
