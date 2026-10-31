@@ -220,20 +220,44 @@ engine.resetDB(db -> {
 });
 ```
 
+`include` also works inside a class script's initializer, so fixture classes can build on each other.
+
+Data that many tests need but none asserts on (a `system` user, a settings row) fits a fixture class. Include it explicitly in each reset script, so every test shows where its data comes from:
+
+```java
+engine.resetDB(db -> {
+    db.include(BackgroundData.class);
+    db.orders().id(200L).user_id(SYSTEM_USER).status("NEW");
+});
+```
+
 ### Helper Methods (`as`)
 
-Keep setup helpers out of the main schema interface: put them as default methods on a sub-interface (e.g. local to a test class), and run lambda scripts against it with `as(...)`:
+Plain record chains are the default: the named setters keep test data readable. A helper earns its place in complex scenarios, e.g. when it keeps derived values consistent. Have it return the main record, so the test still sets what it depends on by name. Put helpers as default methods on a sub-interface (e.g. local to a test class), and run lambda scripts against it with `as(...)`:
 
 ```java
 interface IOrderScript extends IAppSchema {
-    default IOrderRecord addOrderFor(long userId, long orderId) {
-        users().id(userId).username("user_" + userId);
-        return orders().id(orderId).user_id(userId);
+    record Item(String product, int quantity, double price) {}
+
+    // keeps orders.total_amount consistent with the order's items
+    default IOrderRecord orderWithItems(long orderId, Item... items) {
+        double total = 0;
+        for (int i = 0; i < items.length; i++) {
+            Item item = items[i];
+            order_items().id(orderId * 100 + i).order_id(orderId)
+                    .product_name(item.product()).quantity(item.quantity()).unit_price(item.price());
+            total += item.quantity() * item.price();
+        }
+        return orders().id(orderId).total_amount(total);
     }
 }
 
 engine.as(IOrderScript.class).insertDB(db -> {
-    db.addOrderFor(1L, 200L).total_amount(99.00);
+    db.users().id(1L).username("alice");
+    db.orderWithItems(200L,
+            new Item("Keyboard", 1, 120.00),
+            new Item("Mouse", 2, 40.00)
+    ).user_id(1L).status("COMPLETED");
 });
 ```
 

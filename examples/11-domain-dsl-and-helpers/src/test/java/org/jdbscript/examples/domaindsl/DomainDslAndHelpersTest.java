@@ -18,11 +18,10 @@ import static org.jdbscript.examples.domaindsl.ICustomerOrderDSL.Item.item;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * Demonstrates building type-safe Domain DSLs with {@code engine.as(...)}.
+ * Demonstrates domain helpers with {@code engine.as(...)}.
  * <p>
- * Extending the base schema interface with domain helper methods allows test authors to create
- * multi-table aggregates (e.g. customers, orders, and nested order items) in a single declarative
- * statement without repetitive boilerplate.
+ * Plain record chains stay the default; a helper on a sub-interface of the schema handles derived
+ * or multi-table data and returns the main record, so the test sets the values it depends on by name.
  */
 class DomainDslAndHelpersTest {
 
@@ -49,53 +48,44 @@ class DomainDslAndHelpersTest {
     }
 
     @Test
-    void domain_dsl_creates_multi_table_aggregates_cleanly() {
-        // engine.as(...) provides a view with domain-specific helper methods
+    void helper_keeps_order_totals_consistent_with_items() {
         IJDBEngine<ICustomerOrderDSL> dslEngine = engine.as(ICustomerOrderDSL.class);
 
-        // Arrange: set up a customer with two orders and multiple items in a clean, declarative block
         dslEngine.insertDB(db -> {
-            db.addCustomer(1L, "Alice Smith", "VIP");
+            db.customers().id(1L).name("Alice Smith").tier("VIP");
 
-            db.addOrderWithItems(
-                    101L, 1L, "ORD-101", "COMPLETED",
+            db.orderWithItems(101L,
                     item("Mechanical Keyboard", 1, 120.00),
                     item("Wireless Mouse", 2, 40.00)
-            );
+            ).customer_id(1L).status("COMPLETED");
 
-            db.addOrderWithItems(
-                    102L, 1L, "ORD-102", "COMPLETED",
+            db.orderWithItems(102L,
                     item("Desk Mat", 1, 25.00)
-            );
+            ).customer_id(1L).status("COMPLETED");
         });
 
-        // Act & Assert on the real system under test
         assertEquals(225.00, reportingService.calculateTotalSpent(1L), 0.001);
         assertEquals(4, reportingService.countTotalItemsPurchased(1L));
     }
 
     @Test
-    void domain_dsl_handles_filtered_order_statuses() {
+    void only_completed_orders_are_counted() {
         IJDBEngine<ICustomerOrderDSL> dslEngine = engine.as(ICustomerOrderDSL.class);
 
-        // Arrange: one completed order and one pending order (each with multiple items)
         dslEngine.insertDB(db -> {
-            db.addCustomer(2L, "Bob Jones", "REGULAR");
+            db.customers().id(2L).name("Bob Jones").tier("REGULAR");
 
-            db.addOrderWithItems(
-                    201L, 2L, "ORD-201", "COMPLETED",
+            db.orderWithItems(201L,
                     item("USB-C Hub", 1, 50.00),
                     item("HDMI Cable", 2, 15.00)
-            );
+            ).customer_id(2L).status("COMPLETED");
 
-            db.addOrderWithItems(
-                    202L, 2L, "ORD-202", "PENDING",
+            db.orderWithItems(202L,
                     item("4K Monitor", 1, 400.00),
                     item("Monitor Stand", 1, 80.00)
-            );
+            ).customer_id(2L).status("PENDING");
         });
 
-        // Act & Assert: reporting service only considers COMPLETED orders
         assertEquals(80.00, reportingService.calculateTotalSpent(2L), 0.001);
         assertEquals(3, reportingService.countTotalItemsPurchased(2L));
     }

@@ -1,11 +1,11 @@
 package org.jdbscript.examples.domaindsl;
 
 /**
- * Domain-specific extension of {@link IAppSchema}.
+ * Domain-specific extension of {@link IAppSchema}, used via {@code engine.as(ICustomerOrderDSL.class)}.
  * <p>
- * Extending the base schema interface with {@code default} helper methods allows test suites
- * to create rich, multi-table aggregates and business concepts in single expressive calls
- * using {@code engine.as(ICustomerOrderDSL.class)}.
+ * Plain record chains are the default. A helper earns its place when it keeps derived data
+ * consistent: here, an order's {@code total_amount} always matches its items. It returns the
+ * order record, so the test still sets what it depends on with named setters.
  */
 public interface ICustomerOrderDSL extends IAppSchema {
 
@@ -15,21 +15,7 @@ public interface ICustomerOrderDSL extends IAppSchema {
         }
     }
 
-    default ICustomerRecord addCustomer(long customerId, String name, String tier) {
-        return customers()
-                .id(customerId)
-                .name(name)
-                .email(name.toLowerCase().replace(" ", ".") + "@example.com")
-                .tier(tier);
-    }
-
-    default IOrderRecord addOrderWithItems(
-            long orderId,
-            long customerId,
-            String orderNumber,
-            String status,
-            Item... items
-    ) {
+    default IOrderRecord orderWithItems(long orderId, Item... items) {
         double total = 0.0;
         long baseItemId = orderId * 100;
         for (int i = 0; i < items.length; i++) {
@@ -42,11 +28,6 @@ public interface ICustomerOrderDSL extends IAppSchema {
                     .quantity(item.quantity())
                     .unit_price(item.unitPrice());
         }
-        return orders()
-                .id(orderId)
-                .customer_id(customerId)
-                .order_number(orderNumber)
-                .status(status)
-                .total_amount(total);
+        return orders().id(orderId).total_amount(total);
     }
 }

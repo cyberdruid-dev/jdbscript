@@ -94,25 +94,41 @@ engine.resetDB(db -> {
 });
 ```
 
+`include` also works inside a class script's initializer, so fixture classes can build on each other.
+
 A script is just Java — loops, `Random` (seed it, e.g. `new Random(42)`, for reproducible bulk
 fixtures), conditionals — nothing special is needed to generate many rows.
 
-For helpers that create several related rows or multi-table aggregates, use a sub-interface with default
-methods (e.g. local to the test class or shared across domain tests) instead of growing the main schema
-interface, and run lambdas through `as(...)`:
+When a helper earns its place (see "Writing high-signal fixtures"), put it as a default method on a
+sub-interface (e.g. local to the test class or shared across domain tests) instead of growing the main
+schema interface, and run lambdas through `as(...)`:
 
 ```java
-interface ICustomerOrderDSL extends IAppSchema {
-    default void createCustomerWithOrders(long customerId, String name, double... amounts) {
-        customers().id(customerId).name(name);
-        for (int i = 0; i < amounts.length; i++) {
-            orders().id(customerId * 100 + i).customer_id(customerId).total_amount(amounts[i]);
+interface IOrderScript extends IAppSchema {
+    record Item(String productName, int quantity, double unitPrice) {}
+
+    static Item item(String productName, int quantity, double unitPrice) {
+        return new Item(productName, quantity, unitPrice);
+    }
+
+    default IOrderRecord orderWithItems(long orderId, Item... items) {
+        double total = 0;
+        for (int i = 0; i < items.length; i++) {
+            Item item = items[i];
+            order_items().id(orderId * 100 + i).order_id(orderId)
+                    .product_name(item.productName()).quantity(item.quantity()).unit_price(item.unitPrice());
+            total += item.quantity() * item.unitPrice();
         }
+        return orders().id(orderId).total_amount(total);
     }
 }
 
-engine.as(ICustomerOrderDSL.class).insertDB(db -> {
-    db.createCustomerWithOrders(101L, "Alice", 29.99, 99.00);
+engine.as(IOrderScript.class).insertDB(db -> {
+    db.customers().id(1L).name("Alice");
+    db.orderWithItems(101L,
+            item("Keyboard", 1, 120.00),
+            item("Mouse", 2, 40.00)
+    ).customer_id(1L).status("COMPLETED");
 });
 ```
 
@@ -156,6 +172,8 @@ engine.assertDBHasNot(db -> {
 ```
 
 Only the columns you set are checked — omitted columns are wildcards, not implied nulls.
+`defaults()` are not applied, so default values aren't checked either. Converters are applied,
+just as on insert.
 
 **Prefer asserting on your own code's behavior** (call the real system under test, assert on
 what it returns) over `assertDBHas`/`assertDBHasNot`. Reach for these only when nothing in your
@@ -190,7 +208,51 @@ List every table the schema interface declares, parent-to-child.
 
 ## Writing high-signal fixtures
 
-A good JDBScript fixture acts as executable documentation: it should be as short as possible while making the test's intent and boundaries immediately obvious.
+A test's setup should be **visible** (the data the test depends on is in the test), **minimal**
+(only that data; the rest goes in `defaults()`) and **self-explanatory** (readable without digging).
+One check covers all three: **can you understand the test without opening the helper?** The same
+check applies to fixture classes.
+
+### Plain record chains first
+Write setup as record chains with named setters, in the test. Named setters are what make a
+fixture readable, so don't hide them behind one-row helpers:
+
+```java
+// ❌ BAD: what is 3? Which rows does product() create?
+db.product(MALLET, "Mallet", "15.00", 3, HAND_TOOLS);
+
+// ✅ GOOD
+db.products().id(MALLET).name("Mallet").price("15.00").category_id(HAND_TOOLS);
+db.inventory().product_id(MALLET).quantity(3);
+```
+
+A helper (see "Reusable / composable scripts") can help in complex scenarios. It might create
+structure the test doesn't care about, or keep derived values consistent, such as an order total
+computed from its items. Use one only when it makes the test simpler. Have it return the main
+record, so the values the test depends on are still set with named setters:
+
+```java
+db.orderWithItems(101L,
+        item("Keyboard", 1, 120.00),
+        item("Mouse", 2, 40.00)
+).customer_id(1L).status("COMPLETED");
+```
+
+If in doubt, write the chains.
+
+### Background data
+Data that many tests need but none asserts on (a `system` user, a settings row) can go in a
+fixture class. Include it explicitly in every reset script, so each test shows where its data
+comes from:
+
+```java
+engine.resetDB(db -> {
+    db.include(BackgroundData.class);
+    db.orders().id(200L).user_id(SYSTEM_USER).status("NEW");
+});
+```
+
+If a test asserts on some data, that data belongs in the test, not in a fixture class.
 
 ### The Contrast Rule (Explicit State vs. Incidental Defaults)
 1. **Explicit Test Variables**: If a column directly influences the System Under Test (SUT) or is checked in an assertion (e.g. `status`, `role`, `active`, `amount`, filter conditions), explicitly set it on **all** rows involved in the test.

@@ -97,7 +97,7 @@ engine.updateDB(db -> {
 
 ## Domain DSLs & sub-interface helpers (`engine.as(...)`)
 
-Extend your schema interface with domain helper methods to construct multi-table aggregates or business concepts in expressive calls:
+Plain record chains are the default. When a helper earns its place, e.g. keeping an order's total consistent with its items, put it on a sub-interface and return the main record, so the test still sets what it depends on by name:
 
 ```java
 public interface ICustomerOrderDSL extends IAppSchema {
@@ -107,11 +107,7 @@ public interface ICustomerOrderDSL extends IAppSchema {
         }
     }
 
-    default ICustomerRecord addCustomer(long customerId, String name, String tier) {
-        return customers().id(customerId).name(name).tier(tier);
-    }
-
-    default IOrderRecord addOrderWithItems(long orderId, long customerId, String orderNumber, Item... items) {
+    default IOrderRecord orderWithItems(long orderId, Item... items) {
         double total = 0.0;
         long baseItemId = orderId * 100;
         for (int i = 0; i < items.length; i++) {
@@ -123,16 +119,16 @@ public interface ICustomerOrderDSL extends IAppSchema {
                     .quantity(item.quantity())
                     .unit_price(item.unitPrice());
         }
-        return orders().id(orderId).customer_id(customerId).order_number(orderNumber).total_amount(total);
+        return orders().id(orderId).total_amount(total);
     }
 }
 
 engine.as(ICustomerOrderDSL.class).insertDB(db -> {
-    db.addCustomer(1L, "Alice Smith", "VIP");
-    db.addOrderWithItems(101L, 1L, "ORD-101",
+    db.customers().id(1L).name("Alice Smith").tier("VIP");
+    db.orderWithItems(101L,
             item("Mechanical Keyboard", 1, 120.00),
             item("Wireless Mouse", 2, 40.00)
-    );
+    ).customer_id(1L).status("COMPLETED");
 });
 ```
 
