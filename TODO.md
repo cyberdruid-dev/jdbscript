@@ -10,13 +10,12 @@
 ## Open
 
 #### Release (v1.4.0)
-* [ ] Skill: describe `excludeFromCleanup(...)` / `excludedTableWriteStrategy(...)` for reference data
-  created by migrations (`skill/jdbscript/SKILL.md` and `reference/migrations.md`)
+* [x] Skill: `excludeFromCleanup(...)` in "Cleanup and FK ordering" (not `reference/migrations.md`:
+  migration tests seed a freshly migrated DB with `insertDB`); H2 in the sequence-reset list; column
+  validation note; failure messages name table and values
 * [ ] Bump `jdbscript.version` in `examples/pom.xml` and `examples/08-springboot/pom.xml` (08 has
   Spring Boot as parent, so it doesn't inherit the version), and in the skill's dependency
   coordinates (`skill/jdbscript/SKILL.md`, "Adding to a project")
-* [ ] Skill: add H2 to the sequence-reset DBMS list (`skill/jdbscript/SKILL.md`, "on PostgreSQL,
-  CockroachDB, Oracle, DB2, HSQLDB and DuckDB")
 * [x] `assertDBHas` / `assertDBHasNot` failure message: every failing record with its table and
   written values; `assertDBHasNot` shows a matching row. The migration article shows the old
   message (`~/workspaces/articles/untested-migration/`) - update it after the release.
@@ -46,7 +45,7 @@
 * [x] Add an `updateDB` test to `examples/02-class-scripts-and-include` (reset `BaseUsersFixture`,
   tweak one row, act, assert) and list it in `skill/jdbscript/reference/examples.md`
 
-#### Performance (v1.2.5)
+#### Performance (measurement first)
 * [ ] Performance improvement, measurement first: benchmark seed / cleanup / assert against the
   other tools in `java-db-testing-compared`, then prioritize the items below by what the numbers
   show

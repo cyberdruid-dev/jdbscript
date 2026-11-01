@@ -44,6 +44,7 @@ interface IOrderRecord extends IDBRecord {
 There is **no** camelCase→snake_case conversion and no annotation to override it. Name the Java
 method exactly as the database column is named, even if that means a non-camelCase method name.
 Do not "fix" `user_id` to `userId` — that silently breaks the mapping.
+A method without a matching column fails on first use of the engine, listing every mismatch.
 
 ### Renaming or dropping a column or table
 A rename is a method rename (setter or table method): rename the declaration, then fix the
@@ -204,6 +205,11 @@ JDBEngine.builder(IAppSchema.class)
 
 List every table the schema interface declares, parent-to-child.
 
+To keep the rows of a declared table, such as reference data a migration created, exclude it:
+`.excludeFromCleanup("brands", "order_statuses")`. Excluded tables keep their rows and identity
+columns and can be asserted against. A script that writes to one fails, since those rows would
+survive cleanup. Don't re-insert reference data in fixtures to work around cleanup.
+
 ## Builder options worth knowing
 
 - `.dataSource(ds)` or `.dataSource(() -> ds)` for lazy resolution.
@@ -319,12 +325,14 @@ Full example, marker rules and builder options: `reference/migrations.md`.
 
 ## Gotchas
 
+- Failures name the table and the values the script wrote (insert/update errors, `assertDBHas`
+  mismatches, schema validation). Read the message before writing a probe test.
 - Column-name mismatches are the most common bug: a method named `userId` will try to write to a
   column literally called `userId`, not `user_id`.
 - `resetDB` wipes tables in the schema interface, not the whole database — tables absent from the
   schema interface are untouched.
 - Cleanup (`cleanupDB`, and so `resetDB`) restarts sequences and identity columns at exactly 10000
-  on PostgreSQL, CockroachDB, Oracle, DB2, HSQLDB and DuckDB, so manually assigned low IDs (1, 2, ...)
+  on PostgreSQL, CockroachDB, Oracle, DB2, H2, HSQLDB and DuckDB, so manually assigned low IDs (1, 2, ...)
   never collide with generated ones.
 - Cleanup deletes **all rows** from the schema's tables, so tests running in parallel against the
   same database interfere with each other. Before enabling parallel execution (JUnit
