@@ -173,7 +173,7 @@ Runnable, self-contained example projects demonstrating real-world usage pattern
 * **[Flyway Data Migration (`10-flyway-data-migration`)](https://github.com/cyberdruid-dev/jdbscript/blob/main/examples/10-flyway-data-migration/src/test/java/org/jdbscript/examples/flywaydatamigration/PersonFullNameBackfillMigrationTest.java)** — Verify a single versioned migration's effect on existing rows: `migrateBefore("3")`, seed the pre-migration shape, `migrateTo("3")`, assert the post-migration state.
 
 ### Advanced Modeling
-* **[Domain DSLs & Aggregates (`11-domain-dsl-and-helpers`)](https://github.com/cyberdruid-dev/jdbscript/blob/main/examples/11-domain-dsl-and-helpers/src/test/java/org/jdbscript/examples/domaindsl/DomainDslAndHelpersTest.java)** — Seed complex multi-table business entities cleanly by extending schemas with domain helper methods via `engine.as(...)`.
+* **[Domain DSLs & Aggregates (`11-domain-dsl-and-helpers`)](https://github.com/cyberdruid-dev/jdbscript/blob/main/examples/11-domain-dsl-and-helpers/src/test/java/org/jdbscript/examples/domaindsl/DomainDslAndHelpersTest.java)** — Domain helpers via `engine.as(...)` for derived or multi-table data, returning the main record so tests keep named setters.
 * **[Custom Converters (`05-custom-converters`)](https://github.com/cyberdruid-dev/jdbscript/blob/main/examples/05-custom-converters/src/test/java/org/jdbscript/examples/converters/CustomConvertersTest.java)** — Mapping domain value objects (e.g., `Money`) to JDBC columns via `IJDBTypeConverter`.
 
 ### Frameworks & Ecosystem

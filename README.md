@@ -44,7 +44,7 @@ The approach isn't new: it has been the in-house fixture layer of two long-lived
 - **Metadata Caching**: Built-in caching for database metadata (tables, foreign keys) to speed up test execution.
 - **Multi-DBMS Compatibility**: Built-in support for PostgreSQL, MySQL, MariaDB, Oracle, Microsoft SQL Server, H2, HSQLDB, IBM DB2, CockroachDB, SQLite, DuckDB, and Google Cloud Spanner.
 - **Automatic Type Conversion**: Seamless handling of Java Enums, UUIDs, Dates, Timestamps, and binary data.
-- **Sequence Management**: Cleanup restarts sequences and identity columns at exactly 10000, so manually assigned low IDs (1, 2, ...) never collide with generated ones (supported for PostgreSQL, CockroachDB, Oracle, DB2, H2, HSQLDB, and DuckDB).
+- **Sequence Management**: Cleanup restarts sequences and identity columns at exactly 10000, so manually assigned low IDs (1, 2, ...) never collide with generated ones (supported for PostgreSQL, CockroachDB, Oracle, DB2, H2 (since 1.4.0), HSQLDB, and DuckDB).
 
 ---
 
@@ -321,7 +321,7 @@ engine.cleanupDB();
 
 JDBScript automatically detects foreign key dependencies and deletes records in the correct order to avoid constraint violations. Cleanup also restarts sequences and identity columns at 10000 (see [Key Features](#key-features) for supported databases), so the IDs a test gets from the database are predictable. If a circular dependency **between two or more tables** is detected, an exception will be thrown. A table referencing itself (e.g. an `employees` table with a `manager_id` column pointing back to `employees`) is not treated as a cycle. See [Manual Table Order Override](#manual-table-order-override) for an escape hatch when auto-detection can't determine the right order at all.
 
-Cleanup only touches tables the schema interface declares; other tables are never emptied. To keep the data of a declared table, such as reference data a migration created, exclude it:
+Cleanup only touches tables the schema interface declares; other tables are never emptied. To keep the data of a declared table, such as reference data a migration created, exclude it (since 1.4.0):
 
 ```java
 JDBEngine.builder(IShopSchema.class)
@@ -378,7 +378,7 @@ engine.assertDBHasNot(db -> {
 });
 ```
 
-Each record must match at least one row (`assertDBHas`) or none (`assertDBHasNot`). Only the columns you set are compared, and `defaults` are not applied. See the javadoc for the full matching rules.
+Each record must match at least one row (`assertDBHas`) or none (`assertDBHasNot`). Only the columns you set are compared, and `defaults` are not applied. See the javadoc (since 1.4.0) for the full matching rules.
 
 ---
 
@@ -431,7 +431,7 @@ To improve performance across multiple tests, JDBScript supports different metad
 
 ## Schema Validation
 
-On first use (the first `insertDB`/`resetDB`/`cleanupDB`/assert call, not at `.build()` time), `JDBEngine` validates that all tables defined in your Java interface exist in the database, and that every record method has a matching column (database columns a record leaves out are fine). Mismatches throw a `JDBScriptException` listing all of them. You can also configure how it handles tables that exist in the database but are *not* defined in your interface:
+On first use (the first `insertDB`/`resetDB`/`cleanupDB`/assert call, not at `.build()` time), `JDBEngine` validates that all tables defined in your Java interface exist in the database, and that every record method has a matching column (since 1.4.0; database columns a record leaves out are fine). Mismatches throw a `JDBScriptException` listing all of them. You can also configure how it handles tables that exist in the database but are *not* defined in your interface:
 
 - `unmappedTableStrategy(ValidationStrategy.IGNORE)`: Log at DEBUG only (default for `JDBMigrationEngine`, whose before/after interfaces usually cover only the tables a migration touches).
 - `unmappedTableStrategy(ValidationStrategy.LOG_WARN)`: Log a warning (default for `JDBEngine`).

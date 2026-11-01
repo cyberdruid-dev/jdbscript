@@ -9,7 +9,7 @@
 
 ## Open
 
-#### Release (v1.3.3)
+#### Release (v1.4.0)
 * [ ] Skill: describe `excludeFromCleanup(...)` / `excludedTableWriteStrategy(...)` for reference data
   created by migrations (`skill/jdbscript/SKILL.md` and `reference/migrations.md`)
 * [ ] Bump `jdbscript.version` in `examples/pom.xml` and `examples/08-springboot/pom.xml` (08 has
@@ -24,7 +24,8 @@
   `AssertionFailedError`'s `expected` / `actual` for the IDE diff
 * [ ] Skill versioning (decided: pin to the release tag): after tagging, add `"ref": "vX.Y.Z"` to the
   `git-subdir` source in `site/public/marketplace.json` (no `version`: it comes from the commit) and
-  deploy the site. From this release on, the installed skill matches the released library, so skill
+  deploy the site. Point the skill links in `site/public/llms.txt` (SKILL.md and `reference/`) at the
+  same tag. From this release on, the installed skill matches the released library, so skill
   edits go on `main` with the code. Repeat the `ref` bump on every release.
   To try skill edits before a release: `claude --plugin-dir skill/jdbscript` from the repo root
   (overrides the installed plugin; `/reload-plugins` picks up further edits).
