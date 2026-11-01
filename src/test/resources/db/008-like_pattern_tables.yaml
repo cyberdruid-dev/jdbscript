@@ -1,0 +1,30 @@
+databaseChangeLog:
+  - changeSet:
+      id: 008-like_pattern_tables
+      author: Cyber Druid
+      comment: "like_test as a metadata LIKE pattern also matches likextest"
+      changes:
+        - createTable:
+            tableName: like_test
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(50)
+        - createTable:
+            tableName: likextest
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: other
+                  type: varchar(50)

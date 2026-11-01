@@ -57,6 +57,9 @@
 * [x] Add `ValidationStrategy.IGNORE` for unmapped tables; `JDBMigrationEngine` defaults to it
 * [x] Validate an `IDBRecord` interface's declared column methods against the DB table's actual
   columns (one direction; all mismatches in one `JDBScriptException`)
+* [ ] `SqlMetadataProvider.getIdentityColumn` passes `null` catalog/schema to `getColumns`, so it can
+  match a same-named table in another schema; use the strategy's search catalog/schema like the
+  other lookups
 #### Type Conversion
 * [ ] Warn (or leave to the DBMS) when a Java value has more precision than the DB column
   supports (e.g. `Date` vs a DB `DATE` column; MariaDB + `assertDBHas()` on timestamps)

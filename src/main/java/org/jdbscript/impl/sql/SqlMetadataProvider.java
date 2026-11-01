@@ -11,6 +11,8 @@ import java.sql.SQLException;
 import java.sql.Types;
 import java.util.*;
 
+import static org.jdbscript.impl.sql.ISqlExecutorStrategy.isTable;
+
 public class SqlMetadataProvider implements IMetadataProvider {
 
     private final SqlConnectionProvider connectionProvider;
@@ -112,7 +114,9 @@ public class SqlMetadataProvider implements IMetadataProvider {
         String searchSchema = getStrategy().getSearchSchema(cnn);
         try (ResultSet rs = cnn.getMetaData().getColumns(searchCatalog, searchSchema, dbTableName, null)) {
             while (rs.next()) {
-                columns.add(rs.getString("COLUMN_NAME"));
+                if (isTable(rs, dbTableName)) {
+                    columns.add(rs.getString("COLUMN_NAME"));
+                }
             }
         }
         return columns;
@@ -126,6 +130,9 @@ public class SqlMetadataProvider implements IMetadataProvider {
             String searchSchema = getStrategy().getSearchSchema(cnn);
             try (ResultSet rs = cnn.getMetaData().getColumns(searchCatalog, searchSchema, dbTableName, null)) {
                 while (rs.next()) {
+                    if (!isTable(rs, dbTableName)) {
+                        continue;
+                    }
                     int type = rs.getInt("DATA_TYPE");
                     if (type == Types.CLOB || type == Types.NCLOB || type == Types.BLOB) {
                         columns.put(rs.getString("COLUMN_NAME").toUpperCase(), type);
@@ -149,7 +156,7 @@ public class SqlMetadataProvider implements IMetadataProvider {
         withConnection(cnn -> {
             try (ResultSet rs = cnn.getMetaData().getColumns(null, null, dbTableName, "%")) {
                 while (rs.next() && identityColumn[0] == null) {
-                    if ("YES".equals(rs.getString("IS_AUTOINCREMENT"))) {
+                    if (isTable(rs, dbTableName) && "YES".equals(rs.getString("IS_AUTOINCREMENT"))) {
                         identityColumn[0] = rs.getString("COLUMN_NAME");
                     }
                 }

@@ -125,3 +125,14 @@ CREATE TABLE IF NOT EXISTS tree_nodes (
     parent_id INTEGER,
     CONSTRAINT fk_tree_nodes_parent FOREIGN KEY (parent_id) REFERENCES tree_nodes(id)
 );
+
+-- like_test as a metadata LIKE pattern also matches likextest
+CREATE TABLE IF NOT EXISTS like_test (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR(50)
+);
+
+CREATE TABLE IF NOT EXISTS likextest (
+    id INTEGER PRIMARY KEY,
+    other VARCHAR(50)
+);

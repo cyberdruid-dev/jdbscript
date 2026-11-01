@@ -45,6 +45,8 @@ public class TemporaryTableDiscoveryTest extends JdbAbstractTest {
         ITable composite_pk_table();
         ITable no_pk_table();
         ITable tree_nodes();
+        ITable like_test();
+        ITable likextest();
     }
 
     @BeforeMethod

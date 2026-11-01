@@ -109,12 +109,22 @@ public interface ISqlExecutorStrategy {
     default void setMetadataProvider(IMetadataProvider metadataProvider) {
     }
 
+    /**
+     * {@code DatabaseMetaData} takes the table name as a LIKE pattern, so {@code like_test} also
+     * matches {@code likextest}: keep only the rows of the table itself.
+     */
+    static boolean isTable(ResultSet rs, String dbTableName) throws SQLException {
+        return dbTableName.equals(rs.getString("TABLE_NAME"));
+    }
+
     /** Backs {@link IMetadataProvider#getColumnTypes}; call that instead, it's cached. */
     default Map<String, String> findColumnTypes(Connection cnn, String dbTableName) throws SQLException {
         Map<String, String> result = new HashMap<>();
         try (ResultSet rs = cnn.getMetaData().getColumns(getSearchCatalog(cnn), getSearchSchema(cnn), dbTableName, null)) {
             while (rs.next()) {
-                result.put(rs.getString("COLUMN_NAME").toLowerCase(), rs.getString("TYPE_NAME"));
+                if (isTable(rs, dbTableName)) {
+                    result.put(rs.getString("COLUMN_NAME").toLowerCase(), rs.getString("TYPE_NAME"));
+                }
             }
         }
         return result;
