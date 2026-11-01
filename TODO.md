@@ -19,8 +19,6 @@
 * [x] `assertDBHas` / `assertDBHasNot` failure message: every failing record with its table and
   written values; `assertDBHasNot` shows a matching row. The migration article shows the old
   message (`~/workspaces/articles/untested-migration/`) - update it after the release.
-* [ ] `assertDBHas` failure: show the closest actual rows (differing columns marked) and fill
-  `AssertionFailedError`'s `expected` / `actual` for the IDE diff
 * [ ] Skill versioning (decided: pin to the release tag): after tagging, add `"ref": "vX.Y.Z"` to the
   `git-subdir` source in `site/public/marketplace.json` (no `version`: it comes from the commit) and
   deploy the site. Point the skill links in `site/public/llms.txt` (SKILL.md and `reference/`) at the
@@ -99,6 +97,8 @@
 * [ ] Cache parsed scripts inside the engine (with an option to disable)
 * [ ] `JdbsUtils`: `today(+-nDays)` (use time units?), `midnight(+-nDays)`
 * [x] add a callback for db modification? (e.g. for app's cache reset) - `onDataChange` (v1.2.0)
+* [ ] `assertDBHas` failure: show the closest actual rows (differing columns marked) and fill
+  `AssertionFailedError`'s `expected` / `actual` for the IDE diff (moved out of v1.4.0)
 
 #### Ecosystem Integration
 * [ ] Generate schema interfaces from an existing DB
