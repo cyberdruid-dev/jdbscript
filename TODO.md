@@ -22,9 +22,10 @@
   message (`~/workspaces/articles/untested-migration/`) - update it after the release.
 * [ ] `assertDBHas` failure: show the closest actual rows (differing columns marked) and fill
   `AssertionFailedError`'s `expected` / `actual` for the IDE diff
-* [ ] Skill versioning: decide the workflow for keeping the installed skill in step with the
-  released library (e.g. pin the plugin's `git-subdir` source in `site/public/marketplace.json` to
-  the release tag and set `version`, vs tracking `main`, which can describe unreleased API)
+* [ ] Skill versioning (decided: pin to the release tag): after tagging, add `"ref": "vX.Y.Z"` to the
+  `git-subdir` source in `site/public/marketplace.json` (no `version`: it comes from the commit) and
+  deploy the site. From this release on, the installed skill matches the released library, so skill
+  edits go on `main` with the code. Repeat the `ref` bump on every release.
 
 #### Release (v1.3.2)
 * [x] LOB columns in `assertDBHas` / `assertDBHasNot`
