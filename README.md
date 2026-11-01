@@ -37,7 +37,7 @@ The approach isn't new: it has been the in-house fixture layer of two long-lived
 - **Fluent & Expressive API**: Create single or multiple rows with chained method calls.
 - **Flexible Script Formats**: Write scripts inline via lambdas (`db -> { ... }`) or encapsulate reusable datasets as static/abstract classes.
 - **Script Composition**: Compose and reuse scripts using `db.include(...)`.
-- **Smart Defaults & Generators**: Define default column values, auto-incrementing IDs (`RecordTools.nextIntId`), and templated strings (`RecordTools.strValue`).
+- **Smart Defaults & Generators**: Define default column values, auto-incrementing IDs (`RecordTools.nextIntId` / `nextLongId`), and templated strings (`RecordTools.strValue`).
 - **Cleanups & Resets**: Easily wipe tables (`cleanupDB`) and reset state before or between tests. Tables are automatically deleted in the correct order based on foreign key dependencies.
 - **Database Assertions**: Verify that specific records exist or do not exist in the database using the same fluent API.
 - **Migration Testing**: Test what a Liquibase or Flyway migration does to existing rows: seed data in the pre-migration shape, migrate, then assert the post-migration shape (see [Migration Testing](#migration-testing)).
