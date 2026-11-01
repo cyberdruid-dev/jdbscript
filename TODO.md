@@ -26,6 +26,8 @@
   `git-subdir` source in `site/public/marketplace.json` (no `version`: it comes from the commit) and
   deploy the site. From this release on, the installed skill matches the released library, so skill
   edits go on `main` with the code. Repeat the `ref` bump on every release.
+  To try skill edits before a release: `claude --plugin-dir skill/jdbscript` from the repo root
+  (overrides the installed plugin; `/reload-plugins` picks up further edits).
 
 #### Release (v1.3.2)
 * [x] LOB columns in `assertDBHas` / `assertDBHasNot`

@@ -186,7 +186,7 @@ engine.insertDB(db -> {
 
 ### Class-Based Reusable Scripts
 
-For common test scenarios (e.g. standard reference data, base user sets), define static or abstract classes:
+For data several tests share (e.g. a base set of users), define static or abstract classes:
 
 ```java
 public abstract class BaseUsersFixture implements IAppSchema {{
