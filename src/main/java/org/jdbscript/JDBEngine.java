@@ -596,8 +596,8 @@ public class JDBEngine<T extends IDBSchema> implements IJDBEngine<T>{
 
         /**
          * Registers a callback invoked once after each successful data-changing call -
-         * {@link JDBEngine#resetDB}, {@link JDBEngine#insertDB} (either overload), or
-         * {@link JDBEngine#cleanupDB} - e.g. to invalidate an application-level cache. Not invoked
+         * {@link JDBEngine#resetDB}, {@link JDBEngine#insertDB}, {@link JDBEngine#updateDB} (either
+         * overload), or {@link JDBEngine#cleanupDB} - e.g. to invalidate an application-level cache. Not invoked
          * by {@code assertDBHas}/{@code assertDBHasNot}, which don't mutate the database, nor when
          * the triggering call itself fails. Any exception the callback throws is wrapped in a
          * {@link JDBScriptException} and propagated to the caller of that data-changing call.

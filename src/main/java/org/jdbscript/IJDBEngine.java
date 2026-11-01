@@ -10,7 +10,7 @@ import java.util.function.Consumer;
 public interface IJDBEngine <T extends IDBSchema>{
 
     /**
-     * Cleans up all tables declared in the schema and executes the specified class-based script.
+     * Runs {@link #cleanupDB()}, then executes the specified class-based script.
      *
      * @param scriptClass the class extending the schema interface that defines dataset fixtures
      */
@@ -24,7 +24,7 @@ public interface IJDBEngine <T extends IDBSchema>{
     void insertDB(Class<? extends T> scriptClass);
 
     /**
-     * Cleans up all tables declared in the schema and executes the specified inline lambda script.
+     * Runs {@link #cleanupDB()}, then executes the specified inline lambda script.
      *
      * @param db a {@link Consumer} receiving the schema proxy to define and insert records
      */
@@ -38,7 +38,11 @@ public interface IJDBEngine <T extends IDBSchema>{
     void insertDB(Consumer<T> db);
 
     /**
-     * Deletes all records from the tables defined in the schema in the reverse order of declaration.
+     * Deletes all rows from the tables declared in the schema, except those excluded with
+     * {@link JDBEngine.Builder#excludeFromCleanup}, in foreign key order (referencing tables first)
+     * or in the order set with {@link JDBEngine.Builder#tableDependencyOrder}. Also restarts
+     * sequences and identity columns at 10000 where the database supports it, and resets the
+     * {@link RecordTools} id counters.
      */
     void cleanupDB();
 
