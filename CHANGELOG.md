@@ -2,7 +2,7 @@
 
 Notable changes per release. Full notes for each version are on [GitHub Releases](https://github.com/cyberdruid-dev/jdbscript/releases).
 
-## [Unreleased]
+## [1.4.0] - 2026-11-01
 
 ### Added
 - `excludeFromCleanup(...)`: keep the data of declared tables, e.g. reference data created by a migration. Writing to an excluded table fails unless `excludedTableWriteStrategy(...)` allows it.
@@ -105,6 +105,7 @@ Driven by migrating a large enterprise project (9+ years of active development, 
 
 Initial release: schemas and tables as typed Java interfaces, fluent seeding, inline and class-based scripts with `db.include(...)`, `resetDB` / `cleanupDB`, `RecordTools`, type conversion (enums, UUIDs, `java.time`, custom `IJDBTypeConverter`). Supports PostgreSQL, MySQL, MariaDB, Oracle, SQL Server, DB2, SQLite, H2 and HSQLDB.
 
+[1.4.0]: https://github.com/cyberdruid-dev/jdbscript/releases/tag/v1.4.0
 [1.3.2]: https://github.com/cyberdruid-dev/jdbscript/releases/tag/v1.3.2
 [1.3.1]: https://github.com/cyberdruid-dev/jdbscript/releases/tag/v1.3.1
 [1.3.0]: https://github.com/cyberdruid-dev/jdbscript/releases/tag/v1.3.0

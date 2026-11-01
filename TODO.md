@@ -13,9 +13,13 @@
 * [x] Skill: `excludeFromCleanup(...)` in "Cleanup and FK ordering" (not `reference/migrations.md`:
   migration tests seed a freshly migrated DB with `insertDB`); H2 in the sequence-reset list; column
   validation note; failure messages name table and values
-* [ ] Bump `jdbscript.version` in `examples/pom.xml` and `examples/08-springboot/pom.xml` (08 has
-  Spring Boot as parent, so it doesn't inherit the version), and in the skill's dependency
-  coordinates (`skill/jdbscript/SKILL.md`, "Adding to a project")
+* [x] Pre-release commit: `CHANGELOG.md` (`[Unreleased]` -> version + date, tag link), README
+  install snippets, skill dependency coordinates (`skill/jdbscript/SKILL.md`). `pom.xml` stays
+  `X.Y.Z-SNAPSHOT`: `release_jdbscript X.Y.Z` sets the version, tags and deploys
+* [ ] After the tag, once on Maven Central: `jdbscript.version` in `examples/pom.xml` and
+  `examples/08-springboot/pom.xml` (08 has Spring Boot as parent, so it doesn't inherit it)
+  from SNAPSHOT to the release; `site/index.md` (hero button + link, 3 snippets); then
+  `pom.xml` to the next `-SNAPSHOT`
 * [x] `assertDBHas` / `assertDBHasNot` failure message: every failing record with its table and
   written values; `assertDBHasNot` shows a matching row. The migration article shows the old
   message (`~/workspaces/articles/untested-migration/`) - update it after the release.
