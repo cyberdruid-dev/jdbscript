@@ -16,14 +16,14 @@
 * [x] Pre-release commit: `CHANGELOG.md` (`[Unreleased]` -> version + date, tag link), README
   install snippets, skill dependency coordinates (`skill/jdbscript/SKILL.md`). `pom.xml` stays
   `X.Y.Z-SNAPSHOT`: `release_jdbscript X.Y.Z` sets the version, tags and deploys
-* [ ] After the tag, once on Maven Central: `jdbscript.version` in `examples/pom.xml` and
+* [x] After the tag, once on Maven Central: `jdbscript.version` in `examples/pom.xml` and
   `examples/08-springboot/pom.xml` (08 has Spring Boot as parent, so it doesn't inherit it)
   from SNAPSHOT to the release; `site/index.md` (hero button + link, 3 snippets); then
   `pom.xml` to the next `-SNAPSHOT`
 * [x] `assertDBHas` / `assertDBHasNot` failure message: every failing record with its table and
   written values; `assertDBHasNot` shows a matching row. The migration article shows the old
   message (`~/workspaces/articles/untested-migration/`) - update it after the release.
-* [ ] Skill versioning (decided: pin to the release tag): after tagging, add `"ref": "vX.Y.Z"` to the
+* [x] Skill versioning (decided: pin to the release tag): after tagging, add `"ref": "vX.Y.Z"` to the
   `git-subdir` source in `site/public/marketplace.json` (no `version`: it comes from the commit) and
   deploy the site. Point the skill links in `site/public/llms.txt` (SKILL.md and `reference/`) at the
   same tag. From this release on, the installed skill matches the released library, so skill
@@ -182,6 +182,7 @@ Grouped summary of completed work - see git history for detail.
 * **Released**: v1.1.0 published to Maven Central (2026-09-05)
 * **Released**: v1.2.0 published to Maven Central (2026-09-29)
 * **Released**: v1.3.2 published to Maven Central (2026-10-19)
+* **Released**: v1.4.0 published to Maven Central (2026-11-01)
 
 ## Requirements
 * JDK 17+ (uses `InvocationHandler.invokeDefault`, which needs Java 16+; project targets 17)

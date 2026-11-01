@@ -11,9 +11,9 @@ Record method names are used verbatim as column names (`user_id`, not `userId`).
 
 ## Agent skill
 
-- [SKILL.md](https://raw.githubusercontent.com/cyberdruid-dev/jdbscript/main/skill/jdbscript/SKILL.md): how to model schemas and write fixtures correctly. Claude Code: `/plugin marketplace add https://jdbscript.org/marketplace.json`, then `/plugin install jdbscript@jdbscript`. Other agents: copy `skill/jdbscript/` into the agent's skills directory
-- [Example patterns](https://raw.githubusercontent.com/cyberdruid-dev/jdbscript/main/skill/jdbscript/reference/examples.md): condensed snippets from the example projects
-- [Migration testing](https://raw.githubusercontent.com/cyberdruid-dev/jdbscript/main/skill/jdbscript/reference/migrations.md): testing Liquibase/Flyway migrations against existing data
+- [SKILL.md](https://raw.githubusercontent.com/cyberdruid-dev/jdbscript/v1.4.0/skill/jdbscript/SKILL.md): how to model schemas and write fixtures correctly. Claude Code: `/plugin marketplace add https://jdbscript.org/marketplace.json`, then `/plugin install jdbscript@jdbscript`. Other agents: copy `skill/jdbscript/` into the agent's skills directory
+- [Example patterns](https://raw.githubusercontent.com/cyberdruid-dev/jdbscript/v1.4.0/skill/jdbscript/reference/examples.md): condensed snippets from the example projects
+- [Migration testing](https://raw.githubusercontent.com/cyberdruid-dev/jdbscript/v1.4.0/skill/jdbscript/reference/migrations.md): testing Liquibase/Flyway migrations against existing data
 
 ## Examples
 
