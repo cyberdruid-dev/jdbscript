@@ -8,6 +8,8 @@ import org.jdbscript.IDBSchema.IDBRecord;
 import org.jdbscript.IJDBEngine;
 import org.jdbscript.JDBEngine;
 import org.jdbscript.JdbAbstractTest;
+import org.jdbscript.RecordTools;
+import org.jdbscript.db.ICustomerRecord;
 import org.jdbscript.db.IOrderSchema;
 import org.jdbscript.errors.JDBScriptException;
 import org.jdbscript.utils.LogCapture;
@@ -26,6 +28,23 @@ public class CleanupExclusionTest extends JdbAbstractTest {
 
     private interface IGeneratedIdSchema extends IDBSchema {
         IGeneratedIdRecord generated_int_id_table();
+    }
+
+    private interface ICountedOrderRecord extends IDBRecord {
+        ICountedOrderRecord id(int value);
+        ICountedOrderRecord customer_id(int value);
+        ICountedOrderRecord order_date(String value);
+
+        default void defaults(RecordTools tools) {
+            id(tools.nextIntId("order_id", 200));
+            customer_id(1);
+            order_date("2023-10-27");
+        }
+    }
+
+    private interface ICountedOrderSchema extends IDBSchema {
+        ICustomerRecord customers();
+        ICountedOrderRecord orders();
     }
 
     private final IJDBEngine<IOrderSchema> seedingEngine = createEngine(IOrderSchema.class);
@@ -117,6 +136,45 @@ public class CleanupExclusionTest extends JdbAbstractTest {
         assertTableValues(table("customers",
                 columns("id", "name"),
                 row(1, "Ann")
+        ));
+    }
+
+    public void resetDB_writing_to_an_excluded_table_fails_before_cleanup() {
+        IJDBEngine<IOrderSchema> engine = engineBuilder(IOrderSchema.class).excludeFromCleanup("customers").build();
+
+        assertThatThrownBy(() -> engine.resetDB(db -> {
+            db.customers().id(2).name("Bob");
+        })).isInstanceOf(JDBScriptException.class)
+                .hasMessageContaining("excluded from cleanup");
+        assertTableValues(table("orders",
+                columns("id"),
+                row(101)
+        ));
+    }
+
+    public void a_failed_resetDB_does_not_restart_id_counters() {
+        IJDBEngine<ICountedOrderSchema> engine = engineBuilder(ICountedOrderSchema.class)
+                .excludeFromCleanup("customers").build();
+        engine.resetDB(db -> {
+            db.orders();
+            db.orders();
+            db.orders();
+        });
+
+        assertThatThrownBy(() -> engine.resetDB(db -> {
+            db.customers().id(2).name("Bob");
+            db.orders();
+        })).isInstanceOf(JDBScriptException.class);
+        engine.insertDB(db -> {
+            db.orders();
+        });
+
+        assertTableValues(table("orders",
+                columns("id"),
+                row(200),
+                row(201),
+                row(202),
+                row(203)
         ));
     }
 

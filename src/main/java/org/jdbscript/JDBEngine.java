@@ -114,9 +114,8 @@ public class JDBEngine<T extends IDBSchema> implements IJDBEngine<T>{
 
     @Override
     public void resetDB(Class<? extends T> scriptClass) {
-        cleanupDBInternal();
-        insertDBInternal(scriptClass);
-        notifyDataChange();
+        log.debug("resetDB({})", scriptClass.getName());
+        resetDBInternal(dbSchemaClass, db -> db.include(scriptClass));
     }
 
     @Override
@@ -153,8 +152,19 @@ public class JDBEngine<T extends IDBSchema> implements IJDBEngine<T>{
 
     private <S extends T> void resetDB(Class<S> proxyClass, Consumer<S> db) {
         log.debug("resetDb(consumer={})", db);
-        cleanupDBInternal();
-        insertDBInternal(proxyClass, db);
+        resetDBInternal(proxyClass, db);
+    }
+
+    // The script is built and checked before cleanup, so a failing script leaves the database and
+    // the id counters as they were. It counts from fresh counters, as cleanup restarts them.
+    private <S extends T> void resetDBInternal(Class<S> proxyClass, Consumer<S> db) {
+        validateSchema();
+        Map<String, Object> freshTools = new HashMap<>();
+        JDBScript script = buildInsertScript(proxyClass, db, freshTools);
+        getExecutor().cleanupTables(getTableNamesCleanupOrder());
+        tableTools.clear();
+        tableTools.putAll(freshTools);
+        getExecutor().insert(script);
         notifyDataChange();
     }
 
@@ -185,14 +195,18 @@ public class JDBEngine<T extends IDBSchema> implements IJDBEngine<T>{
 
     private <S extends T> void insertDBInternal(Class<S> proxyClass, Consumer<S> db) {
         validateSchema();
-        ScriptHandler<S> handler = new ScriptHandler<>(proxyClass, tableTools);
+        getExecutor().insert(buildInsertScript(proxyClass, db, tableTools));
+    }
+
+    private <S extends T> JDBScript buildInsertScript(Class<S> proxyClass, Consumer<S> db, Map<String, Object> tools) {
+        ScriptHandler<S> handler = new ScriptHandler<>(proxyClass, tools);
         db.accept(handler.getProxy());
         handler.applyDefaults();
         JDBScript script = handler.getDbScript();
         converter.convertTypes(script);
         checkExcludedTableWrites(script);
         sortScript(script);
-        getExecutor().insert(script);
+        return script;
     }
 
     private <S extends T> JDBScript buildScript(Consumer<S> db, ScriptHandler<S> handler) {
