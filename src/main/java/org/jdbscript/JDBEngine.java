@@ -591,9 +591,12 @@ public class JDBEngine<T extends IDBSchema> implements IJDBEngine<T>{
 
         /**
          * Excludes tables of the schema interface from {@link JDBEngine#cleanupDB()} (and so from
-         * {@code resetDB}): their rows are never deleted and their identity columns never reset,
-         * e.g. reference data created by a migration. The tables stay mapped, so scripts can still
-         * assert against them. This method is cumulative.
+         * {@code resetDB}): their rows are never deleted, e.g. reference data created by a migration.
+         * Their identity columns and owned sequences (e.g. {@code SERIAL}) aren't reset; standalone
+         * sequences are, even one an excluded table's column default uses (on DuckDB, every
+         * generated id). The tables stay mapped, so scripts can still assert against them. An
+         * excluded table must not reference a table that is cleaned (checked on first use).
+         * This method is cumulative.
          *
          * @param tableNames schema interface table names, matched ignoring case
          * @return this builder

@@ -81,6 +81,9 @@
   just the setter), or just document it clearly?
 
 #### Sequences
+* [ ] Attribute standalone sequences to tables through column defaults (`DEFAULT nextval('seq')`), so
+  cleanup doesn't reset a sequence that feeds an excluded table (DuckDB uses only such sequences;
+  also H2, PostgreSQL without `OWNED BY`, Oracle)
 * [ ] Reset sequences on demand via an explicit script command, not just during cleanup
 * [ ] Give scripts direct access to sequences
 * [x] Dedicated tests for sequence resets (beyond the per-DBMS strategy tests that exist today)
@@ -102,10 +105,14 @@
 * [x] add a callback for db modification? (e.g. for app's cache reset) - `onDataChange` (v1.2.0)
 * [ ] `assertDBHas` failure: show the closest actual rows (differing columns marked) and fill
   `AssertionFailedError`'s `expected` / `actual` for the IDE diff (moved out of v1.4.0)
-* [ ] `assertDBHasNot` reports a match when the table has no column metadata (e.g. an Oracle synonym):
-  `findMatchingRow` then selects `count(*)`, which always returns a row. Fall back to the count query,
-  or read the row's columns from `ResultSetMetaData` (`SELECT t.*`). Testing needs a metadata hook:
-  the assertion code reads the `metadataProvider` field, not `getMetadataProvider()`
+* [ ] Matching-row display in `assertDBHasNot` (`SqlScriptExecutor.findMatchingRow`) relies on column
+  metadata and `getObject`. Probably one fix for both: read the row through `ResultSetMetaData`
+  (`SELECT t.*`) with per-column error handling. Testing needs a hook: the assertion code reads the
+  `metadataProvider` field, not `getMetadataProvider()`
+  * No column metadata (e.g. an Oracle synonym): it selects `count(*)`, which always returns a row,
+    so the record is reported as found
+  * A column the driver can't read (`sql_variant`, `XMLTYPE`, custom types): `getObject` throws and
+    the `SQLException` replaces the assertion failure
 
 #### Ecosystem Integration
 * [ ] Generate schema interfaces from an existing DB
@@ -115,6 +122,10 @@
   (e.g. an autoconfiguration starter)
 
 #### Naming, Design Questions & Housekeeping
+* [ ] `HsqldbStrategy` sequence/identity reset doesn't quote names (`ALTER SEQUENCE %s`), unlike
+  `H2Strategy`: check mixed-case sequence/table names with a failing test first
+* [ ] `CachingMetadataProvider` batch-on-miss (`getColumns`, `getTableDependencies`) refetches tables
+  that are already cached: fetch only the uncached ones
 * [x] CI: add JDK 27 to the JDK Check matrix once `eclipse-temurin:27-jdk-jammy` is published
 * [x] `skill/jdbscript/SKILL.md`: describe migration testing (`JDBMigrationEngine`, Liquibase/Flyway)
 * [ ] Ensure tests pass with `autocommit=true|false`
