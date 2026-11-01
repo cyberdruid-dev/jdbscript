@@ -41,6 +41,7 @@ public class JDBEngine<T extends IDBSchema> implements IJDBEngine<T>{
     private DataSource dataSource;
     private final IScriptExecutor executor;
     private SchemaValidator schemaValidator;
+    private boolean executorConfigured;
     private IJDBCache cache = new NoCache();
     private final ValidationStrategy unmappedTableStrategy;
     private final Set<String> suppressedTables;
@@ -92,6 +93,33 @@ public class JDBEngine<T extends IDBSchema> implements IJDBEngine<T>{
         for (String excluded : excludedFromCleanup) {
             if (!interfaceTables.contains(excluded.toUpperCase())) {
                 throw EXCLUDED_TABLE_NOT_IN_SCHEMA.get(excluded, dbSchemaClass.getSimpleName());
+            }
+        }
+    }
+
+    private void validateExcludedTablesReferenceNoCleanedTable() {
+        if (excludedFromCleanup.isEmpty()) {
+            return;
+        }
+        // Runs during initialization, so not through getExecutor().
+        IMetadataProvider provider = executor.getMetadataProvider();
+        Map<String, String> excludedByDbName = new LinkedHashMap<>();
+        for (String excluded : excludedFromCleanup) {
+            excludedByDbName.put(provider.toDbTableName(excluded), excluded);
+        }
+        Map<String, String> cleanedByUpperName = new HashMap<>();
+        for (Method method : SchemaValidator.findRecordMethods(dbSchemaClass)) {
+            if (!excludedByDbName.containsKey(provider.toDbTableName(method.getName()))) {
+                cleanedByUpperName.put(method.getName().toUpperCase(), method.getName());
+            }
+        }
+        Map<String, Set<String>> references = provider.getTableDependencies(excludedByDbName.keySet());
+        for (Map.Entry<String, String> excluded : excludedByDbName.entrySet()) {
+            for (String referenced : references.getOrDefault(excluded.getKey(), Set.of())) {
+                String cleaned = cleanedByUpperName.get(referenced);
+                if (cleaned != null) {
+                    throw EXCLUDED_TABLE_REFERENCES_CLEANED_TABLE.get(excluded.getValue(), cleaned);
+                }
             }
         }
     }
@@ -251,9 +279,13 @@ public class JDBEngine<T extends IDBSchema> implements IJDBEngine<T>{
                 validateTableDependencyOrderCoversSchema();
             }
             validateExcludedTablesAreInSchema();
-            this.executor.setDataSource(getDataSource());
-            this.executor.setCache(getCache());
-            this.executor.setFeatures(features);
+            if (!executorConfigured) {
+                this.executor.setDataSource(getDataSource());
+                this.executor.setCache(getCache());
+                this.executor.setFeatures(features);
+                executorConfigured = true;
+            }
+            validateExcludedTablesReferenceNoCleanedTable();
             this.schemaValidator = new SchemaValidator(dbSchemaClass, executor.getMetadataProvider(),
                     unmappedTableStrategy, suppressedTables, suppressDefaultUnmappedTables);
         }

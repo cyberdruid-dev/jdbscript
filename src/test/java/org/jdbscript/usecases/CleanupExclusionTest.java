@@ -234,6 +234,36 @@ public class CleanupExclusionTest extends JdbAbstractTest {
         ));
     }
 
+    public void an_excluded_table_referencing_a_cleaned_table_fails_on_first_use() {
+        IJDBEngine<IOrderSchema> engine = engineBuilder(IOrderSchema.class).excludeFromCleanup("orders").build();
+
+        assertThatThrownBy(engine::cleanupDB)
+                .isInstanceOf(JDBScriptException.class)
+                .hasMessageContaining("'orders' is excluded from cleanup but references 'customers'");
+        assertThatThrownBy(engine::cleanupDB)
+                .hasMessageContaining("'orders' is excluded from cleanup but references 'customers'");
+        assertTableValues(table("customers",
+                columns("id", "name"),
+                row(1, "Ann")
+        ));
+    }
+
+    public void an_excluded_table_may_reference_another_excluded_table() {
+        IJDBEngine<IOrderSchema> engine = engineBuilder(IOrderSchema.class)
+                .excludeFromCleanup("customers", "orders").build();
+
+        engine.cleanupDB();
+
+        assertTableValues(table("customers",
+                columns("id", "name"),
+                row(1, "Ann")
+        ));
+        assertTableValues(table("orders",
+                columns("id"),
+                row(101)
+        ));
+    }
+
     private long generatedId(String varcharValue) {
         return withResultSet("SELECT generated_id_column FROM generated_int_id_table WHERE varchar_column = '%s'"
                 .formatted(varcharValue), (rs, columns, types) -> {

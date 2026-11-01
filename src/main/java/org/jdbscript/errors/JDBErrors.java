@@ -33,6 +33,8 @@ public enum JDBErrors implements Supplier<JDBScriptException> {
     EXCLUDED_TABLE_WRITE_STRATEGY_IS_NULL(JDBScriptException.class, "excluded table write strategy can not be null."),
     /** A table passed to excludeFromCleanup isn't declared by the schema interface. */
     EXCLUDED_TABLE_NOT_IN_SCHEMA(JDBScriptException.class, "Table '%s' passed to excludeFromCleanup is not declared in schema interface %s"),
+    /** An excluded table has a foreign key to a table that cleanup empties. */
+    EXCLUDED_TABLE_REFERENCES_CLEANED_TABLE(JDBScriptException.class, "Table '%1$s' is excluded from cleanup but references '%2$s', which is cleaned: deleting its rows would break the foreign key (or cascade into '%1$s'). Exclude '%2$s' too."),
     /** A script writes to a table excluded from cleanup while the write strategy is FAIL. */
     WRITE_TO_EXCLUDED_TABLE(JDBScriptException.class, "Script writes to %s, which is excluded from cleanup: the written rows would survive cleanupDB. Use excludedTableWriteStrategy(...) to allow it."),
     /** A feature passed to Builder.feature(...) cannot be null. */
