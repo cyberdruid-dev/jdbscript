@@ -19,6 +19,7 @@ import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
+import static java.util.stream.Collectors.toCollection;
 import static java.util.stream.Collectors.toSet;
 import static org.jdbscript.errors.Checks.checkIsNull;
 import static org.jdbscript.errors.Checks.checkNotNull;
@@ -408,13 +409,14 @@ public class JDBEngine<T extends IDBSchema> implements IJDBEngine<T>{
     }
 
     private void checkExcludedTableWrites(JDBScript script) {
-        Set<String> excluded = getExcludedDbTableNames();
-        Set<String> written = new LinkedHashSet<>();
-        for (JDBRecord record : script.getRecords()) {
-            if (excluded.contains(getMetadataProvider().toDbTableName(record.getTableName()))) {
-                written.add(record.getTableName());
-            }
+        if (excludedFromCleanup.isEmpty()) {
+            return;
         }
+        Set<String> excluded = getExcludedDbTableNames();
+        Set<String> written = script.getRecords().stream()
+                .map(JDBRecord::getTableName)
+                .collect(toCollection(LinkedHashSet::new));
+        written.removeIf(table -> !excluded.contains(getMetadataProvider().toDbTableName(table)));
         for (String table : written) {
             JDBScriptException error = WRITE_TO_EXCLUDED_TABLE.get(table);
             switch (excludedTableWriteStrategy) {

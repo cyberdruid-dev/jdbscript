@@ -99,6 +99,10 @@
 * [x] add a callback for db modification? (e.g. for app's cache reset) - `onDataChange` (v1.2.0)
 * [ ] `assertDBHas` failure: show the closest actual rows (differing columns marked) and fill
   `AssertionFailedError`'s `expected` / `actual` for the IDE diff (moved out of v1.4.0)
+* [ ] `assertDBHasNot` reports a match when the table has no column metadata (e.g. an Oracle synonym):
+  `findMatchingRow` then selects `count(*)`, which always returns a row. Fall back to the count query,
+  or read the row's columns from `ResultSetMetaData` (`SELECT t.*`). Testing needs a metadata hook:
+  the assertion code reads the `metadataProvider` field, not `getMetadataProvider()`
 
 #### Ecosystem Integration
 * [ ] Generate schema interfaces from an existing DB
